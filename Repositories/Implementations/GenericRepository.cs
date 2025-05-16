@@ -38,13 +38,13 @@ namespace CustomerService.API.Repositories.Implementations
             await _dbSet.AddAsync(entity, cancellation);
         }
 
-        public void Update(T entity)
+        public void Update(T entity, CancellationToken cancellation = default)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             _dbSet.Update(entity);
         }
 
-        public void Remove(T entity)
+        public void Remove(T entity, CancellationToken cancellation = default)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             _dbSet.Remove(entity);

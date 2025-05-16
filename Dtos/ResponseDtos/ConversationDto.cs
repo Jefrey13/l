@@ -10,6 +10,7 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? ClientUserName { get; set; }
         public int? AssignedAgent { get; set; }
         public string? AssignedAgentName { get; set; }
+        public string? ProfilePhoto { get; set; }
         public string Status { get; set; } = "";
         public DateTime CreatedAt { get; set; }
         public DateTime? AssignedAt { get; set; }

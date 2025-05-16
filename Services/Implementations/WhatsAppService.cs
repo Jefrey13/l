@@ -60,6 +60,7 @@ namespace CustomerService.API.Services.Implementations
                 CreatedAt = DateTime.UtcNow,
                 ExternalId = Guid.NewGuid().ToString() // Validación no duplicar el mismo mensaje en la db.
             };
+
             await _uow.Messages.AddAsync(msg, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 

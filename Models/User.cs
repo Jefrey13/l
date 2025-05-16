@@ -21,7 +21,6 @@ namespace CustomerService.API.Models
         public DateTime? UpdatedAt { get; set; }
         public byte[] RowVersion { get; set; } = null!;
         public string? ImageUrl { get; set; }
-
         public virtual ICollection<AuthToken> AuthTokens { get; set; } = new List<AuthToken>();
         public virtual Company? Company { get; set; }
         public virtual ICollection<Conversation> ConversationAssignedAgentNavigations { get; set; } = new List<Conversation>();

@@ -6,6 +6,6 @@ public interface IGenericRepository<T> where T : class
     Task<T?> GetByIdAsync(int id, CancellationToken cancellation = default);
     Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellation = default);
     Task AddAsync(T entity, CancellationToken cancellation = default);
-    void Update(T entity);
-    void Remove(T entity);
+    void Update(T entity, CancellationToken cancellation = default);
+    void Remove(T entity, CancellationToken cancellation = default);
 }

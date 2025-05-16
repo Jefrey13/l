@@ -43,41 +43,29 @@ namespace CustomerService.API.Pipelines.Implementations
         }
 
         public async Task ProcessIncomingAsync(
-             //string fromPhone,
-             //string externalId,
-             //string? text,
-             //string? mediaId,
-             //string? mimeType,
-             //string? caption,
              ChangeValue value,
             CancellationToken ct = default)
         {
-            // 1) Idempotencia: si ya existe este externalId, no procesar de nuevo
-            //if (!string.IsNullOrEmpty(externalId) &&
-            //    await _db.Messages.AnyAsync(m => m.ExternalId == externalId, ct))
-            //{
-            //    return;
-            //}
+            //Registrar el contacto si no esta resgistrado el numero telefonico
+            var contactLog = await _db.ContactLogs
+                .FirstOrDefaultAsync(cl => cl.Phone == value.Messages.First().From, ct)
+                ?? new ContactLog {WaUserId = value.Contacts.First().WaId, WaName = value.Contacts.First().Profile.Name,
+                    WaId = value.Contacts.First().WaId,
+                    Phone = value.Messages.First().From, CreateAt = DateTime.UtcNow };
 
-
-
-            var user = await _db.Users
-                .FirstOrDefaultAsync(u => u.Phone == value.Messages.First().From, ct)
-                ?? new User { Phone = value.Messages.First().From, CreatedAt = DateTime.UtcNow };
-
-            if (user.UserId == 0)
+            if (contactLog.Id == 0)
             {
-                _db.Users.Add(user);
+                _db.ContactLogs.Add(contactLog);
                 await _db.SaveChangesAsync(ct);
             }
 
             // Crear o recuperar la conversación activa
             var convo = await _db.Conversations
-                                 .FirstOrDefaultAsync(c => c.ClientUserId == user.UserId
+                                 .FirstOrDefaultAsync(c => c.ClientUserId == contactLog.Id
                                                         && c.Status != "Closed", ct)
                        ?? new Conversation
                        {
-                           ClientUserId = user.UserId,
+                           ClientUserId = contactLog.Id,
                            Status = "Bot",
                            CreatedAt = DateTime.UtcNow,
                            Initialized = false
@@ -96,49 +84,12 @@ namespace CustomerService.API.Pipelines.Implementations
                 _db.Conversations.Update(convo);
                 await _db.SaveChangesAsync(ct);
 
-                await _hubContext.Clients.All
-                                 .SendAsync("ConversationCreated", new
-                                 {
-                                     convo.ConversationId,
-                                     convo.ClientUserId,
-                                     convo.Status,
-                                     convo.CreatedAt
-                                 }, ct);
-
-                //Extraer conversación y compartir enviar a la ui.
-                var fullConvo = await _db.Conversations
-                    .Include(c => c.Messages)
-                    .Include(c => c.ClientUser)
-                    .SingleAsync(c => c.ConversationId == convo.ConversationId, ct);
-
-
-                var convoDto = new ConversationDto
-                {
-                    ConversationId = fullConvo.ConversationId,
-                    CompanyId = fullConvo.CompanyId,
-                    ClientUserId = fullConvo.ClientUserId,
-                    AssignedAgent = fullConvo.AssignedAgent,
-                    Status = fullConvo.Status,
-                    CreatedAt = fullConvo.CreatedAt,
-                    AssignedAt = fullConvo.AssignedAt,
-                    ContactName = fullConvo.ClientUser?.FullName ?? fullConvo.ClientUser?.Phone ?? "",
-                    TotalMensajes = fullConvo.Messages.Count,
-                    UltimaActividad = fullConvo.Messages.Any()
-                                      ? fullConvo.Messages.Max(m => m.CreatedAt)
-                                      : fullConvo.CreatedAt,
-                    Duracion = DateTime.UtcNow - fullConvo.CreatedAt
-                };
-
-                await _hubContext.Clients.All.SendAsync("ConversationCreated", convoDto, ct);
             }
-
             // Persistir y notificar el mensaje entrante
-
-           
                 var incoming = new Models.Message
                 {
                     ConversationId = convo.ConversationId,
-                    SenderId = user.UserId,
+                    SenderId = contactLog.Id,
                     Content = value.Messages.First().Text?.Body,
                     MessageType = "Text",
                     CreatedAt = DateTime.UtcNow
@@ -147,7 +98,32 @@ namespace CustomerService.API.Pipelines.Implementations
                 _db.Messages.Add(incoming);
                 await _db.SaveChangesAsync(ct);
 
-                await _hubContext.Clients
+            //Extraer conversación y compartir enviar a la ui.
+            var fullConvo = await _db.Conversations
+                    .Include(c => c.Messages)
+                    .Include(c => c.ClientUser)
+                    .SingleAsync(c => c.ConversationId == convo.ConversationId, ct);
+
+            var convoDto = new ConversationDto
+            {
+                ConversationId = fullConvo.ConversationId,
+                CompanyId = fullConvo.CompanyId,
+                ClientUserId = fullConvo.ClientUserId,
+                AssignedAgent = fullConvo.AssignedAgent,
+                Status = fullConvo.Status,
+                CreatedAt = fullConvo.CreatedAt,
+                AssignedAt = fullConvo.AssignedAt,
+                ContactName = fullConvo.ClientUser?.FullName ?? fullConvo.ClientUser?.Phone ?? "",
+                TotalMensajes = fullConvo.Messages.Count,
+                UltimaActividad = fullConvo.Messages.Any()
+                                  ? fullConvo.Messages.Max(m => m.CreatedAt)
+                                  : fullConvo.CreatedAt,
+                Duracion = DateTime.UtcNow - fullConvo.CreatedAt
+            };
+
+            await _hubContext.Clients.All.SendAsync("ConversationCreated", convoDto, ct);
+
+            await _hubContext.Clients
                     .Group(convo.ConversationId.ToString())
                     .SendAsync("ReceiveMessage", new
                     {

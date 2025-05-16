@@ -27,6 +27,7 @@ namespace CustomerService.API.Services.Implementations
                 .GetAll()
                 .Include(c => c.Messages)
                 .Include(c => c.ClientUser)
+                .Include(c=> c.AssignedAgentNavigation)
                 .ToListAsync(cancellation);
 
             return conversations.Select(ToDto);
@@ -113,6 +114,7 @@ namespace CustomerService.API.Services.Implementations
                 AssignedAgent = c.AssignedAgent,
                 AssignedAgentName = c.AssignedAgentNavigation?.FullName,
                 Status = c.Status,
+                ProfilePhoto = c.AssignedAgentNavigation?.ImageUrl,
                 CreatedAt = c.CreatedAt,
                 AssignedAt = c.AssignedAt,
                 ContactName = c.ClientUser?.FullName,

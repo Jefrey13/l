@@ -21,7 +21,7 @@ namespace CustomerService.API.Models
 
         public virtual User? AssignedAgentNavigation { get; set; }
         public virtual User? AssignedByNavigation { get; set; }
-        public virtual User? ClientUser { get; set; }
+        public virtual ContactLog? ClientUser { get; set; }
         public virtual Company? Company { get; set; }
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 

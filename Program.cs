@@ -89,6 +89,8 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IRoleMenuRepository, RoleMenuRepository>();
+builder.Services.AddScoped<IContactLogRepository, ContactLogRespository>();
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // --------------------- Application Services ---------------------
@@ -105,6 +107,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IMessagePipeline, MessagePipeline>();
 builder.Services.AddScoped<IMenuService, MenuService>();
+builder.Services.AddScoped<IContactLogService, ContactLogService>();
 
 // --------------------- Mapster ---------------------
 var mapsterConfig = TypeAdapterConfig.GlobalSettings;

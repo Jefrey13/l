@@ -1,9 +1,15 @@
-﻿namespace CustomerService.API.Dtos.RequestDtos
+﻿using System.Text.Json.Serialization;
+
+namespace CustomerService.API.Dtos.RequestDtos
 {
     public class Contact
     {
-        public int Id { get; set; }
-        public string UserId { get; set; }
-        public Profile Profile { get; set; }
+        [JsonPropertyName("wa_id")]
+        public string? WaId { get; set; }
+
+        [JsonPropertyName("user_id")]
+        public string? UserId { get; set; }
+
+        public Profile? Profile { get; set; }
     }
 }

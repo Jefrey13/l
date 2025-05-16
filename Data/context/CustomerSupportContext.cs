@@ -31,6 +31,7 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<Menu> Menus { get; set; }
 
     public virtual DbSet<RoleMenu> MenuRoles { get; set; }
+    public virtual DbSet<ContactLog> ContactLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -74,6 +75,29 @@ public partial class CustomerSupportContext : DbContext
             .IsConcurrencyToken();
         });
 
+        modelBuilder.Entity<ContactLog>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+
+            entity.ToTable("ContactLogs", "auth");
+
+            entity.HasIndex(e => e.Phone, "UQ_ContactLog_Phone").IsUnique();
+
+            entity.Property(e=> e.FullName).HasMaxLength(100);
+            entity.Property(e=> e.IdCard).HasMaxLength(30);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.WaId);
+            entity.Property(e => e.WaName);
+            entity.Property(e => e.WaUserId);
+            entity.Property(e => e.CreateAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.UpdateAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.IsActive).HasDefaultValue(0);
+
+            entity.Property(e => e.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
+        });
+
         modelBuilder.Entity<Attachment>(entity =>
         {
             entity.HasKey(e => e.AttachmentId).HasName("PK__Attachme__442C64BE0401CF2F");
@@ -89,6 +113,7 @@ public partial class CustomerSupportContext : DbContext
                 .HasForeignKey(d => d.MessageId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Attachments_Messages");
+
         });
 
         modelBuilder.Entity<AuthToken>(entity =>
@@ -137,9 +162,13 @@ public partial class CustomerSupportContext : DbContext
                 .HasForeignKey(d => d.AssignedBy)
                 .HasConstraintName("FK_Conversations_AssignedBy");
 
-            entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClientUsers)
-                .HasForeignKey(d => d.ClientUserId)
-                .HasConstraintName("FK_Conversations_Client");
+            //entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClientUsers)
+            //    .HasForeignKey(d => d.ClientUserId)
+            //    .HasConstraintName("FK_Conversations_Client");
+
+             entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClient)
+            .HasForeignKey(d => d.ClientUserId)
+            .HasConstraintName("Fk_Conversations_Clients");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Conversations)
                 .HasForeignKey(d => d.CompanyId)

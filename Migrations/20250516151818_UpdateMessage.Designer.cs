@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250516151818_UpdateMessage")]
+    partial class UpdateMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -177,73 +180,6 @@ namespace CustomerService.API.Migrations
                     b.ToTable("Companies", "crm");
                 });
 
-            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CompanyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreateAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(sysutcdatetime())");
-
-                    b.Property<string>("FullName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("IdCard")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime?>("UpdateAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(sysutcdatetime())");
-
-                    b.Property<string>("WaId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WaName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WaUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex(new[] { "Phone" }, "UQ_ContactLog_Phine")
-                        .IsUnique();
-
-                    b.ToTable("ContactLogs", "auth");
-                });
-
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
                     b.Property<int>("ConversationId")
@@ -285,9 +221,6 @@ namespace CustomerService.API.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
                     b.HasKey("ConversationId")
                         .HasName("PK__Conversa__C050D877771F928B");
 
@@ -298,8 +231,6 @@ namespace CustomerService.API.Migrations
                     b.HasIndex("ClientUserId");
 
                     b.HasIndex("CompanyId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Conversations", "chat");
                 });
@@ -380,6 +311,9 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("(sysutcdatetime())");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -389,8 +323,15 @@ namespace CustomerService.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("SenderId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("MessageId")
                         .HasName("PK__Messages__C87C0C9CCF00998F");
@@ -561,15 +502,6 @@ namespace CustomerService.API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
-                {
-                    b.HasOne("CustomerService.API.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId");
-
-                    b.Navigation("Company");
-                });
-
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
                     b.HasOne("CustomerService.API.Models.User", "AssignedAgentNavigation")
@@ -582,19 +514,15 @@ namespace CustomerService.API.Migrations
                         .HasForeignKey("AssignedBy")
                         .HasConstraintName("FK_Conversations_AssignedBy");
 
-                    b.HasOne("CustomerService.API.Models.ContactLog", "ClientUser")
-                        .WithMany("ConversationClient")
+                    b.HasOne("CustomerService.API.Models.User", "ClientUser")
+                        .WithMany("ConversationClientUsers")
                         .HasForeignKey("ClientUserId")
-                        .HasConstraintName("Fk_Conversations_Client");
+                        .HasConstraintName("FK_Conversations_Client");
 
                     b.HasOne("CustomerService.API.Models.Company", "Company")
                         .WithMany("Conversations")
                         .HasForeignKey("CompanyId")
                         .HasConstraintName("FK_Conversations_Companies");
-
-                    b.HasOne("CustomerService.API.Models.User", null)
-                        .WithMany("ConversationClientUsers")
-                        .HasForeignKey("UserId");
 
                     b.Navigation("AssignedAgentNavigation");
 
@@ -684,11 +612,6 @@ namespace CustomerService.API.Migrations
                     b.Navigation("Conversations");
 
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
-                {
-                    b.Navigation("ConversationClient");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>

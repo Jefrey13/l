@@ -16,6 +16,7 @@ namespace CustomerService.API.Repositories.Interfaces
 
         IMenuRepository Menus { get; }
         IRoleMenuRepository RoleMenus { get; }
+        IContactLogRepository ContactLogs { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellation = default);
     }
 }

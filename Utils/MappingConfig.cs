@@ -44,6 +44,10 @@ namespace CustomerService.API.Utils
                 .Map(d => d.CreatedAt, s => s.CreatedAt);
 
             config.NewConfig<Models.Message, MessageDto>();
+
+            config.NewConfig<ContactLog, ContactLogResponseDto>();
+            config.NewConfig<CreateContactLogRequestDto, ContactLog>();
+            config.NewConfig<UpdateContactLogRequestDto, ContactLog>();
         }
     }
 }

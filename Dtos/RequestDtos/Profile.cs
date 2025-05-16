@@ -1,7 +1,10 @@
-﻿namespace CustomerService.API.Dtos.RequestDtos
+﻿using System.Text.Json.Serialization;
+
+namespace CustomerService.API.Dtos.RequestDtos
 {
     public class Profile
     {
-        public string Name { get; set; }
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
     }
 }
