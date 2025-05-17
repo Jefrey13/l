@@ -108,6 +108,7 @@ builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IMessagePipeline, MessagePipeline>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IContactLogService, ContactLogService>();
+builder.Services.AddScoped<INicDatetime, NicDatetime>();
 
 // --------------------- Mapster ---------------------
 var mapsterConfig = TypeAdapterConfig.GlobalSettings;

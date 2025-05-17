@@ -8,6 +8,7 @@ using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Services.Implementations
@@ -15,10 +16,12 @@ namespace CustomerService.API.Services.Implementations
     public class ConversationService : IConversationService
     {
         private readonly IUnitOfWork _uow;
+        private readonly INicDatetime _nicDatetime;
 
-        public ConversationService(IUnitOfWork uow)
+        public ConversationService(IUnitOfWork uow, INicDatetime nicDatetime)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
+            _nicDatetime = nicDatetime;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -40,7 +43,7 @@ namespace CustomerService.API.Services.Implementations
                 CompanyId = request.CompanyId,
                 ClientUserId = request.ClientUserId,
                 Status = "Bot",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = await _nicDatetime.GetNicDatetime()
             };
 
             await _uow.Conversations.AddAsync(conv, cancellation);
@@ -70,7 +73,8 @@ namespace CustomerService.API.Services.Implementations
                        ?? throw new KeyNotFoundException("Conversation not found.");
 
             conv.AssignedAgent = agentUserId;
-            conv.AssignedAt = DateTime.UtcNow;
+
+            conv.AssignedAt = await _nicDatetime.GetNicDatetime();
             conv.Status = "Human";
 
             _uow.Conversations.Update(conv);
@@ -86,6 +90,7 @@ namespace CustomerService.API.Services.Implementations
                 .GetAll()
                 .Include(c => c.Messages)
                 .Include(c => c.ClientUser)
+                .Include(c=> c.AssignedAgentNavigation)
                 .SingleOrDefaultAsync(c => c.ConversationId == id, cancellation);
 
             return c is null ? null : ToDto(c);

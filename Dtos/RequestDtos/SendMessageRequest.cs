@@ -11,13 +11,15 @@ namespace CustomerService.API.Dtos.RequestDtos
         [Required]
         public int SenderId { get; set; }
 
+        //[Required]
+        //public string To { get; set; }
+
         public string? Content { get; set; }
 
-        [Required]
-        public string MessageType { get; set; } = "Text";
+        public string? MessageType { get; set; } = "Text";
 
         public string? Caption { get; set; }
 
-        public IFormFile? File { get; set; }
+        //public IFormFile? File { get; set; }
     }
 }

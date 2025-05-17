@@ -8,11 +8,13 @@ using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Models;
 using CustomerService.API.Pipelines.Interfaces;
+using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using WhatsappBusiness.CloudApi.Webhook;
 
 namespace CustomerService.API.Pipelines.Implementations
 {
@@ -25,6 +27,8 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly string _systemPrompt;
         private const int BotUserId = 1;
+        private readonly INicDatetime _nicDatetime;
+        private readonly IUnitOfWork _uow;
 
         public MessagePipeline(
             CustomerSupportContext db,
@@ -32,7 +36,9 @@ namespace CustomerService.API.Pipelines.Implementations
             IWhatsAppService whatsAppService,
             IMessageService messageService,
             IHubContext<ChatHub> hubContext,
-            IConfiguration config)
+            IConfiguration config,
+            INicDatetime nicDatetime,
+            IUnitOfWork uow)
         {
             _db = db;
             _geminiClient = geminiClient;
@@ -40,6 +46,8 @@ namespace CustomerService.API.Pipelines.Implementations
             _hubContext = hubContext;
             _messageService = messageService;
             _systemPrompt = config["Gemini:SystemPrompt"]!;
+            _nicDatetime = nicDatetime;
+            _uow = uow;
         }
 
         public async Task ProcessIncomingAsync(
@@ -49,9 +57,12 @@ namespace CustomerService.API.Pipelines.Implementations
             //Registrar el contacto si no esta resgistrado el numero telefonico
             var contactLog = await _db.ContactLogs
                 .FirstOrDefaultAsync(cl => cl.Phone == value.Messages.First().From, ct)
-                ?? new ContactLog {WaUserId = value.Contacts.First().WaId, WaName = value.Contacts.First().Profile.Name,
+                ?? new ContactLog {WaUserId = 
+                    value.Contacts.First().WaId, 
+                    WaName = value.Contacts.First().Profile.Name,
                     WaId = value.Contacts.First().WaId,
-                    Phone = value.Messages.First().From, CreateAt = DateTime.UtcNow };
+                    Phone = value.Messages.First().From, 
+                    CreateAt = DateTime.UtcNow };
 
             if (contactLog.Id == 0)
             {
@@ -63,11 +74,11 @@ namespace CustomerService.API.Pipelines.Implementations
             var convo = await _db.Conversations
                                  .FirstOrDefaultAsync(c => c.ClientUserId == contactLog.Id
                                                         && c.Status != "Closed", ct)
-                       ?? new Conversation
+                       ?? new Models.Conversation
                        {
                            ClientUserId = contactLog.Id,
                            Status = "Bot",
-                           CreatedAt = DateTime.UtcNow,
+                           CreatedAt = await _nicDatetime.GetNicDatetime(),
                            Initialized = false
                        };
 
@@ -85,7 +96,7 @@ namespace CustomerService.API.Pipelines.Implementations
                 await _db.SaveChangesAsync(ct);
 
             }
-            // Persistir y notificar el mensaje entrante
+                // Persistir y notificar el mensaje entrante
                 var incoming = new Models.Message
                 {
                     ConversationId = convo.ConversationId,
@@ -151,12 +162,38 @@ namespace CustomerService.API.Pipelines.Implementations
                 var rawReply = await _geminiClient.GenerateContentAsync(fullPromp, incoming.Content, ct);
                 var reply = rawReply.Trim();
 
+                var msg = new Models.Message
+                {
+                    ConversationId = convo.ConversationId,
+                    SenderId = BotUserId,
+                    Content = reply,
+                    MessageType = "Text",
+                    CreatedAt = DateTime.UtcNow,
+                    ExternalId = Guid.NewGuid().ToString() // Validación no duplicar el mismo mensaje en la db.
+                };
+
+                await _uow.Messages.AddAsync(msg, ct);
+                await _uow.SaveChangesAsync(ct);
+
                 await _whatsAppService.SendTextAsync(
                     convo.ConversationId,
                     BotUserId,
                     reply,
                     ct
                 );
+
+                var dto = new
+                {
+                    msg.MessageId,
+                    msg.ConversationId,
+                    msg.SenderId,
+                    msg.Content,
+                    msg.MessageType,
+                    msg.CreatedAt
+                };
+                await _hubContext.Clients
+                    .Group(msg.ConversationId.ToString())
+                    .SendAsync("ReceiveMessage", new { Message = dto, Attachments = Array.Empty<object>() }, ct);
             }
         }
     }

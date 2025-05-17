@@ -19,15 +19,18 @@ namespace CustomerService.API.Controllers
         private readonly IMessagePipeline _pipeline;
         private readonly IWhatsAppService _whatsAppService;
         private readonly string _verifyToken;
+        private readonly IMessageService _messageService;
 
         public WhatsappWebhookController(
             IMessagePipeline pipeline,
             IWhatsAppService whatsAppService,
-            IConfiguration config)
+            IConfiguration config,
+            IMessageService messageService)
         {
             _pipeline = pipeline;
             _whatsAppService = whatsAppService;
             _verifyToken = config["WhatsApp:VerifyToken"]!;
+            _messageService = messageService;
         }
 
         [HttpGet("webhook", Name = "VerifyWhatsappWebhook")]
@@ -90,18 +93,18 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SendMessageAsync(
             int conversationId,
-            [FromBody] SendWhatsAppRequest req,
+            [FromBody] SendMessageRequest req,
             CancellationToken cancellation)
         {
-            if (string.IsNullOrWhiteSpace(req.To) || string.IsNullOrWhiteSpace(req.Body))
+            if (string.IsNullOrWhiteSpace(req.Content))
                 return BadRequest(ApiResponse<object>.Fail("Los campos 'to' y 'body' son obligatorios."));
 
             // Aquí defines quién está enviando:
             //Hay que extraer del jwt el identificador del quien envia el mensaje. Temporalmente se definira al admin 1. No lo elvides...
-            const int BotUserId = 1;
 
-            await _whatsAppService
-                .SendTextAsync(conversationId, BotUserId, req.Body, cancellation);
+            await _messageService.SendMessageAsync(req, cancellation);
+            //await _whatsAppService
+            //    .SendTextAsync(conversationId, BotUserId, req.Body, cancellation);
 
             return Ok(ApiResponse<object>.Ok(message: "Mensaje enviado y registrado correctamente."));
         }

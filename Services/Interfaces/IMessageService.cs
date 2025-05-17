@@ -8,7 +8,7 @@ namespace CustomerService.API.Services.Interfaces
 {
     public interface IMessageService
     {
-        Task<MessageDto> SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default);
+        Task SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default);
 
         /// <summary>
         /// Obtiene todos los mensajes de una conversación, ordenados cronológicamente, incluyendo adjuntos.

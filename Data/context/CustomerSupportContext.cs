@@ -167,8 +167,8 @@ public partial class CustomerSupportContext : DbContext
             //    .HasConstraintName("FK_Conversations_Client");
 
              entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClient)
-            .HasForeignKey(d => d.ClientUserId)
-            .HasConstraintName("Fk_Conversations_Clients");
+                .HasForeignKey(d => d.ClientUserId)
+                .HasConstraintName("Fk_Conversations_Clients");
 
             entity.HasOne(d => d.Company).WithMany(p => p.Conversations)
                 .HasForeignKey(d => d.CompanyId)

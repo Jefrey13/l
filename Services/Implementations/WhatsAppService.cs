@@ -51,18 +51,6 @@ namespace CustomerService.API.Services.Implementations
                 .SingleOrDefaultAsync(cancellation)
                 ?? throw new KeyNotFoundException("Conversation not found");
 
-            var msg = new Message
-            {
-                ConversationId = conversationId,
-                SenderId = senderId,
-                Content = text,
-                MessageType = "Text",
-                CreatedAt = DateTime.UtcNow,
-                ExternalId = Guid.NewGuid().ToString() // Validación no duplicar el mismo mensaje en la db.
-            };
-
-            await _uow.Messages.AddAsync(msg, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
 
             var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
             var payload = new
@@ -80,19 +68,6 @@ namespace CustomerService.API.Services.Implementations
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             var res = await _http.SendAsync(req, cancellation);
             res.EnsureSuccessStatusCode();
-
-            var dto = new
-            {
-                msg.MessageId,
-                msg.ConversationId,
-                msg.SenderId,
-                msg.Content,
-                msg.MessageType,
-                msg.CreatedAt
-            };
-            await _hub.Clients
-                .Group(conversationId.ToString())
-                .SendAsync("ReceiveMessage", new { Message = dto, Attachments = Array.Empty<object>() }, cancellation);
         }
 
         public async Task SendTextAsync(string toPhone, string text)

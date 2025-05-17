@@ -42,23 +42,23 @@ namespace CustomerService.API.Controllers
         /// <summary>
         /// Send a new message (text or media) in a conversation.
         /// </summary>
-        [HttpPost(Name = "SendMessage")]
-        [SwaggerOperation(Summary = "Send a message in a conversation")]
-        [ProducesResponseType(typeof(ApiResponse<MessageDto>), StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Send(
-            [FromRoute] int conversationId,
-            [FromForm] SendMessageRequest req,
-            CancellationToken ct = default)
-        {
-            req.ConversationId = conversationId;
+        //[HttpPost(Name = "SendMessage")]
+        //[SwaggerOperation(Summary = "Send a message in a conversation")]
+        //[ProducesResponseType(typeof(ApiResponse<MessageDto>), StatusCodes.Status201Created)]
+        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        //public async Task<IActionResult> Send(
+        //    [FromRoute] int conversationId,
+        //    [FromForm] SendMessageRequest req,
+        //    CancellationToken ct = default)
+        //{
+        //    req.ConversationId = conversationId;
 
-            var dto = await _messages.SendMessageAsync(req, ct);
-            return CreatedAtRoute(
-                routeName: "GetMessagesByConversation",
-                routeValues: new { conversationId = conversationId },
-                value: new ApiResponse<MessageDto>(dto, "Message sent.")
-            );
-        }
+        //    var dto = _messages.SendMessageAsync(req, ct);
+        //    return CreatedAtRoute(
+        //        routeName: "GetMessagesByConversation",
+        //        routeValues: new { conversationId = conversationId },
+        //        value: new ApiResponse<MessageDto>(dto, "Message sent.")
+        //    );
+        //}
     }
 }
