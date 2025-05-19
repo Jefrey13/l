@@ -64,7 +64,7 @@ namespace CustomerService.API.Services.Implementations
             return conversations.Select(ToDto);
         }
 
-        public async Task AssignAgentAsync(int conversationId, int agentUserId, CancellationToken cancellation = default)
+        public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, CancellationToken cancellation = default)
         {
             if (conversationId <= 0)
                 throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
@@ -75,7 +75,7 @@ namespace CustomerService.API.Services.Implementations
             conv.AssignedAgent = agentUserId;
 
             conv.AssignedAt = await _nicDatetime.GetNicDatetime();
-            conv.Status = "Human";
+            conv.Status = status;
 
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(cancellation);

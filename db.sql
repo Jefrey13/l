@@ -230,6 +230,6 @@ SELECT * FROM chat.Messages
 DELETe chat.Messages;
 DELETE chat.Conversations;
 DELETE auth.AuthTokens;
-DELETE auth.UserRoles;
-DELETE auth.Users WHERE UserId = 4;
-DELETE auth.RoleMenus;
+--DELETE auth.UserRoles;
+--DELETE auth.Users WHERE UserId = 4;
+--DELETE auth.RoleMenus;

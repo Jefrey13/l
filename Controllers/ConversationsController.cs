@@ -73,9 +73,10 @@ namespace CustomerService.API.Controllers
         public async Task<IActionResult> Assign(
             [FromRoute] int id,
             [FromQuery] int agentUserId,
+            [FromQuery] string status,
             CancellationToken ct = default)
         {
-            await _conversations.AssignAgentAsync(id, agentUserId, ct);
+            await _conversations.AssignAgentAsync(id, agentUserId, status , ct);
             return NoContent();
         }
 
