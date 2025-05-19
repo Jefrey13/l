@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CustomerService.API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -76,6 +76,67 @@ namespace CustomerService.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Notifications",
+                schema: "chat",
+                columns: table => new
+                {
+                    NotificationId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    Payload = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.NotificationId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Tags",
+                schema: "chat",
+                columns: table => new
+                {
+                    TagId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tags", x => x.TagId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ContactLogs",
+                schema: "auth",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WaName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    WaId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    WaUserId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IdCard = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CompanyId = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "New"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ContactLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ContactLogs_Companies",
+                        column: x => x.CompanyId,
+                        principalSchema: "crm",
+                        principalTable: "Companies",
+                        principalColumn: "CompanyId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 schema: "auth",
                 columns: table => new
@@ -93,7 +154,7 @@ namespace CustomerService.API.Migrations
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                         .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                         .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
-                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false)
                         .Annotation("SqlServer:IsTemporal", true)
                         .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
@@ -117,13 +178,13 @@ namespace CustomerService.API.Migrations
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                         .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                         .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
-                    SecurityStamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newid())")
+                    SecurityStamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "NEWID()")
                         .Annotation("SqlServer:IsTemporal", true)
                         .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                         .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                         .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
-                    ConcurrencyStamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "(newid())")
+                    ConcurrencyStamp = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "NEWID()")
                         .Annotation("SqlServer:IsTemporal", true)
                         .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
@@ -147,7 +208,7 @@ namespace CustomerService.API.Migrations
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                         .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                         .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(sysutcdatetime())")
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()")
                         .Annotation("SqlServer:IsTemporal", true)
                         .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
@@ -192,7 +253,8 @@ namespace CustomerService.API.Migrations
                         column: x => x.CompanyId,
                         principalSchema: "crm",
                         principalTable: "Companies",
-                        principalColumn: "CompanyId");
+                        principalColumn: "CompanyId",
+                        onDelete: ReferentialAction.Restrict);
                 })
                 .Annotation("SqlServer:IsTemporal", true)
                 .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
@@ -262,42 +324,89 @@ namespace CustomerService.API.Migrations
                     ConversationId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CompanyId = table.Column<int>(type: "int", nullable: true),
-                    ClientUserId = table.Column<int>(type: "int", nullable: true),
-                    AssignedAgent = table.Column<int>(type: "int", nullable: true),
-                    AssignedBy = table.Column<int>(type: "int", nullable: true),
+                    ClientContactId = table.Column<int>(type: "int", nullable: false),
+                    Priority = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    AssignedAgentId = table.Column<int>(type: "int", nullable: true),
+                    AssignedByUserId = table.Column<int>(type: "int", nullable: true),
                     AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Bot"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "New"),
                     Initialized = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(sysutcdatetime())"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    FirstResponseAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ClosedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsArchived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__Conversa__C050D877771F928B", x => x.ConversationId);
+                    table.PrimaryKey("PK_Conversations", x => x.ConversationId);
                     table.ForeignKey(
-                        name: "FK_Conversations_Agent",
-                        column: x => x.AssignedAgent,
+                        name: "FK_Conversations_AssignedAgent",
+                        column: x => x.AssignedAgentId,
                         principalSchema: "auth",
                         principalTable: "Users",
-                        principalColumn: "UserId");
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Conversations_AssignedBy",
-                        column: x => x.AssignedBy,
+                        name: "FK_Conversations_AssignedByUser",
+                        column: x => x.AssignedByUserId,
                         principalSchema: "auth",
                         principalTable: "Users",
-                        principalColumn: "UserId");
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Conversations_Client",
-                        column: x => x.ClientUserId,
+                        name: "FK_Conversations_ClientContact",
+                        column: x => x.ClientContactId,
                         principalSchema: "auth",
-                        principalTable: "Users",
-                        principalColumn: "UserId");
+                        principalTable: "ContactLogs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Conversations_Companies",
                         column: x => x.CompanyId,
                         principalSchema: "crm",
                         principalTable: "Companies",
-                        principalColumn: "CompanyId");
+                        principalColumn: "CompanyId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Conversations_Users_UserId",
+                        column: x => x.UserId,
+                        principalSchema: "auth",
+                        principalTable: "Users",
+                        principalColumn: "UserId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "NotificationRecipients",
+                schema: "chat",
+                columns: table => new
+                {
+                    NotificationRecipientId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    NotificationId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    ReadAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NotificationRecipients", x => x.NotificationRecipientId);
+                    table.ForeignKey(
+                        name: "FK_NotificationRecipients_Notifications_NotificationId",
+                        column: x => x.NotificationId,
+                        principalSchema: "chat",
+                        principalTable: "Notifications",
+                        principalColumn: "NotificationId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_NotificationRecipients_Users_UserId",
+                        column: x => x.UserId,
+                        principalSchema: "auth",
+                        principalTable: "Users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -327,6 +436,33 @@ namespace CustomerService.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ConversationTags",
+                schema: "chat",
+                columns: table => new
+                {
+                    ConversationId = table.Column<int>(type: "int", nullable: false),
+                    TagId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConversationTags", x => new { x.ConversationId, x.TagId });
+                    table.ForeignKey(
+                        name: "FK_ConversationTags_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "chat",
+                        principalTable: "Conversations",
+                        principalColumn: "ConversationId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ConversationTags_Tags_TagId",
+                        column: x => x.TagId,
+                        principalSchema: "chat",
+                        principalTable: "Tags",
+                        principalColumn: "TagId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Messages",
                 schema: "chat",
                 columns: table => new
@@ -334,27 +470,41 @@ namespace CustomerService.API.Migrations
                     MessageId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ConversationId = table.Column<int>(type: "int", nullable: false),
-                    SenderId = table.Column<int>(type: "int", nullable: false),
+                    SenderUserId = table.Column<int>(type: "int", nullable: true),
+                    SenderContactId = table.Column<int>(type: "int", nullable: true),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ExternalId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MessageType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(sysutcdatetime())")
+                    ExternalId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    MessageType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Text"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Sent"),
+                    SentAt = table.Column<DateTimeOffset>(type: "datetimeoffset(7)", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    DeliveredAt = table.Column<DateTimeOffset>(type: "datetimeoffset(7)", nullable: true),
+                    ReadAt = table.Column<DateTimeOffset>(type: "datetimeoffset(7)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__Messages__C87C0C9CCF00998F", x => x.MessageId);
+                    table.PrimaryKey("PK_Messages", x => x.MessageId);
+                    table.CheckConstraint("CK_Message_OneSender", "(SenderUserId IS NOT NULL AND SenderContactId IS NULL) OR (SenderUserId IS NULL AND SenderContactId IS NOT NULL)");
                     table.ForeignKey(
                         name: "FK_Messages_Conversations",
                         column: x => x.ConversationId,
                         principalSchema: "chat",
                         principalTable: "Conversations",
-                        principalColumn: "ConversationId");
+                        principalColumn: "ConversationId",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Messages_Sender",
-                        column: x => x.SenderId,
+                        name: "FK_Messages_SenderContact",
+                        column: x => x.SenderContactId,
+                        principalSchema: "auth",
+                        principalTable: "ContactLogs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Messages_SenderUser",
+                        column: x => x.SenderUserId,
                         principalSchema: "auth",
                         principalTable: "Users",
-                        principalColumn: "UserId");
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -373,13 +523,14 @@ namespace CustomerService.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__Attachme__442C64BE0401CF2F", x => x.AttachmentId);
+                    table.PrimaryKey("PK_Attachments", x => x.AttachmentId);
                     table.ForeignKey(
                         name: "FK_Attachments_Messages",
                         column: x => x.MessageId,
                         principalSchema: "chat",
                         principalTable: "Messages",
-                        principalColumn: "MessageId");
+                        principalColumn: "MessageId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -402,28 +553,65 @@ namespace CustomerService.API.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Conversations_AssignedAgent",
-                schema: "chat",
-                table: "Conversations",
-                column: "AssignedAgent");
+                name: "IX_ContactLogs_CompanyId",
+                schema: "auth",
+                table: "ContactLogs",
+                column: "CompanyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Conversations_AssignedBy",
-                schema: "chat",
-                table: "Conversations",
-                column: "AssignedBy");
+                name: "UQ_ContactLogs_Phone",
+                schema: "auth",
+                table: "ContactLogs",
+                column: "Phone",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Conversations_ClientUserId",
+                name: "IX_Conversations_AssignedAgentId",
                 schema: "chat",
                 table: "Conversations",
-                column: "ClientUserId");
+                column: "AssignedAgentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_AssignedByUserId",
+                schema: "chat",
+                table: "Conversations",
+                column: "AssignedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_ClientContactId",
+                schema: "chat",
+                table: "Conversations",
+                column: "ClientContactId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Conversations_CompanyId",
                 schema: "chat",
                 table: "Conversations",
                 column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_CreatedAt",
+                schema: "chat",
+                table: "Conversations",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_Status",
+                schema: "chat",
+                table: "Conversations",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_UserId",
+                schema: "chat",
+                table: "Conversations",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConversationTags_TagId",
+                schema: "chat",
+                table: "ConversationTags",
+                column: "TagId");
 
             migrationBuilder.CreateIndex(
                 name: "UQ_RoleMenus_MenuIndex",
@@ -446,10 +634,40 @@ namespace CustomerService.API.Migrations
                 column: "ConversationId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Messages_SenderId",
+                name: "IX_Messages_SenderContactId",
                 schema: "chat",
                 table: "Messages",
-                column: "SenderId");
+                column: "SenderContactId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Messages_SenderUserId",
+                schema: "chat",
+                table: "Messages",
+                column: "SenderUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NotificationRecipients_NotificationId",
+                schema: "chat",
+                table: "NotificationRecipients",
+                column: "NotificationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NotificationRecipients_UserId",
+                schema: "chat",
+                table: "NotificationRecipients",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_CreatedAt",
+                schema: "chat",
+                table: "Notifications",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_Type",
+                schema: "chat",
+                table: "Notifications",
+                column: "Type");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RoleMenus_RoleId",
@@ -482,6 +700,14 @@ namespace CustomerService.API.Migrations
                 schema: "auth");
 
             migrationBuilder.DropTable(
+                name: "ConversationTags",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
+                name: "NotificationRecipients",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
                 name: "RoleMenus",
                 schema: "auth");
 
@@ -491,6 +717,14 @@ namespace CustomerService.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "Messages",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
+                name: "Tags",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
+                name: "Notifications",
                 schema: "chat");
 
             migrationBuilder.DropTable(
@@ -513,6 +747,10 @@ namespace CustomerService.API.Migrations
                 .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                 .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                 .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom");
+
+            migrationBuilder.DropTable(
+                name: "ContactLogs",
+                schema: "auth");
 
             migrationBuilder.DropTable(
                 name: "Companies",

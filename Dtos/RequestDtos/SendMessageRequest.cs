@@ -1,25 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
 using Microsoft.AspNetCore.Http;
+using CustomerService.API.Utils.Enums;
 
 namespace CustomerService.API.Dtos.RequestDtos
 {
     public class SendMessageRequest
     {
-        [Required]
         public int ConversationId { get; set; }
-
-        [Required]
         public int SenderId { get; set; }
-
-        //[Required]
-        //public string To { get; set; }
-
         public string? Content { get; set; }
-
-        public string? MessageType { get; set; } = "Text";
-
+        public MessageType MessageType { get; set; } = MessageType.Text;
+        public IFormFile? File { get; set; }
         public string? Caption { get; set; }
-
-        //public IFormFile? File { get; set; }
     }
 }

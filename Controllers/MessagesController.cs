@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -30,7 +28,6 @@ namespace CustomerService.API.Controllers
         [HttpGet(Name = "GetMessagesByConversation")]
         [SwaggerOperation(Summary = "Retrieve all messages for a conversation")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<MessageDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByConversation(
             [FromRoute] int conversationId,
             CancellationToken ct = default)
@@ -42,23 +39,24 @@ namespace CustomerService.API.Controllers
         /// <summary>
         /// Send a new message (text or media) in a conversation.
         /// </summary>
-        //[HttpPost(Name = "SendMessage")]
-        //[SwaggerOperation(Summary = "Send a message in a conversation")]
-        //[ProducesResponseType(typeof(ApiResponse<MessageDto>), StatusCodes.Status201Created)]
-        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        //public async Task<IActionResult> Send(
-        //    [FromRoute] int conversationId,
-        //    [FromForm] SendMessageRequest req,
-        //    CancellationToken ct = default)
-        //{
-        //    req.ConversationId = conversationId;
+        [HttpPost(Name = "SendMessage")]
+        [SwaggerOperation(Summary = "Send a message in a conversation")]
+        [ProducesResponseType(typeof(ApiResponse<MessageDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Send(
+            [FromRoute] int conversationId,
+            [FromForm] SendMessageRequest req,
+            CancellationToken ct = default)
+        {
+            req.ConversationId = conversationId;
 
-        //    var dto = _messages.SendMessageAsync(req, ct);
-        //    return CreatedAtRoute(
-        //        routeName: "GetMessagesByConversation",
-        //        routeValues: new { conversationId = conversationId },
-        //        value: new ApiResponse<MessageDto>(dto, "Message sent.")
-        //    );
-        //}
+            await _messages.SendMessageAsync(req, ct);
+
+            return CreatedAtRoute(
+                routeName: "GetMessagesByConversation",
+                routeValues: new { conversationId },
+                value: new ApiResponse<MessageDto>(null, "Message sent.")
+            );
+        }
     }
 }

@@ -21,9 +21,13 @@ namespace CustomerService.API.Repositories.Implementations
             IAttachmentRepository attachmentRepository,
             IRoleMenuRepository roleMenuRepository,
             IMenuRepository menuRepository,
-            IContactLogRepository contactLogRepository)
+            IContactLogRepository contactLogRepository,
+            ITagRepository tagRepository,
+            INotificationRepository notificationRepository,
+            INotificationRecipientRepository notificationRecipientRepository)
         {
             _context = context;
+
             Users = userRepository;
             Roles = roleRepository;
             AuthTokens = authTokenRepository;
@@ -35,6 +39,10 @@ namespace CustomerService.API.Repositories.Implementations
             Menus = menuRepository;
             RoleMenus = roleMenuRepository;
             ContactLogs = contactLogRepository;
+
+            Tags = tagRepository;
+            Notifications = notificationRepository;
+            NotificationRecipients = notificationRecipientRepository;
         }
 
         public IUserRepository Users { get; }
@@ -48,6 +56,11 @@ namespace CustomerService.API.Repositories.Implementations
         public IMenuRepository Menus { get; }
         public IRoleMenuRepository RoleMenus { get; }
         public IContactLogRepository ContactLogs { get; }
+
+        public ITagRepository Tags { get; }
+        public INotificationRepository Notifications { get; }
+        public INotificationRecipientRepository NotificationRecipients { get; }
+
         public Task<int> SaveChangesAsync(CancellationToken cancellation = default) =>
             _context.SaveChangesAsync(cancellation);
     }

@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -55,18 +53,22 @@ namespace CustomerService.API.Controllers
         }
 
         [HttpPost(Name = "StartConversation")]
-        [AllowAnonymous]
-        [SwaggerOperation(Summary = "Start a new conversation (client or bot)")]
+        [SwaggerOperation(Summary = "Start a new conversation")]
         [ProducesResponseType(typeof(ApiResponse<ConversationDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Start([FromBody] StartConversationRequest req, CancellationToken ct = default)
+        public async Task<IActionResult> Start(
+            [FromBody] StartConversationRequest req,
+            CancellationToken ct = default)
         {
             var dto = await _conversations.StartAsync(req, ct);
-            return CreatedAtRoute("GetConversationById", new { id = dto.ConversationId },
-                new ApiResponse<ConversationDto>(dto, "Conversation started."));
+            return CreatedAtRoute(
+                "GetConversationById",
+                new { id = dto.ConversationId },
+                new ApiResponse<ConversationDto>(dto, "Conversation started.")
+            );
         }
 
-        [HttpPatch("{id}", Name = "AssignAgent")]
+        [HttpPut("{id}/assign", Name = "AssignAgent")]
         [SwaggerOperation(Summary = "Assign an agent and update status")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -80,11 +82,13 @@ namespace CustomerService.API.Controllers
             return NoContent();
         }
 
-        [HttpPost("{id}/close", Name = "CloseConversation")]
+        [HttpPut("{id}/close", Name = "CloseConversation")]
         [SwaggerOperation(Summary = "Close an active conversation")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Close([FromRoute] int id, CancellationToken ct = default)
+        public async Task<IActionResult> Close(
+            [FromRoute] int id,
+            CancellationToken ct = default)
         {
             await _conversations.CloseAsync(id, ct);
             return NoContent();

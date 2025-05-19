@@ -5,13 +5,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
-using CustomerService.API.Utils;
+using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
-using WhatsappBusiness.CloudApi.Messages.Requests;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -19,81 +19,70 @@ namespace CustomerService.API.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
         private readonly IWhatsAppService _whatsAppService;
-        private readonly IHubContext<ChatHub> _hubContext;
-        public MessageService(IUnitOfWork uow, 
+        private readonly IHubContext<ChatHub> _hub;
+
+        public MessageService(
+            IUnitOfWork uow,
             IWhatsAppService whatsAppService,
             IHubContext<ChatHub> hubContext)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
-            _whatsAppService = whatsAppService;
-            _hubContext = hubContext;
+            _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
+            _hub = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         }
 
-        public async Task SendMessageAsync(SendMessageRequest request, CancellationToken ct = default)
+        public async Task SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default)
         {
             if (request.ConversationId <= 0)
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
 
-            if (string.IsNullOrWhiteSpace(request.MessageType))
-                throw new ArgumentException("MessageType is required.", nameof(request.MessageType));
-            
-            var msg = new Models.Message
+            var msg = new Message
             {
                 ConversationId = request.ConversationId,
-                SenderId = request.SenderId,
+                SenderUserId = request.SenderId,
                 Content = request.Content,
                 MessageType = request.MessageType,
-                CreatedAt = DateTime.UtcNow
+                SentAt = DateTimeOffset.UtcNow,
+                Status = MessageStatus.Sent,
+                ExternalId = Guid.NewGuid().ToString()
             };
 
-            await _uow.Messages.AddAsync(msg, ct);
-            await _uow.SaveChangesAsync(ct);
-
-            await _whatsAppService.SendTextAsync(
-                request.ConversationId,
-                1,
-                request.Content,
-                ct
-            );
-
-            var dto = new
-            {
-                msg.MessageId,
-                msg.ConversationId,
-                msg.SenderId,
-                msg.Content,
-                msg.MessageType,
-                msg.CreatedAt
-            };
-            await _hubContext.Clients
-                .Group(msg.ConversationId.ToString())
-                .SendAsync("ReceiveMessage", new { Message = dto, Attachments = Array.Empty<object>() }, ct);
-
-
-            //await _uow.Messages.AddAsync(msg, cancellation);
-            //await _uow.SaveChangesAsync(cancellation);
-
-            // Si viene un archivo en request.File, debe haberse manejado antes de invocar este servicio:
-            //   subida a storage, creación de Attachment y guardado con _uow.Attachments
-
-            //return new MessageDto
+            //if (request.File != null)
             //{
-            //    MessageId = msg.MessageId,
-            //    ConversationId = msg.ConversationId,
-            //    SenderId = msg.SenderId,
-            //    Content = msg.Content,
-            //    MessageType = msg.MessageType,
-            //    CreatedAt = msg.CreatedAt,
-            //    Attachments = msg.Attachments.Select(a => new AttachmentDto
+            //    var attachment = new Attachment
             //    {
-            //        AttachmentId = a.AttachmentId,
-            //        MessageId = a.MessageId,
-            //        MediaId = a.MediaId,
-            //        FileName = a.FileName,
-            //        MimeType = a.MimeType,
-            //        MediaUrl = a.MediaUrl
-            //    }).ToList()
-            //};
+            //        FileName = request.File.FileName,
+            //        MimeType = request.File.ContentType,
+            //        MediaUrl = await _whatsAppService.UploadMediaAsync(request.File, cancellation)
+            //    };
+            //    msg.Attachments.Add(attachment);
+            //}
+
+            await _uow.Messages.AddAsync(msg, cancellation);
+            await _uow.SaveChangesAsync(cancellation);
+
+            // Enviar via WhatsApp Cloud API
+            //if (msg.Attachments.Any())
+            //{
+            //    await _whatsAppService.SendMediaAsync(
+            //        msg.ConversationId,
+            //        msg.SenderUserId ?? 0,
+            //        msg.ExternalId,
+            //        cancellation);
+            //}
+            //else
+            //{
+            await _whatsAppService.SendTextAsync(
+                msg.ConversationId,
+                msg.SenderUserId ?? 0,
+                msg.Content,
+                cancellation);
+            //}
+
+            var dto = msg.Adapt<MessageDto>();
+            await _hub.Clients
+                .Group(msg.ConversationId.ToString())
+                .SendAsync("ReceiveMessage", dto, cancellation);
         }
 
         public async Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default)
@@ -102,27 +91,37 @@ namespace CustomerService.API.Services.Implementations
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(conversationId));
 
             var messages = await _uow.Messages.GetByConversationAsync(conversationId, cancellation);
+            return messages.Adapt<IEnumerable<MessageDto>>();
+        }
 
-            return messages
-                .OrderBy(m => m.CreatedAt)
-                .Select(m => new MessageDto
-                {
-                    MessageId = m.MessageId,
-                    ConversationId = m.ConversationId,
-                    SenderId = m.SenderId,
-                    Content = m.Content,
-                    MessageType = m.MessageType,
-                    CreatedAt = m.CreatedAt,
-                    Attachments = m.Attachments.Select(a => new AttachmentDto
-                    {
-                        AttachmentId = a.AttachmentId,
-                        MessageId = a.MessageId,
-                        MediaId = a.MediaId,
-                        FileName = a.FileName,
-                        MimeType = a.MimeType,
-                        MediaUrl = a.MediaUrl
-                    }).ToList()
-                });
+        public async Task UpdateDeliveryStatusAsync(int messageId, DateTimeOffset deliveredAt, CancellationToken cancellation = default)
+        {
+            var msg = await _uow.Messages.GetByIdAsync(messageId, cancellation)
+                      ?? throw new KeyNotFoundException($"Message {messageId} not found.");
+
+            msg.DeliveredAt = deliveredAt;
+            msg.Status = MessageStatus.Delivered;
+            _uow.Messages.Update(msg);
+            await _uow.SaveChangesAsync(cancellation);
+
+            await _hub.Clients
+                .Group(msg.ConversationId.ToString())
+                .SendAsync("MessageDelivered", new { msg.MessageId, deliveredAt }, cancellation);
+        }
+
+        public async Task MarkAsReadAsync(int messageId, DateTimeOffset readAt, CancellationToken cancellation = default)
+        {
+            var msg = await _uow.Messages.GetByIdAsync(messageId, cancellation)
+                      ?? throw new KeyNotFoundException($"Message {messageId} not found.");
+
+            msg.ReadAt = readAt;
+            msg.Status = MessageStatus.Read;
+            _uow.Messages.Update(msg);
+            await _uow.SaveChangesAsync(cancellation);
+
+            await _hub.Clients
+                .Group(msg.ConversationId.ToString())
+                .SendAsync("MessageRead", new { msg.MessageId, readAt }, cancellation);
         }
     }
 }

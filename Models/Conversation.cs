@@ -1,40 +1,75 @@
-﻿using System;
+﻿using CustomerService.API.Utils.Enums;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Models
 {
-    public partial class Conversation
+    [Index(nameof(Status))]
+    [Index(nameof(AssignedAgentId))]
+    [Index(nameof(CreatedAt))]
+    public class Conversation
     {
         public int ConversationId { get; set; }
         public int? CompanyId { get; set; }
-        public int? ClientUserId { get; set; }
-        public int? AssignedAgent { get; set; }
-        public int? AssignedBy { get; set; }
+        public int ClientContactId { get; set; }
+        public PriorityLevel? Priority { get; set; } = PriorityLevel.Normal;
+
+        public int? AssignedAgentId { get; set; }
+        public int? AssignedByUserId { get; set; }
         public DateTime? AssignedAt { get; set; }
-        public string Status { get; set; } = null!;
+
+        public ConversationStatus Status { get; set; } = ConversationStatus.New;
 
         public bool Initialized { get; set; } = false;
-        public DateTime CreatedAt { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? FirstResponseAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public DateTime? ClosedAt { get; set; }
+        public bool IsArchived { get; set; } = false;
 
-        public virtual User? AssignedAgentNavigation { get; set; }
-        public virtual User? AssignedByNavigation { get; set; }
-        public virtual ContactLog? ClientUser { get; set; }
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = null!;
+
+        [ForeignKey(nameof(CompanyId))]
         public virtual Company? Company { get; set; }
+
+        [ForeignKey(nameof(ClientContactId))]
+        public virtual ContactLog ClientContact { get; set; } = null!;
+
+        [ForeignKey(nameof(AssignedAgentId))]
+        public virtual User? AssignedAgent { get; set; }
+
+        [ForeignKey(nameof(AssignedByUserId))]
+        public virtual User? AssignedByUser { get; set; }
+
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+        public virtual ICollection<ConversationTag> ConversationTags { get; set; } = new List<ConversationTag>();
 
         [NotMapped]
-        public int TotalMensajes => Messages?.Count ?? 0;
+        public int TotalMessages => Messages.Count;
 
         [NotMapped]
-        public DateTime UltimaActividad
-            => Messages.Any()
-               ? Messages.Max(m => m.CreatedAt)
-               : CreatedAt;
+        public DateTime LastActivity =>
+            Messages.Any()
+                ? Messages.Max(m => m.SentAt.UtcDateTime)
+                : CreatedAt;
 
         [NotMapped]
-        public TimeSpan Duracion => DateTime.UtcNow - CreatedAt;
+        public TimeSpan Duration =>
+            (ClosedAt ?? DateTime.UtcNow) - CreatedAt;
+
+        [NotMapped]
+        public TimeSpan? TimeToFirstResponse =>
+            FirstResponseAt.HasValue
+                ? FirstResponseAt - CreatedAt
+                : null;
+
+        [NotMapped]
+        public bool IsClosed => Status == ConversationStatus.Closed;
     }
 }

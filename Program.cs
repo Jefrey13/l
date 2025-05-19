@@ -31,6 +31,7 @@ using CustomerService.API.Data.Context;
 using MapsterMapper;
 using System.Reflection;
 using CustomerService.API.Hubs;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +91,9 @@ builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IRoleMenuRepository, RoleMenuRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRespository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -109,6 +113,11 @@ builder.Services.AddScoped<IMessagePipeline, MessagePipeline>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IContactLogService, ContactLogService>();
 builder.Services.AddScoped<INicDatetime, NicDatetime>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
+
+//builder.Services.AddScoped<IHostedService, ConversationCleanupService>();
 
 // --------------------- Mapster ---------------------
 var mapsterConfig = TypeAdapterConfig.GlobalSettings;
@@ -116,8 +125,8 @@ mapsterConfig.Scan(Assembly.GetExecutingAssembly());
 builder.Services.AddSingleton(mapsterConfig);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 
-builder.Services.AddSingleton<IPresenceService, PresenceService>();
-builder.Services.AddHostedService<PresenceBackgroundService>();
+builder.Services.AddScoped<IPresenceService, PresenceService>();
+//builder.Services.AddHostedService<PresenceBackgroundService>();
 builder.Services.AddSingleton<ISignalRNotifyService, SignalRNotifyService>();
 
 // --------------------- Response Caching & Compression ---------------------
@@ -208,7 +217,13 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // --------------------- Controllers ---------------------
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(
+          new JsonStringEnumConverter()
+        )
+    );
+
 
 
 var app = builder.Build();
@@ -253,7 +268,7 @@ app.MapHealthChecks("/healthz", new HealthCheckOptions
 app.MapHealthChecksUI();
 
 // SignalR hub
-app.MapHub<ChatHub>("/chatHub");
+app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationsHub>("/hubs/notifications");
 
 // API controllers

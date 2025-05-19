@@ -1,23 +1,32 @@
-﻿using CustomerService.API.Data.Context;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CustomerService.API.Data.Context;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
+using CustomerService.API.Utils.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Repositories.Implementations
 {
     public class ConversationRepository : GenericRepository<Conversation>, IConversationRepository
     {
-        public ConversationRepository(CustomerSupportContext context) : base(context) { }
+        public ConversationRepository(CustomerSupportContext context)
+            : base(context) { }
 
         public async Task<IEnumerable<Conversation>> GetByAgentAsync(int agentId, CancellationToken cancellation = default)
         {
             if (agentId <= 0)
-                throw new ArgumentException("El agentId debe ser mayor que cero.", nameof(agentId));
+                throw new ArgumentException("agentId must be greater than zero.", nameof(agentId));
 
             return await _dbSet
                 .AsNoTracking()
-                .Where(c => c.AssignedAgent == agentId)
+                .Where(c => c.AssignedAgentId == agentId)
                 .Include(c => c.Messages)
+                .Include(c => c.ConversationTags)
+                    .ThenInclude(ct => ct.Tag)
                 .ToListAsync(cancellation);
         }
 
@@ -25,7 +34,11 @@ namespace CustomerService.API.Repositories.Implementations
         {
             return await _dbSet
                 .AsNoTracking()
-                .Where(c => c.Status == "PendingHuman" || c.Status == "Bot")
+                .Where(c => c.Status == ConversationStatus.Waiting
+                         || c.Status == ConversationStatus.Bot)
+                .Include(c => c.Messages)
+                .Include(c => c.ConversationTags)
+                    .ThenInclude(ct => ct.Tag)
                 .ToListAsync(cancellation);
         }
     }

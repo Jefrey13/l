@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CustomerService.API.Models;
+using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 
 namespace CustomerService.API.Services.Implementations
@@ -11,15 +13,35 @@ namespace CustomerService.API.Services.Implementations
     public class PresenceService : IPresenceService
     {
         private readonly ConcurrentDictionary<int, DateTime> _lastOnline = new();
+        private readonly IUnitOfWork _uow;
 
-        public void MarkOnline(int userId)
+        public PresenceService(IUnitOfWork uow)
         {
-            _lastOnline[userId] = DateTime.UtcNow;
+            _uow = uow ?? throw new ArgumentNullException(nameof(uow));
         }
 
-        public void MarkOffline(int userId)
+        public async Task UserConnectedAsync(int userId, CancellationToken cancellation = default)
+        {
+            var now = DateTime.UtcNow;
+            _lastOnline[userId] = now;
+
+            var user = await _uow.Users.GetByIdAsync(userId, cancellation)
+                       ?? throw new KeyNotFoundException($"User {userId} not found");
+            user.LastOnline = now;
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync(cancellation);
+        }
+
+        public async Task UserDisconnectedAsync(int userId, CancellationToken cancellation = default)
         {
             _lastOnline.TryRemove(userId, out _);
+            var now = DateTime.UtcNow;
+
+            var user = await _uow.Users.GetByIdAsync(userId, cancellation)
+                       ?? throw new KeyNotFoundException($"User {userId} not found");
+            user.LastOnline = now;
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync(cancellation);
         }
 
         public Task<DateTime?> GetLastOnlineAsync(int userId, CancellationToken cancellation = default)
@@ -34,7 +56,9 @@ namespace CustomerService.API.Services.Implementations
                 .Distinct()
                 .ToDictionary(
                     id => id,
-                    id => _lastOnline.TryGetValue(id, out var dt) ? (DateTime?)dt : null
+                    id => _lastOnline.TryGetValue(id, out var dt)
+                          ? (DateTime?)dt
+                          : null
                 );
             return Task.FromResult<IDictionary<int, DateTime?>>(result);
         }

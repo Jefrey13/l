@@ -10,7 +10,6 @@ using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
-using k8s.KubeConfigModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using User = CustomerService.API.Models.User;
@@ -27,8 +26,14 @@ namespace CustomerService.API.Services.Implementations
         private readonly ITokenService _jwt;
         private readonly IAuthTokenRepository _tokens;
 
-        public UserService(IUnitOfWork uow, IPasswordHasher hasher, IPresenceService presence,
-            IEmailService email, IOptions<JwtSettings> jwtOptions, ITokenService jwt, IAuthTokenRepository tokens)
+        public UserService(
+            IUnitOfWork uow,
+            IPasswordHasher hasher,
+            IPresenceService presence,
+            IEmailService email,
+            IOptions<JwtSettings> jwtOptions,
+            ITokenService jwt,
+            IAuthTokenRepository tokens)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -46,10 +51,10 @@ namespace CustomerService.API.Services.Implementations
             var users = paged.ToList();
             var userIds = users.Select(u => u.UserId).ToList();
 
-            var convoCounts = await _uow.Conversations
+            var conversationCounts = await _uow.Conversations
                 .GetAll()
-                .Where(c => c.ClientUserId.HasValue && userIds.Contains(c.ClientUserId.Value))
-                .GroupBy(c => c.ClientUserId.Value)
+                .Where(c => c.AssignedAgentId.HasValue && userIds.Contains(c.AssignedAgentId.Value))
+                .GroupBy(c => c.AssignedAgentId.Value)
                 .Select(g => new { UserId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.UserId, x => x.Count, cancellation);
 
@@ -65,19 +70,23 @@ namespace CustomerService.API.Services.Implementations
                 .GroupBy(ur => ur.UserId)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(ur => new RoleDto { RoleId = ur.RoleId, RoleName = ur.Role.RoleName, Description = ur.Role.Description }).ToList()
+                    g => g.Select(ur => new RoleDto
+                    {
+                        RoleId = ur.RoleId,
+                        RoleName = ur.Role.RoleName,
+                        Description = ur.Role.Description
+                    }).ToList()
                 );
 
             var dtos = users.Select(u =>
             {
-                DateTime? last = null;
-                if (lastOnlines.TryGetValue(u.UserId, out var lo)) last = lo;
-                var count = convoCounts.ContainsKey(u.UserId) ? convoCounts[u.UserId] : 0;
+                lastOnlines.TryGetValue(u.UserId, out var last);
+                var count = conversationCounts.GetValueOrDefault(u.UserId, 0);
                 return new UserDto
                 {
                     UserId = u.UserId,
-                    FullName = u.FullName!,
-                    Email = u.Email!,
+                    FullName = u.FullName,
+                    Email = u.Email,
                     IsActive = u.IsActive,
                     CompanyId = u.CompanyId,
                     Phone = u.Phone,
@@ -87,10 +96,8 @@ namespace CustomerService.API.Services.Implementations
                     ImageUrl = u.ImageUrl,
                     LastOnline = last,
                     IsOnline = last.HasValue && (DateTime.UtcNow - last.Value).TotalMinutes < 5,
-                    ClientType = count switch { 0 => "Nuevo", > 0 and <= 5 => "Frecuente", _ => "VIP" },
-                    Roles = rolesByUser.ContainsKey(u.UserId)
-                                ? rolesByUser[u.UserId]
-                                : new List<RoleDto>()
+                    ClientType = count switch { 0 => "New", > 0 and <= 5 => "Frequent", _ => "VIP" },
+                    Roles = rolesByUser.GetValueOrDefault(u.UserId, new List<RoleDto>())
                 };
             }).ToList();
 
@@ -100,33 +107,40 @@ namespace CustomerService.API.Services.Implementations
         public async Task<UserDto> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             if (id <= 0) throw new ArgumentException("Invalid user ID.", nameof(id));
-            var u = await _uow.Users.GetByIdAsync(id, cancellation)
-                     ?? throw new KeyNotFoundException("User not found.");
 
-            var lastDict = await _presence.GetLastOnlineAsync(new[] { u.UserId }, cancellation);
-            var last = lastDict.ContainsKey(u.UserId) ? lastDict[u.UserId] : (DateTime?)null;
-            var convoCount = await _uow.Conversations
+            var user = await _uow.Users.GetByIdAsync(id, cancellation)
+                       ?? throw new KeyNotFoundException("User not found.");
+
+            var lastDict = await _presence.GetLastOnlineAsync(new[] { id }, cancellation);
+            lastDict.TryGetValue(id, out var last);
+
+            var conversationCount = await _uow.Conversations
                 .GetAll()
-                .CountAsync(c => c.ClientUserId == u.UserId, cancellation);
+                .CountAsync(c => c.AssignedAgentId == id, cancellation);
 
-            var roles = await _uow.UserRoles.GetRolesByUserIdAsync(u.UserId, cancellation);
-            var rolesDto = roles.Select(ur => new RoleDto { RoleId = ur.RoleId, RoleName = ur.Role.RoleName, Description = ur.Role.Description });
+            var roles = await _uow.UserRoles.GetRolesByUserIdAsync(id, cancellation);
+            var rolesDto = roles.Select(ur => new RoleDto
+            {
+                RoleId = ur.RoleId,
+                RoleName = ur.Role.RoleName,
+                Description = ur.Role.Description
+            });
 
             return new UserDto
             {
-                UserId = u.UserId,
-                FullName = u.FullName!,
-                Email = u.Email!,
-                IsActive = u.IsActive,
-                CompanyId = u.CompanyId,
-                Phone = u.Phone,
-                Identifier = u.Identifier,
-                CreatedAt = u.CreatedAt,
-                UpdatedAt = u.UpdatedAt,
-                ImageUrl = u.ImageUrl,
+                UserId = user.UserId,
+                FullName = user.FullName,
+                Email = user.Email,
+                IsActive = user.IsActive,
+                CompanyId = user.CompanyId,
+                Phone = user.Phone,
+                Identifier = user.Identifier,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                ImageUrl = user.ImageUrl,
                 LastOnline = last,
                 IsOnline = last.HasValue && (DateTime.UtcNow - last.Value).TotalMinutes < 5,
-                ClientType = convoCount switch { 0 => "Nuevo", > 0 and <= 5 => "Frecuente", _ => "VIP" },
+                ClientType = conversationCount switch { 0 => "New", > 0 and <= 5 => "Frequent", _ => "VIP" },
                 Roles = rolesDto
             };
         }
@@ -135,10 +149,11 @@ namespace CustomerService.API.Services.Implementations
         {
             if (string.IsNullOrWhiteSpace(request.Email)) throw new ArgumentException("Email is required.", nameof(request.Email));
             if (string.IsNullOrWhiteSpace(request.Password)) throw new ArgumentException("Password is required.", nameof(request.Password));
-            if (await _uow.Users.ExistsAsync(u => u.Email == request.Email, cancellation)) throw new InvalidOperationException("Email already in use.");
+            if (await _uow.Users.ExistsAsync(u => u.Email == request.Email, cancellation))
+                throw new InvalidOperationException("Email already in use.");
 
             var hash = _hasher.Hash(request.Password);
-            var entity = new User
+            var user = new User
             {
                 FullName = request.FullName,
                 Email = request.Email,
@@ -151,136 +166,127 @@ namespace CustomerService.API.Services.Implementations
                 ImageUrl = request.ImageUrl
             };
 
-            await _uow.Users.AddAsync(entity, cancellation);
+            await _uow.Users.AddAsync(user, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            if (request.RoleIds.Count > 0)
+            var currentRoles = new List<RoleDto>();
+            if (request.RoleIds.Any())
             {
-                foreach (var rid in request.RoleIds.Distinct())
+                var validRoleIds = request.RoleIds.Distinct();
+                foreach (var roleId in validRoleIds)
                 {
-                    if (!await _uow.Roles.ExistsAsync(r => r.RoleId == rid, cancellation))
-                        throw new KeyNotFoundException($"RoleId {rid} no existe.");
-                    var ur = new UserRole { UserId = entity.UserId, RoleId = rid, AssignedAt = DateTime.UtcNow };
-                    await _uow.UserRoles.AddAsync(ur, cancellation);
+                    if (!await _uow.Roles.ExistsAsync(r => r.RoleId == roleId, cancellation))
+                        throw new KeyNotFoundException($"RoleId {roleId} does not exist.");
+
+                    await _uow.UserRoles.AddAsync(new UserRole
+                    {
+                        UserId = user.UserId,
+                        RoleId = roleId,
+                        AssignedAt = DateTime.UtcNow
+                    }, cancellation);
+
+                    var role = await _uow.Roles.GetByIdAsync(roleId, cancellation);
+                    currentRoles.Add(new RoleDto
+                    {
+                        RoleId = role.RoleId,
+                        RoleName = role.RoleName,
+                        Description = role.Description
+                    });
                 }
                 await _uow.SaveChangesAsync(cancellation);
             }
 
-            var createdRoles = request.RoleIds.Any()
-                ? (await _uow.Roles.GetAll().Where(r => request.RoleIds.Contains(r.RoleId)).ToListAsync(cancellation))
-                    .Select(r => new RoleDto { RoleId = r.RoleId, RoleName = r.RoleName, Description = r.Description })
-                : Enumerable.Empty<RoleDto>();
-
             var verifyToken = _jwt.GenerateRefreshToken();
-            var authEntity = new AuthToken
+            var authToken = new AuthToken
             {
-                UserId = entity.UserId,
+                UserId = user.UserId,
                 Token = verifyToken,
                 TokenType = TokenType.Verification.ToString(),
                 ExpiresAt = DateTime.UtcNow.AddHours(24),
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _tokens.AddAsync(authEntity, cancellation);
+            await _tokens.AddAsync(authToken, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            // 4) Send verification email
-            var link = $"http://localhost:5173/verify-account?token={Uri.EscapeDataString(verifyToken)}";
-            var html = $@"
-            <div style=""font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);"">
-              <div style=""background:#356ace;padding:16px;text-align:center;color:#fff;"">
-                <h2>¡Bienvenido, {entity.FullName}!</h2>
-              </div>
-              <div style=""padding:24px;color:#333;"">
-                <p>Gracias por registrarte en <strong>Customer Support Chat</strong>.</p>
-                <p>Para activar tu cuenta, haz clic en el botón:</p>
-                <p style=""text-align:center;margin:24px 0;"">
-                  <a href=""{link}"" style=""background:#356ace;color:#fff;padding:12px 24px;border-radius:4px;text-decoration:none;"">Verificar mi cuenta</a>
-                </p>
-                <p style=""font-size:12px;color:#777;"">Si no solicitaste este correo, ignóralo.</p>
-              </div>
-            </div>";
-            await _email.SendAsync(entity.Email, "Activa tu cuenta", html);
+            var verificationLink = $"http://localhost:5173/verify-account?token={Uri.EscapeDataString(verifyToken)}";
+            var emailBody = $@"<div><p>Welcome <strong>{user.FullName}</strong>,</p><p>Please verify your account <a href='{verificationLink}'>here</a>.</p></div>";
+            await _email.SendAsync(user.Email, "Verify your account", emailBody);
 
             return new UserDto
             {
-                UserId = entity.UserId,
-                FullName = entity.FullName!,
-                Email = entity.Email!,
-                IsActive = entity.IsActive,
-                CompanyId = entity.CompanyId,
-                Phone = entity.Phone,
-                Identifier = entity.Identifier,
-                CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt,
-                ImageUrl = entity.ImageUrl,
+                UserId = user.UserId,
+                FullName = user.FullName,
+                Email = user.Email,
+                IsActive = user.IsActive,
+                CompanyId = user.CompanyId,
+                Phone = user.Phone,
+                Identifier = user.Identifier,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt,
+                ImageUrl = user.ImageUrl,
                 LastOnline = null,
                 IsOnline = false,
-                ClientType = "Nuevo",
-                Roles = createdRoles
+                ClientType = "New",
+                Roles = currentRoles
             };
         }
 
         public async Task UpdateAsync(UpdateUserRequest request, CancellationToken cancellation = default)
         {
             if (request.UserId <= 0) throw new ArgumentException("Invalid user ID.", nameof(request.UserId));
-            var entity = await _uow.Users.GetByIdAsync(request.UserId, cancellation)
-                         ?? throw new KeyNotFoundException("User not found.");
 
-            entity.FullName = request.FullName;
-            entity.IsActive = request.IsActive;
-            entity.CompanyId = request.CompanyId;
-            entity.Phone = request.Phone;
-            entity.Identifier = request.Identifier;
-            entity.UpdatedAt = DateTime.UtcNow;
+            var user = await _uow.Users.GetByIdAsync(request.UserId, cancellation)
+                       ?? throw new KeyNotFoundException("User not found.");
+
+            user.FullName = request.FullName;
+            user.IsActive = request.IsActive;
+            user.CompanyId = request.CompanyId;
+            user.Phone = request.Phone;
+            user.Identifier = request.Identifier;
+            user.UpdatedAt = DateTime.UtcNow;
 
             if (!string.IsNullOrWhiteSpace(request.NewPassword))
-            {
-                var hash = _hasher.Hash(request.NewPassword);
-                entity.PasswordHash = Encoding.UTF8.GetBytes(hash);
-            }
+                user.PasswordHash = Encoding.UTF8.GetBytes(_hasher.Hash(request.NewPassword));
 
-            var actuales = (await _uow.UserRoles.GetRolesByUserIdAsync(entity.UserId, cancellation))
-                           .Select(ur => ur.RoleId).ToList();
-            var porQuitar = actuales.Except(request.RoleIds).ToList();
-            var porAgregar = request.RoleIds.Except(actuales).Distinct().ToList();
+            var existingRoleIds = (await _uow.UserRoles.GetRolesByUserIdAsync(user.UserId, cancellation))
+                .Select(ur => ur.RoleId).ToList();
 
-            foreach (var rid in porQuitar)
+            var rolesToRemove = existingRoleIds.Except(request.RoleIds).ToList();
+            var rolesToAdd = request.RoleIds.Except(existingRoleIds).ToList();
+
+            foreach (var rid in rolesToRemove)
             {
                 var ur = await _uow.UserRoles.GetAll()
-                    .FirstAsync(x => x.UserId == entity.UserId && x.RoleId == rid, cancellation);
+                    .FirstAsync(x => x.UserId == user.UserId && x.RoleId == rid, cancellation);
                 _uow.UserRoles.Remove(ur);
             }
 
-            foreach (var rid in porAgregar)
-            {
-                var ur = new UserRole { UserId = entity.UserId, RoleId = rid, AssignedAt = DateTime.UtcNow };
-                await _uow.UserRoles.AddAsync(ur, cancellation);
-            }
+            foreach (var rid in rolesToAdd)
+                await _uow.UserRoles.AddAsync(new UserRole { UserId = user.UserId, RoleId = rid, AssignedAt = DateTime.UtcNow }, cancellation);
 
-            _uow.Users.Update(entity);
+            _uow.Users.Update(user);
             await _uow.SaveChangesAsync(cancellation);
         }
 
-        public async Task DeleteAsync(int id, CancellationToken cancellation = default)
+        public async Task DeleteAsync(int userId, CancellationToken cancellation = default)
         {
-            if (id <= 0) throw new ArgumentException("Invalid user ID.", nameof(id));
-            var entity = await _uow.Users.GetByIdAsync(id, cancellation)
-                         ?? throw new KeyNotFoundException("User not found.");
-            _uow.Users.Remove(entity);
+            if (userId <= 0) throw new ArgumentException("Invalid user ID.", nameof(userId));
+
+            var user = await _uow.Users.GetByIdAsync(userId, cancellation) ?? throw new KeyNotFoundException("User not found.");
+            _uow.Users.Remove(user);
             await _uow.SaveChangesAsync(cancellation);
         }
 
         public async Task<IEnumerable<AgentDto>> GetByRoleAsync(string roleName, CancellationToken cancellation = default)
         {
-            return await _uow.UserRoles
-                .GetAll()
+            return await _uow.UserRoles.GetAll()
                 .Where(ur => ur.Role.RoleName == roleName)
                 .Select(ur => new AgentDto
                 {
                     UserId = ur.User.UserId,
-                    FullName = ur.User.FullName!,
-                    Email = ur.User.Email!
+                    FullName = ur.User.FullName,
+                    Email = ur.User.Email
                 })
                 .Distinct()
                 .ToListAsync(cancellation);
