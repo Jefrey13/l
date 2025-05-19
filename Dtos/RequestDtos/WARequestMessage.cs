@@ -9,5 +9,8 @@
         public DocumentDto? Document { get; set; }
         public string? Caption { get; set; }
         public string MessageId { get; set; } = "";
+
+        public ButtonReplyDto? ButtonReply { get; set; }
+        public ListReplyDto? ListReply { get; set; }
     }
 }

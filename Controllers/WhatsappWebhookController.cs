@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore.Annotations;
+using CustomerService.API.Dtos.RequestDtos.Wh;
 
 namespace CustomerService.API.Controllers
 {
@@ -107,6 +108,47 @@ namespace CustomerService.API.Controllers
             //    .SendTextAsync(conversationId, BotUserId, req.Body, cancellation);
 
             return Ok(ApiResponse<object>.Ok(message: "Mensaje enviado y registrado correctamente."));
+        }
+
+        [HttpPost("status/webhook")]
+        public async Task<IActionResult> ReceiveStatusAsync(
+            [FromBody] WhatsAppStatusRequestDto update,
+            CancellationToken ct = default)
+        {
+            if (update?.Entry == null || !update.Entry.Any())
+                return BadRequest("Invalid payload");
+
+            foreach (var entry in update.Entry)
+            {
+                foreach (var change in entry.Changes)
+                {
+                    foreach (var status in change.Value.Statuses)
+                    {
+                        var ts = DateTimeOffset.FromUnixTimeSeconds(status.Timestamp);
+
+                        switch (status.Status.ToLowerInvariant())
+                        {
+                            case "delivered":
+                                // actualiza deliveredAt + dispara SignalR "MessageDelivered"
+                                await _messageService.UpdateDeliveryStatusAsync(
+                                    messageId: int.Parse(status.Id),
+                                    deliveredAt: ts,
+                                    cancellation: ct);
+                                break;
+
+                            case "read":
+                                // actualiza readAt + dispara SignalR "MessageRead"
+                                await _messageService.MarkAsReadAsync(
+                                    messageId: int.Parse(status.Id),
+                                    readAt: ts,
+                                    cancellation: ct);
+                                break;
+                        }
+                    }
+                }
+            }
+
+            return Ok();
         }
     }
 }

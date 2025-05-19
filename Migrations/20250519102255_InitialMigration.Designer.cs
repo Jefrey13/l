@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    [Migration("20250516151818_UpdateMessage")]
-    partial class UpdateMessage
+    [Migration("20250519102255_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -99,7 +99,7 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("AttachmentId")
-                        .HasName("PK__Attachme__442C64BE0401CF2F");
+                        .HasName("PK_Attachments");
 
                     b.HasIndex("MessageId");
 
@@ -180,6 +180,75 @@ namespace CustomerService.API.Migrations
                     b.ToTable("Companies", "crm");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("FullName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IdCard")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("New");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WaId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("WaName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("WaUserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id")
+                        .HasName("PK_ContactLogs");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("Phone")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_ContactLogs_Phone");
+
+                    b.ToTable("ContactLogs", "auth");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
                     b.Property<int>("ConversationId")
@@ -188,17 +257,20 @@ namespace CustomerService.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
 
-                    b.Property<int?>("AssignedAgent")
+                    b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("AssignedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("AssignedBy")
+                    b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ClientUserId")
+                    b.Property<int>("ClientContactId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("CompanyId")
                         .HasColumnType("int");
@@ -206,33 +278,75 @@ namespace CustomerService.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(sysutcdatetime())");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<DateTime?>("FirstResponseAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("Initialized")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Bot");
+                        .HasDefaultValue("New");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("ConversationId")
-                        .HasName("PK__Conversa__C050D877771F928B");
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("AssignedAgent");
+                    b.HasKey("ConversationId");
 
-                    b.HasIndex("AssignedBy");
+                    b.HasIndex("AssignedAgentId");
 
-                    b.HasIndex("ClientUserId");
+                    b.HasIndex("AssignedByUserId");
+
+                    b.HasIndex("ClientContactId");
 
                     b.HasIndex("CompanyId");
 
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("Conversations", "chat");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.ConversationTag", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TagId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ConversationId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("ConversationTags", "chat");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.Menu", b =>
@@ -306,41 +420,114 @@ namespace CustomerService.API.Migrations
                     b.Property<int>("ConversationId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(sysutcdatetime())");
-
-                    b.Property<DateTime?>("DeliveredAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("datetimeoffset(7)");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("MessageType")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Text");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("datetimeoffset(7)");
+
+                    b.Property<int?>("SenderContactId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset(7)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Sent");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("SenderContactId");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.ToTable("Messages", "chat", t =>
+                        {
+                            t.HasCheckConstraint("CK_Message_OneSender", "(SenderUserId IS NOT NULL AND SenderContactId IS NULL) OR (SenderUserId IS NULL AND SenderContactId IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("Notifications", "chat");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.NotificationRecipient", b =>
+                {
+                    b.Property<int>("NotificationRecipientId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationRecipientId"));
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("SenderId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.HasKey("NotificationRecipientId");
 
-                    b.HasKey("MessageId")
-                        .HasName("PK__Messages__C87C0C9CCF00998F");
+                    b.HasIndex("NotificationId");
 
-                    b.HasIndex("ConversationId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("SenderId");
-
-                    b.ToTable("Messages", "chat");
+                    b.ToTable("NotificationRecipients", "chat");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.RoleMenu", b =>
@@ -368,6 +555,24 @@ namespace CustomerService.API.Migrations
                     b.ToTable("RoleMenus", "auth");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.Tag", b =>
+                {
+                    b.Property<int>("TagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TagId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("TagId");
+
+                    b.ToTable("Tags", "chat");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.User", b =>
                 {
                     b.Property<int>("UserId")
@@ -382,17 +587,18 @@ namespace CustomerService.API.Migrations
                     b.Property<Guid>("ConcurrencyStamp")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("(newid())");
+                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(sysutcdatetime())");
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<bool>("DataRequested")
                         .HasColumnType("bit");
 
                     b.Property<string>("Email")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
@@ -427,7 +633,7 @@ namespace CustomerService.API.Migrations
                     b.Property<Guid>("SecurityStamp")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("(newid())");
+                        .HasDefaultValueSql("NEWID()");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -485,6 +691,7 @@ namespace CustomerService.API.Migrations
                     b.HasOne("CustomerService.API.Models.Message", "Message")
                         .WithMany("Attachments")
                         .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_Attachments_Messages");
 
@@ -502,35 +709,74 @@ namespace CustomerService.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
+                {
+                    b.HasOne("CustomerService.API.Models.Company", "Company")
+                        .WithMany("ContactLogs")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ContactLogs_Companies");
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
-                    b.HasOne("CustomerService.API.Models.User", "AssignedAgentNavigation")
+                    b.HasOne("CustomerService.API.Models.User", "AssignedAgent")
                         .WithMany("ConversationAssignedAgentNavigations")
-                        .HasForeignKey("AssignedAgent")
-                        .HasConstraintName("FK_Conversations_Agent");
+                        .HasForeignKey("AssignedAgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_Conversations_AssignedAgent");
 
-                    b.HasOne("CustomerService.API.Models.User", "AssignedByNavigation")
+                    b.HasOne("CustomerService.API.Models.User", "AssignedByUser")
                         .WithMany("ConversationAssignedByNavigations")
-                        .HasForeignKey("AssignedBy")
-                        .HasConstraintName("FK_Conversations_AssignedBy");
+                        .HasForeignKey("AssignedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_Conversations_AssignedByUser");
 
-                    b.HasOne("CustomerService.API.Models.User", "ClientUser")
-                        .WithMany("ConversationClientUsers")
-                        .HasForeignKey("ClientUserId")
-                        .HasConstraintName("FK_Conversations_Client");
+                    b.HasOne("CustomerService.API.Models.ContactLog", "ClientContact")
+                        .WithMany("ConversationClient")
+                        .HasForeignKey("ClientContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_Conversations_ClientContact");
 
                     b.HasOne("CustomerService.API.Models.Company", "Company")
                         .WithMany("Conversations")
                         .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("FK_Conversations_Companies");
 
-                    b.Navigation("AssignedAgentNavigation");
+                    b.HasOne("CustomerService.API.Models.User", null)
+                        .WithMany("ConversationClientUsers")
+                        .HasForeignKey("UserId");
 
-                    b.Navigation("AssignedByNavigation");
+                    b.Navigation("AssignedAgent");
 
-                    b.Navigation("ClientUser");
+                    b.Navigation("AssignedByUser");
+
+                    b.Navigation("ClientContact");
 
                     b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.ConversationTag", b =>
+                {
+                    b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
+                        .WithMany("ConversationTags")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CustomerService.API.Models.Tag", "Tag")
+                        .WithMany("ConversationTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.Message", b =>
@@ -538,18 +784,46 @@ namespace CustomerService.API.Migrations
                     b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
                         .WithMany("Messages")
                         .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_Messages_Conversations");
 
-                    b.HasOne("CustomerService.API.Models.User", "Sender")
+                    b.HasOne("CustomerService.API.Models.ContactLog", "SenderContact")
+                        .WithMany("MessagesSent")
+                        .HasForeignKey("SenderContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_Messages_SenderContact");
+
+                    b.HasOne("CustomerService.API.Models.User", "SenderUser")
                         .WithMany("Messages")
-                        .HasForeignKey("SenderId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Messages_Sender");
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_Messages_SenderUser");
 
                     b.Navigation("Conversation");
 
-                    b.Navigation("Sender");
+                    b.Navigation("SenderContact");
+
+                    b.Navigation("SenderUser");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.NotificationRecipient", b =>
+                {
+                    b.HasOne("CustomerService.API.Models.Notification", "Notification")
+                        .WithMany("Recipients")
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CustomerService.API.Models.User", "User")
+                        .WithMany("NotificationRecipients")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Notification");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.RoleMenu", b =>
@@ -576,6 +850,7 @@ namespace CustomerService.API.Migrations
                     b.HasOne("CustomerService.API.Models.Company", "Company")
                         .WithMany("Users")
                         .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("FK_Users_Companies");
 
                     b.Navigation("Company");
@@ -609,13 +884,24 @@ namespace CustomerService.API.Migrations
 
             modelBuilder.Entity("CustomerService.API.Models.Company", b =>
                 {
+                    b.Navigation("ContactLogs");
+
                     b.Navigation("Conversations");
 
                     b.Navigation("Users");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.ContactLog", b =>
+                {
+                    b.Navigation("ConversationClient");
+
+                    b.Navigation("MessagesSent");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
+                    b.Navigation("ConversationTags");
+
                     b.Navigation("Messages");
                 });
 
@@ -629,6 +915,16 @@ namespace CustomerService.API.Migrations
                     b.Navigation("Attachments");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.Notification", b =>
+                {
+                    b.Navigation("Recipients");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.Tag", b =>
+                {
+                    b.Navigation("ConversationTags");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.User", b =>
                 {
                     b.Navigation("AuthTokens");
@@ -640,6 +936,8 @@ namespace CustomerService.API.Migrations
                     b.Navigation("ConversationClientUsers");
 
                     b.Navigation("Messages");
+
+                    b.Navigation("NotificationRecipients");
 
                     b.Navigation("UserRoles");
                 });

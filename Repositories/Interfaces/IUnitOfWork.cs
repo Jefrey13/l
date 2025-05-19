@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using CustomerService.API.Repositories.Interfaces;
 
 namespace CustomerService.API.Repositories.Interfaces
 {
@@ -13,10 +14,13 @@ namespace CustomerService.API.Repositories.Interfaces
         IConversationRepository Conversations { get; }
         IMessageRepository Messages { get; }
         IAttachmentRepository Attachments { get; }
-
         IMenuRepository Menus { get; }
         IRoleMenuRepository RoleMenus { get; }
         IContactLogRepository ContactLogs { get; }
+        ITagRepository Tags { get; }
+        INotificationRepository Notifications { get; }
+        INotificationRecipientRepository NotificationRecipients { get; }
+
         Task<int> SaveChangesAsync(CancellationToken cancellation = default);
     }
 }

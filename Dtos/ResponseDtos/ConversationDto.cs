@@ -1,23 +1,27 @@
-﻿using System;
+﻿using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Utils.Enums;
 
-namespace CustomerService.API.Dtos.ResponseDtos
+public class ConversationDto
 {
-    public class ConversationDto
-    {
-        public int ConversationId { get; set; }
-        public int? CompanyId { get; set; }
-        public int? ClientUserId { get; set; }
-        public string? ClientUserName { get; set; }
-        public int? AssignedAgent { get; set; }
-        public string? AssignedAgentName { get; set; }
-        public string? ProfilePhoto { get; set; }
-        public string Status { get; set; } = "";
-        public DateTime CreatedAt { get; set; }
-        public DateTime? AssignedAt { get; set; }
-        public string? ContactName { get; set; } = "";
-        public string? ContactNumber { get; set; } = "";
-        public int TotalMensajes { get; set; }
-        public DateTime UltimaActividad { get; set; }
-        public TimeSpan Duracion { get; set; }
-    }
+    public int ConversationId { get; set; }
+    public int? CompanyId { get; set; }
+    public int ClientContactId { get; set; }
+    public PriorityLevel Priority { get; set; }
+    public int? AssignedAgentId { get; set; }
+    public int? AssignedByUserId { get; set; }
+    public DateTime? AssignedAt { get; set; }
+    public ConversationStatus Status { get; set; }
+    public bool Initialized { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? FirstResponseAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
+    public bool IsArchived { get; set; }
+    public int TotalMessages { get; set; }
+    public DateTime LastActivity { get; set; }
+    public TimeSpan Duration { get; set; }
+    public TimeSpan? TimeToFirstResponse { get; set; }
+    public bool IsClosed { get; set; }
+    public List<MessageDto> Messages { get; set; } = new();
+    public List<TagDto> Tags { get; set; } = new();
 }

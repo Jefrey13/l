@@ -1,4 +1,5 @@
 ﻿using CustomerService.API.Models;
+using CustomerService.API.Utils.Enums;
 
 namespace CustomerService.API.Dtos.RequestDtos
 {
@@ -9,5 +10,6 @@ namespace CustomerService.API.Dtos.RequestDtos
         public string? IdCard { get; set; }
         public string? FullName { get; set; }
         public int CompanyId { get; set; }
+        public ContactStatus Status { get; set; }
     }
 }

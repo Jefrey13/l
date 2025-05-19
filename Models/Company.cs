@@ -15,5 +15,8 @@ public partial class Company
 
     public virtual ICollection<Conversation> Conversations { get; set; } = new List<Conversation>();
 
+    public virtual ICollection<ContactLog> ContactLogs { get; set; }
+        = new List<ContactLog>();
+
     public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

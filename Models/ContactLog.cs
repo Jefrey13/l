@@ -1,4 +1,6 @@
-﻿namespace CustomerService.API.Models
+﻿using CustomerService.API.Utils.Enums;
+
+namespace CustomerService.API.Models
 {
     public class ContactLog
     {
@@ -10,11 +12,14 @@
         public string? IdCard { get; set; }
         public string? FullName { get; set; }
         public int? CompanyId { get; set; }
-        public bool IsActive { get; set; }
-        public DateTime CreateAt { get; set; }
-        public DateTime? UpdateAt { get; set; }
+        public ContactStatus Status { get; set; } = ContactStatus.New;
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
         public byte[] RowVersion { get; set; } = null!;
         public virtual Company? Company { get; set; }
         public virtual ICollection<Conversation> ConversationClient { get; set; } = new List<Conversation>();
+
+        public virtual ICollection<Message> MessagesSent { get; set; }
+       = new List<Message>();
     }
 }

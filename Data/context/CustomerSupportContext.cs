@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using CustomerService.API.Models;
+using CustomerService.API.Utils.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Data.Context;
@@ -33,9 +34,15 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<RoleMenu> MenuRoles { get; set; }
     public virtual DbSet<ContactLog> ContactLogs { get; set; }
 
+    public virtual DbSet<Tag> Tags { get; set; }
+    public virtual DbSet<ConversationTag> ConversationTags { get; set; }
+    public virtual DbSet<Notification> Notifications { get; set; }
+    public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
+
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-91LKTJV\\SQLEXPRESS;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
+        => optionsBuilder.UseSqlServer("Server=LAPTOP-N56GM63T;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,32 +82,72 @@ public partial class CustomerSupportContext : DbContext
             .IsConcurrencyToken();
         });
 
+        // ContactLog configuration
         modelBuilder.Entity<ContactLog>(entity =>
         {
-            entity.HasKey(m => m.Id);
-
             entity.ToTable("ContactLogs", "auth");
 
-            entity.HasIndex(e => e.Phone, "UQ_ContactLog_Phone").IsUnique();
+            entity.HasKey(e => e.Id)
+                .HasName("PK_ContactLogs");
 
-            entity.Property(e=> e.FullName).HasMaxLength(100);
-            entity.Property(e=> e.IdCard).HasMaxLength(30);
-            entity.Property(e => e.Phone).HasMaxLength(20);
-            entity.Property(e => e.WaId);
-            entity.Property(e => e.WaName);
-            entity.Property(e => e.WaUserId);
-            entity.Property(e => e.CreateAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.UpdateAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.IsActive).HasDefaultValue(0);
+            entity.HasIndex(e => e.Phone)
+                .IsUnique()
+                .HasDatabaseName("UQ_ContactLogs_Phone");
+
+            entity.Property(e => e.FullName)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.IdCard)
+                .HasMaxLength(30)
+                .IsRequired(false);
+
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.WaId)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.WaName)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.WaUserId)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(ContactStatus.New);
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired(false);
 
             entity.Property(e => e.RowVersion)
-            .IsRowVersion()
-            .IsConcurrencyToken();
+                .IsRowVersion()
+                .IsConcurrencyToken();
+
+            entity.HasOne(e => e.Company)
+                .WithMany(c => c.ContactLogs)
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_ContactLogs_Companies");
+
+            entity.HasMany(e => e.ConversationClient)
+                .WithOne(c => c.ClientContact)
+                .HasForeignKey(c => c.ClientContactId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Attachment>(entity =>
         {
-            entity.HasKey(e => e.AttachmentId).HasName("PK__Attachme__442C64BE0401CF2F");
+            entity.HasKey(e => e.AttachmentId).HasName("PK_Attachments");
 
             entity.ToTable("Attachments", "chat");
 
@@ -111,7 +158,7 @@ public partial class CustomerSupportContext : DbContext
 
             entity.HasOne(d => d.Message).WithMany(p => p.Attachments)
                 .HasForeignKey(d => d.MessageId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_Attachments_Messages");
 
         });
@@ -143,87 +190,173 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(150);
         });
 
+        // Conversation configuration
         modelBuilder.Entity<Conversation>(entity =>
         {
-            entity.HasKey(e => e.ConversationId).HasName("PK__Conversa__C050D877771F928B");
-
             entity.ToTable("Conversations", "chat");
+            entity.HasKey(e => e.ConversationId);
 
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.Status)
+                .HasConversion<string>()
                 .HasMaxLength(20)
-                .HasDefaultValue("Bot");
+                .HasDefaultValue(ConversationStatus.New);
 
-            entity.HasOne(d => d.AssignedAgentNavigation).WithMany(p => p.ConversationAssignedAgentNavigations)
-                .HasForeignKey(d => d.AssignedAgent)
-                .HasConstraintName("FK_Conversations_Agent");
+            entity.Property(e => e.Priority)
+            .HasConversion<int>()                   
+            .HasDefaultValue(PriorityLevel.Normal);
 
-            entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.ConversationAssignedByNavigations)
-                .HasForeignKey(d => d.AssignedBy)
-                .HasConstraintName("FK_Conversations_AssignedBy");
+            entity.Property(e => e.Initialized);
 
-            //entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClientUsers)
-            //    .HasForeignKey(d => d.ClientUserId)
-            //    .HasConstraintName("FK_Conversations_Client");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
 
-             entity.HasOne(d => d.ClientUser).WithMany(p => p.ConversationClient)
-                .HasForeignKey(d => d.ClientUserId)
-                .HasConstraintName("Fk_Conversations_Clients");
+            entity.Property(e => e.FirstResponseAt)
+                .IsRequired(false);
 
-            entity.HasOne(d => d.Company).WithMany(p => p.Conversations)
-                .HasForeignKey(d => d.CompanyId)
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired(false);
+
+            entity.Property(e => e.ClosedAt)
+                .IsRequired(false);
+
+            entity.Property(e => e.IsArchived)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+
+            entity.HasOne(e => e.Company)
+                .WithMany(c => c.Conversations)
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Conversations_Companies");
+
+            entity.HasOne(e => e.ClientContact)
+                .WithMany(cl => cl.ConversationClient)
+                .HasForeignKey(e => e.ClientContactId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Conversations_ClientContact");
+
+            entity.HasOne(e => e.AssignedAgent)
+                .WithMany(u => u.ConversationAssignedAgentNavigations)
+                .HasForeignKey(e => e.AssignedAgentId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Conversations_AssignedAgent");
+
+            entity.HasOne(e => e.AssignedByUser)
+                .WithMany(u => u.ConversationAssignedByNavigations)
+                .HasForeignKey(e => e.AssignedByUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Conversations_AssignedByUser");
+
+            entity
+                .HasMany(e => e.ConversationTags)
+                .WithOne(ct => ct.Conversation)
+                .HasForeignKey(ct => ct.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
+
 
         modelBuilder.Entity<Message>(entity =>
         {
-            entity.HasKey(e => e.MessageId).HasName("PK__Messages__C87C0C9CCF00998F");
-
             entity.ToTable("Messages", "chat");
+            entity.HasKey(e => e.MessageId);
 
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.MessageType).HasMaxLength(20);
+            entity.Property(e => e.MessageType)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(MessageType.Text);
 
-            entity.HasOne(d => d.Conversation).WithMany(p => p.Messages)
-                .HasForeignKey(d => d.ConversationId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(MessageStatus.Sent);
+
+            entity.Property(e => e.SentAt)
+                .HasColumnType("datetimeoffset(7)")
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property(e => e.DeliveredAt)
+                .HasColumnType("datetimeoffset(7)")
+                .IsRequired(false);
+
+            entity.Property(e => e.ReadAt)
+                .HasColumnType("datetimeoffset(7)")
+                .IsRequired(false);
+
+            entity.Property(e => e.ExternalId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasOne(e => e.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(e => e.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_Messages_Conversations");
 
-            entity.HasOne(d => d.Sender).WithMany(p => p.Messages)
-                .HasForeignKey(d => d.SenderId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Messages_Sender");
+            entity.HasOne(e => e.SenderUser)
+                .WithMany(u => u.Messages)
+                .HasForeignKey(e => e.SenderUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Messages_SenderUser");
+
+            entity.HasOne(e => e.SenderContact)
+                .WithMany(cl => cl.MessagesSent)
+                .HasForeignKey(e => e.SenderContactId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Messages_SenderContact");
+
+            entity.HasCheckConstraint(
+                "CK_Message_OneSender",
+                "(SenderUserId IS NOT NULL AND SenderContactId IS NULL) OR (SenderUserId IS NULL AND SenderContactId IS NOT NULL)");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity
-                .ToTable("Users", "auth")
-                .ToTable(tb => tb.IsTemporal(ttb =>
+            entity.ToTable("Users", "auth", tb =>
+            {
+                tb.IsTemporal(ttb =>
                 {
                     ttb.UseHistoryTable("UsersHistory", "auth");
-                    ttb
-                        .HasPeriodStart("ValidFrom")
-                        .HasColumnName("ValidFrom");
-                    ttb
-                        .HasPeriodEnd("ValidTo")
-                        .HasColumnName("ValidTo");
-                }));
+                    ttb.HasPeriodStart("ValidFrom").HasColumnName("ValidFrom");
+                    ttb.HasPeriodEnd("ValidTo").HasColumnName("ValidTo");
+                });
+            });
 
-            entity.Property(e => e.ConcurrencyStamp).HasDefaultValueSql("(newid())");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.Email).HasMaxLength(255);
-            entity.Property(e => e.FullName).HasMaxLength(100);
-            entity.Property(e => e.Identifier).HasMaxLength(50);
-            entity.Property(e => e.PasswordHash).HasMaxLength(256);
-            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.ConcurrencyStamp)
+                .HasDefaultValueSql("NEWID()");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.FullName)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Identifier)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.PasswordHash)
+                .HasMaxLength(256);
+
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20);
+
+            entity.Property(e => e.SecurityStamp)
+                .HasDefaultValueSql("NEWID()");
+
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()
                 .IsConcurrencyToken();
-            entity.Property(e => e.SecurityStamp).HasDefaultValueSql("(newid())");
 
-            entity.HasOne(d => d.Company).WithMany(p => p.Users)
-                .HasForeignKey(d => d.CompanyId)
+            entity.HasOne(e => e.Company)
+                .WithMany(c => c.Users)
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Users_Companies");
         });
 
@@ -263,6 +396,43 @@ public partial class CustomerSupportContext : DbContext
             .HasForeignKey(p => p.MenuId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_RoleMenus_Menus");
+        });
+
+        modelBuilder.Entity<Tag>(entity => {
+            entity.ToTable("Tags", "chat");
+            entity.HasKey(t => t.TagId);
+            entity.Property(t => t.Name).HasMaxLength(50).IsRequired();
+        });
+
+        modelBuilder.Entity<ConversationTag>(entity => {
+            entity.ToTable("ConversationTags", "chat");
+            entity.HasKey(ct => new { ct.ConversationId, ct.TagId });
+            entity.HasOne(ct => ct.Conversation)
+                  .WithMany(c => c.ConversationTags)
+                  .HasForeignKey(ct => ct.ConversationId);
+            entity.HasOne(ct => ct.Tag)
+                  .WithMany(t => t.ConversationTags)
+                  .HasForeignKey(ct => ct.TagId);
+        });
+
+        modelBuilder.Entity<Notification>(entity => {
+            entity.ToTable("Notifications", "chat");
+            entity.HasKey(n => n.NotificationId);
+            entity.Property(n => n.Payload).IsRequired();
+            entity.Property(n => n.CreatedAt)
+                  .HasDefaultValueSql("SYSUTCDATETIME()");
+        });
+
+        modelBuilder.Entity<NotificationRecipient>(entity => {
+            entity.ToTable("NotificationRecipients", "chat");
+            entity.HasKey(nr => nr.NotificationRecipientId);
+            entity.HasOne(nr => nr.Notification)
+                  .WithMany(n => n.Recipients)
+                  .HasForeignKey(nr => nr.NotificationId);
+            entity.HasOne(nr => nr.User)
+                  .WithMany(u => u.NotificationRecipients)
+                  .HasForeignKey(nr => nr.UserId);
+            entity.Property(nr => nr.IsRead).HasDefaultValue(false);
         });
 
         OnModelCreatingPartial(modelBuilder);

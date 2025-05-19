@@ -1,107 +1,102 @@
-﻿using CustomerService.API.Dtos.RequestDtos;
+﻿using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
-using Humanizer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using WhatsappBusiness.CloudApi.Messages.Requests;
 
 namespace CustomerService.API.Controllers
 {
-    [Route("api/v1/[controller]")]
     [ApiController]
-    public class ContactController : ControllerBase
+    [Route("api/v1/[controller]")]
+    public class ContactLogsController : ControllerBase
     {
-        private IContactLogService _contactLogService;
+        private readonly IContactLogService _contactLogService;
 
-        public ContactController(IContactLogService contactLogService)
+        public ContactLogsController(IContactLogService contactLogService)
         {
             _contactLogService = contactLogService;
         }
 
-        [HttpGet(Name = "GetAllContactAsync")]
-        [SwaggerOperation(Summary = "Retrive lis of contact")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ContactLogResponseDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ContactLogResponseDto>>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ContactLogResponseDto>>), StatusCodes.Status500InternalServerError)]
+        [HttpGet(Name = "GetAllContactLogs")]
+        [SwaggerOperation(Summary = "Retrieve paged list of contacts")]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<ContactLogResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllAsync([FromQuery] PaginationParams @params, CancellationToken ct = default)
         {
             var paged = await _contactLogService.GetAllAsync(@params, ct);
-            return Ok(new ApiResponse<PagedResponse<ContactLogResponseDto>>(paged, "Contactos obtenidos con exito"));
+            return Ok(new ApiResponse<PagedResponse<ContactLogResponseDto>>(paged, "Contacts retrieved."));
         }
 
-        [HttpGet("{id}", Name= "GetById")]
-        [SwaggerOperation(Summary = "Get contact by id")]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetByIdAsync([FromRoute]  int id, CancellationToken ct = default)
+        [HttpGet("pending-approval", Name = "GetPendingApprovalContactLogs")]
+        [SwaggerOperation(Summary = "Retrieve contacts pending approval")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ContactLogResponseDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetPendingApprovalAsync(CancellationToken ct = default)
+        {
+            var list = await _contactLogService.GetPendingApprovalAsync(ct);
+            return Ok(new ApiResponse<IEnumerable<ContactLogResponseDto>>(list, "Pending contacts retrieved."));
+        }
+
+        [HttpGet("{id}", Name = "GetContactLogById")]
+        [SwaggerOperation(Summary = "Retrieve a contact by ID")]
+        [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetByIdAsync([FromRoute] int id, CancellationToken ct = default)
         {
             var dto = await _contactLogService.GetByIdAsync(id, ct);
-            if(dto is null)
-                return NotFound(new ApiResponse<ContactLogResponseDto>(null, "Contacto no encontrado"));
-            return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contacto recuperado con exito."));
-        }
-
-        [HttpGet("contact/{phone}", Name = "GetByPhone")]
-        [SwaggerOperation(summary: "Get contact by phone number")]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> GetByPhoneAsync([FromRoute] string phone, CancellationToken ct = default)
-        {
-            var dto = await _contactLogService.GetByPhone(phone, ct);
             if (dto is null)
-                return NotFound(new ApiResponse<ContactLogResponseDto>(null, "Contacto no encontrado"));
-            return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contacto recuperado con exito."));
+                return NotFound(new ApiResponse<object>(null, "Contact not found."));
+            return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contact retrieved."));
         }
 
-        [HttpPost(Name = "CreateContact")]
-        [SwaggerOperation(summary: "Create contact")]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> CreateContact([FromBody] CreateContactLogRequestDto requestDto, 
-            CancellationToken cancellation)
+        [HttpGet("contact/{phone}", Name = "GetContactLogByPhone")]
+        [SwaggerOperation(Summary = "Retrieve a contact by phone number")]
+        [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetByPhoneAsync([FromRoute] string phone, CancellationToken ct = default)
         {
-            var dto = await _contactLogService.CreateAsync(requestDto, cancellation);
-
-            if (dto is null) 
-                return NotFound(new ApiResponse<ContactLogResponseDto>(null, "Usuario no encontrado"));
-
-            return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Usuario creado con exito"));
+            var dto = await _contactLogService.GetByPhoneAsync(phone, ct);
+            if (dto is null)
+                return NotFound(new ApiResponse<object>(null, "Contact not found."));
+            return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contact retrieved."));
         }
 
-        [HttpPut(Name = "UpdateContact")]
-        [SwaggerOperation(summary: "Updating contact properties")]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        [HttpPost(Name = "CreateContactLog")]
+        [SwaggerOperation(Summary = "Create a new contact")]
+        [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateAsync([FromBody] CreateContactLogRequestDto requestDto, CancellationToken ct = default)
+        {
+            var dto = await _contactLogService.CreateAsync(requestDto, ct);
+            return CreatedAtRoute("GetContactLogById", new { id = dto.Id },
+                new ApiResponse<ContactLogResponseDto>(dto, "Contact created."));
+        }
+
+        [HttpPut("{id}", Name = "UpdateContactLog")]
+        [SwaggerOperation(Summary = "Update an existing contact")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateAsync(
             [FromRoute] int id,
-            [FromBody] UpdateContactLogRequestDto requestDto, 
-            CancellationToken ct)
+            [FromBody] UpdateContactLogRequestDto requestDto,
+            CancellationToken ct = default)
         {
             if (id != requestDto.Id)
-                return BadRequest(new ApiResponse<object>(null, "Mismatched role Id"));
+                return BadRequest(new ApiResponse<object>(null, "Mismatched contact ID."));
 
             await _contactLogService.UpdateAsync(requestDto, ct);
             return NoContent();
         }
 
-        [HttpDelete(Name ="DeleteContact")]
-        [SwaggerOperation(summary: "Desactive contact")]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> DeleteAsync([FromRoute] int id, CancellationToken ct = default)
+        [HttpDelete("{id}", Name = "DeleteContactLog")]
+        [SwaggerOperation(Summary = "Delete (deactivate) a contact")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteAsync([FromRoute] int id, CancellationToken ct = default)
         {
             await _contactLogService.DeleteAsync(id, ct);
             return NoContent();

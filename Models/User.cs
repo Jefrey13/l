@@ -29,6 +29,9 @@ namespace CustomerService.API.Models
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
+        public virtual ICollection<NotificationRecipient> NotificationRecipients { get; set; }
+            = new List<NotificationRecipient>();
+
         [NotMapped]
         public string ClientType { get; set; } = "Nuevo";
 
