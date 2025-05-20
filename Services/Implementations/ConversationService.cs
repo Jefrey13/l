@@ -6,12 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Services.Implementations
@@ -21,15 +23,18 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly INicDatetime _nicDatetime;
         private readonly INotificationService _notification;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public ConversationService(
             IUnitOfWork uow,
             INicDatetime nicDatetime,
-            INotificationService notification)
+            INotificationService notification,
+            IHubContext<ChatHub> hubContext)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
             _notification = notification ?? throw new ArgumentNullException(nameof(notification));
+            _hubContext = hubContext;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -93,7 +98,16 @@ namespace CustomerService.API.Services.Implementations
                 await _uow.SaveChangesAsync(cancellation);
             }
 
-            return conv.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationDto>();
+
+            // ④ envía el evento a todos los clientes conectados
+            await _hubContext
+                .Clients
+                .All
+                .SendAsync("ConversationCreated", dto, cancellation);
+
+            return dto;
+
         }
 
         public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, CancellationToken cancellation = default)
@@ -113,11 +127,19 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
 
             var payload = JsonSerializer.Serialize(new { conv.ConversationId, Agent = agentUserId });
-            await _notification.CreateAsync(
-                NotificationType.ConversationAssigned,
-                payload,
-                new[] { agentUserId },
-                cancellation);
+            
+            //await _notification.CreateAsync(
+            //    NotificationType.ConversationAssigned,
+            //    payload,
+            //    new[] { agentUserId },
+            //    cancellation);
+
+            var dto = conv.Adapt<ConversationDto>();
+
+            await _hubContext
+                .Clients
+                .All
+                .SendAsync("ConversationCreated", dto, cancellation);
         }
 
         public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -185,7 +207,15 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .SingleAsync(cancellation);
 
-            return full.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationDto>();
+
+            await _hubContext
+                .Clients
+                .All
+                .SendAsync("ConversationCreated", dto, cancellation);
+
+
+            return dto;
         }
 
         public async Task UpdateAsync(UpdateConversationRequest request, CancellationToken cancellation = default)
@@ -238,6 +268,13 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(conv);
 
             await _uow.SaveChangesAsync(cancellation);
+
+            var dto = conv.Adapt<ConversationDto>();
+
+            await _hubContext
+                .Clients
+                .All
+                .SendAsync("ConversationCreated", dto, cancellation);
         }
 
     }
