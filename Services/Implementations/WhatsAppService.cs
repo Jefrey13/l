@@ -241,6 +241,7 @@ namespace CustomerService.API.Services.Implementations
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
 
             var res = await _http.SendAsync(req, cancellation);
+
             res.EnsureSuccessStatusCode();
 
             var incoming = new Message
@@ -248,7 +249,10 @@ namespace CustomerService.API.Services.Implementations
                 ConversationId = conversationId,
                 //El que envie mensaje es el bot, por lo cual se asocia con los usuario y no con contactos.
                 SenderUserId = senderId,
-                Content = header,
+                Content = header  +
+                interactive.body.text.ToString() + 
+                interactive.footer.text.ToString() +
+                listSections.Select(t=> t.rows.Select(r=> r.title)),
                 SentAt = DateTimeOffset.UtcNow,
                 Status = MessageStatus.Delivered
             };
@@ -257,6 +261,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
 
             var dto = incoming.Adapt<MessageDto>();
+
             await _signalR.NotifyUserAsync(
                 conversationId,
                 "ReceiveMessage",

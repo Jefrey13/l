@@ -17,6 +17,10 @@ namespace CustomerService.API.Services.Interfaces
         Task<ContactLogResponseDto> GetByPhoneAsync(string phoneNumber, CancellationToken cancellation = default);
         Task DeleteAsync(int id, CancellationToken cancellation = default);
 
-        Task<ContactLogResponseDto> GetOrCreateByPhoneAsync(string phone, CancellationToken cancellation = default);
+        Task<ContactLogResponseDto> GetOrCreateByPhoneAsync(string phone,
+           string waId,
+           string waName,
+           string userId,
+            CancellationToken cancellation = default);
     }
 }

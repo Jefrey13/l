@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250521144554_AddInteractiveAttributes")]
+    partial class AddInteractiveAttributes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -160,26 +163,17 @@ namespace CustomerService.API.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CompanyId"));
 
                     b.Property<string>("Address")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasDefaultValueSql("(sysutcdatetime())");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("CompanyId");
 
@@ -267,9 +261,7 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("AssignedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
@@ -280,6 +272,9 @@ namespace CustomerService.API.Migrations
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -289,9 +284,7 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("Initialized")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsArchived")
                         .ValueGeneratedOnAdd()
@@ -314,7 +307,7 @@ namespace CustomerService.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Bot");
+                        .HasDefaultValue("New");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -329,6 +322,8 @@ namespace CustomerService.API.Migrations
                     b.HasIndex("AssignedByUserId");
 
                     b.HasIndex("ClientContactId");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CreatedAt");
 
@@ -429,6 +424,7 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("datetimeoffset(7)");
 
                     b.Property<string>("ExternalId")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -436,8 +432,7 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("InteractiveTitle")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MessageType")
                         .IsRequired()
@@ -752,6 +747,12 @@ namespace CustomerService.API.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_Conversations_ClientContact");
 
+                    b.HasOne("CustomerService.API.Models.Company", "Company")
+                        .WithMany("Conversations")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_Conversations_Companies");
+
                     b.HasOne("CustomerService.API.Models.User", null)
                         .WithMany("ConversationClientUsers")
                         .HasForeignKey("UserId");
@@ -761,6 +762,8 @@ namespace CustomerService.API.Migrations
                     b.Navigation("AssignedByUser");
 
                     b.Navigation("ClientContact");
+
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.ConversationTag", b =>
@@ -888,6 +891,8 @@ namespace CustomerService.API.Migrations
             modelBuilder.Entity("CustomerService.API.Models.Company", b =>
                 {
                     b.Navigation("ContactLogs");
+
+                    b.Navigation("Conversations");
 
                     b.Navigation("Users");
                 });

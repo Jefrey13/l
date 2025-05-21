@@ -120,30 +120,37 @@ namespace CustomerService.API.Services.Implementations
             _uow.ContactLogs.Remove(entity);
             await _uow.SaveChangesAsync(cancellation);
         }
+
         public async Task<ContactLogResponseDto> GetOrCreateByPhoneAsync(
-    string phone,
-    CancellationToken cancellation = default)
-        {
-            if (string.IsNullOrWhiteSpace(phone))
-                throw new ArgumentNullException(nameof(phone));
+            string phone,
+            string waId,
+            string waName,
+            string userId,
+            CancellationToken cancellation = default)
+                {
+                    if (string.IsNullOrWhiteSpace(phone))
+                        throw new ArgumentNullException(nameof(phone));
 
-            var existing = await _uow.ContactLogs
-                .GetAll()
-                .FirstOrDefaultAsync(c => c.Phone == phone, cancellation);
+                    var existing = await _uow.ContactLogs
+                        .GetAll()
+                        .FirstOrDefaultAsync(c => c.Phone == phone, cancellation);
 
-            if (existing != null)
-                return existing.Adapt<ContactLogResponseDto>();
+                    if (existing != null)
+                        return existing.Adapt<ContactLogResponseDto>();
 
-            var contact = new ContactLog
-            {
-                Phone = phone,
-                Status = ContactStatus.New,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _uow.ContactLogs.AddAsync(contact, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
+                    var contact = new ContactLog
+                    {
+                        Phone = phone,
+                        WaId = waId,
+                        WaName = waName,
+                        WaUserId = userId,
+                        Status = ContactStatus.New,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _uow.ContactLogs.AddAsync(contact, cancellation);
+                    await _uow.SaveChangesAsync(cancellation);
 
-            return contact.Adapt<ContactLogResponseDto>();
+                    return contact.Adapt<ContactLogResponseDto>();
         }
     }
 }

@@ -14,7 +14,7 @@ namespace CustomerService.API.Models
     public class Conversation
     {
         public int ConversationId { get; set; }
-        public int? CompanyId { get; set; }
+        //public int? CompanyId { get; set; }
         public int ClientContactId { get; set; }
         public PriorityLevel? Priority { get; set; } = PriorityLevel.Normal;
 
@@ -35,8 +35,8 @@ namespace CustomerService.API.Models
         [Timestamp]
         public byte[] RowVersion { get; set; } = null!;
 
-        [ForeignKey(nameof(CompanyId))]
-        public virtual Company? Company { get; set; }
+        //[ForeignKey(nameof(CompanyId))]
+        //public virtual Company? Company { get; set; }
 
         [ForeignKey(nameof(ClientContactId))]
         public virtual ContactLog ClientContact { get; set; } = null!;

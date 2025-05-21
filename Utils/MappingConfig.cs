@@ -18,7 +18,7 @@ namespace CustomerService.API.Utils
             config.NewConfig<User, UserDto>();
 
             config.NewConfig<CreateConversationRequest, Conversation>()
-                .Map(d => d.CompanyId, s => s.CompanyId)
+                //.Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.ClientContactId, s => s.ClientContactId)
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.Status, _ => ConversationStatus.New)
@@ -34,7 +34,7 @@ namespace CustomerService.API.Utils
 
             config.NewConfig<Conversation, ConversationDto>()
                 .Map(d => d.ConversationId, s => s.ConversationId)
-                .Map(d => d.CompanyId, s => s.CompanyId)
+                //.Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.ClientContactId, s => s.ClientContactId)
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.AssignedAgentId, s => s.AssignedAgentId)
@@ -53,7 +53,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.IsArchived, s => s.IsArchived)
                 .Map(d => d.TotalMessages, s => s.Messages.Count)
                 .Map(d => d.LastActivity, s => s.Messages.Any() ? s.Messages.Max(m => m.SentAt.UtcDateTime) : s.CreatedAt)
-                .Map(d => d.Duration, s => (s.ClosedAt ?? DateTime.UtcNow) - s.CreatedAt)
+                .Map(d => d.Duration, s => ((s.ClosedAt ?? DateTime.UtcNow) - s.CreatedAt).ToString(@"hh\:mm\:ss"))
                 .Map(d => d.TimeToFirstResponse, s => s.FirstResponseAt.HasValue ? s.FirstResponseAt.Value - s.CreatedAt : (TimeSpan?)null)
                 .Map(d => d.IsClosed, s => s.Status == ConversationStatus.Closed)
                 .Map(d => d.Messages, s => s.Messages.Adapt<List<MessageDto>>())
@@ -70,7 +70,9 @@ namespace CustomerService.API.Utils
                 .Map(d => d.MessageId, s => s.MessageId)
                 .Map(d => d.ConversationId, s => s.ConversationId)
                 .Map(d => d.SenderUserId, s => s.SenderUserId)
+                .Map(d => d.SenderUserName, s => s.SenderUser != null ? s.SenderUser.FullName : null)
                 .Map(d => d.SenderContactId, s => s.SenderContactId)
+                .Map(d=> d.SenderContactName, s=> s.SenderContact != null ? s.SenderContact.WaName : null)
                 .Map(d => d.IsIncoming, s => s.SenderContactId != null)
                 .Map(d => d.Content, s => s.Content)
                 .Map(d => d.ExternalId, s => s.ExternalId)
@@ -100,7 +102,7 @@ namespace CustomerService.API.Utils
                .Map(d => d.IsRead, s => s.IsRead);
 
             config.NewConfig<StartConversationRequest, Conversation>()
-                .Map(d => d.CompanyId, s => s.CompanyId)
+                //.Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.ClientContactId, s => s.ClientContactId)
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.Status, _ => ConversationStatus.Bot)

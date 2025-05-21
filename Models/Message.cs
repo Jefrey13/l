@@ -8,7 +8,6 @@ namespace CustomerService.API.Models
     public class Message
     {
         public int MessageId { get; set; }
-
         public int ConversationId { get; set; }
 
         public int? SenderUserId { get; set; }
@@ -36,6 +35,6 @@ namespace CustomerService.API.Models
         [ForeignKey(nameof(SenderContactId))]
         public virtual ContactLog? SenderContact { get; set; }
 
-        public virtual ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        public virtual ICollection<Attachment>? Attachments { get; set; } = new List<Attachment>();
     }
 }

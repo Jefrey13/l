@@ -50,7 +50,7 @@ namespace CustomerService.API.Controllers
         {
             req.ConversationId = conversationId;
 
-            var dto = await _messages.SendMessageAsync(req, ct);
+            var dto = await _messages.SendMessageAsync(req, true ,ct);
 
             return CreatedAtRoute(
                 routeName: "GetMessagesByConversation",

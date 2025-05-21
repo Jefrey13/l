@@ -69,6 +69,7 @@ namespace CustomerService.API.Pipelines.Implementations
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
         {
             var msg = value.Messages.First();
+
             var payload = new IncomingPayload
             {
                 From = msg.From,
@@ -79,15 +80,19 @@ namespace CustomerService.API.Pipelines.Implementations
                                 : InteractiveType.Text
             };
 
-            var contactDto = await _contactService.GetOrCreateByPhoneAsync(payload.From, ct);
-            var contactId = contactDto.Id;
+            var contactDto = await _contactService.GetOrCreateByPhoneAsync(
+                payload.From,
+                value.Contacts.First().WaId,
+                value.Contacts.First().Profile.Name,
+                value.Contacts.First().UserId,
+                ct);
 
-            var convoDto = await _conversationService.GetOrCreateAsync(contactId, ct);
+            var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
 
             var incoming = new Message
             {
                 ConversationId = convoDto.ConversationId,
-                SenderContactId = contactId,
+                SenderContactId = contactDto.Id,
                 Content = payload.TextBody,
                 MessageType = MessageType.Text,
                 SentAt = DateTimeOffset.UtcNow,
@@ -95,20 +100,36 @@ namespace CustomerService.API.Pipelines.Implementations
             };
             await _uow.Messages.AddAsync(incoming, ct);
             await _uow.SaveChangesAsync(ct);
-            await _signalR.NotifyUserAsync(convoDto.ConversationId, "ReceiveMessage", incoming.Adapt<MessageDto>());
+
+            // await _signalR.NotifyUserAsync(convoDto.ConversationId, "ReceiveMessage", incoming.Adapt<MessageDto>());
+
+            //var dto = msg.Adapt<MessageDto>();
+
+            //await _hubContext.Clients
+            //   .Group(convoDto.ConversationId.ToString())
+            //   .SendAsync("ReceiveMessage", dto, ct);
+
+            //var msgdto = msg.Adapt<MessageDto>();
+
+            //await _hubContext.Clients
+            //   .Group(convoDto.ConversationId.ToString())
+            //   .SendAsync("ReceiveMessage", msgdto, ct);
 
             var buttons = new[]
             {
-        new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
-        new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
-    };
+                new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
+                new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
+            };
 
             if (!convoDto.Initialized)
             {
                 await _conversationService.UpdateAsync(new UpdateConversationRequest
                 {
                     ConversationId = convoDto.ConversationId,
-                    Initialized = true
+                    Initialized = true,
+                    Priority = PriorityLevel.Normal,
+                    Status = ConversationStatus.Bot,
+                    IsArchived = false
                 }, ct);
 
                 await _messageService.SendMessageAsync(new SendMessageRequest
@@ -117,7 +138,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     SenderId = BotUserId,
                     Content = "Hola, soy *Sofía*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
                     MessageType = MessageType.Text
-                }, ct);
+                }, false, ct);
 
                 await _whatsAppService.SendInteractiveButtonsAsync(
                     convoDto.ConversationId,
@@ -138,12 +159,13 @@ namespace CustomerService.API.Pipelines.Implementations
                 await _messageService.SendMessageAsync(new SendMessageRequest
                 {
                     ConversationId = convoDto.ConversationId,
-                    SenderId = contactId,
+                    SenderId = contactDto.Id,
                     Content = title,
                     MessageType = MessageType.Interactive,
                     InteractiveId = payload.InteractiveId,
-                    InteractiveTitle = title
-                }, ct);
+                    InteractiveTitle = title,
+
+                }, true, ct);
 
                 switch (payload.InteractiveId)
                 {
@@ -160,7 +182,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             SenderId = BotUserId,
                             Content = "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
                             MessageType = MessageType.Text
-                        }, ct);
+                        },  false ,ct);
                         return;
 
                     case "2":
@@ -176,7 +198,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             SenderId = BotUserId,
                             Content = "Tu solicitud ha sido recibida. En breve un agente te atenderá.",
                             MessageType = MessageType.Text
-                        }, ct);
+                        }, false, ct);
 
                         var admins = await _userService.GetByRoleAsync("Admin", ct);
                         var adminIds = admins.Select(a => a.UserId).ToArray();
@@ -205,9 +227,9 @@ namespace CustomerService.API.Pipelines.Implementations
             await _messageService.SendMessageAsync(new SendMessageRequest
             {
                 ConversationId = convoDto.ConversationId,
-                SenderId = contactId,
+                SenderId = contactDto.Id,
                 Content = payload.TextBody
-            }, ct);
+            }, false , ct);
         }
 
         private async Task HandleBotReplyAsync(
@@ -242,7 +264,7 @@ namespace CustomerService.API.Pipelines.Implementations
                 SenderId = BotUserId,
                 Content = botReply
             };
-            await _messageService.SendMessageAsync(sendReq, ct);
+            await _messageService.SendMessageAsync(sendReq, false, ct);
             // (MessageService internamente guarda en BD, envía por WhatsApp API y dispara SignalR)
         }
 

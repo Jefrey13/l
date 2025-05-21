@@ -9,6 +9,7 @@ using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
@@ -20,18 +21,21 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly IWhatsAppService _whatsAppService;
         private readonly IHubContext<ChatHub> _hub;
+        private readonly INicDatetime _nicDatetime; 
 
         public MessageService(
             IUnitOfWork uow,
             IWhatsAppService whatsAppService,
-            IHubContext<ChatHub> hubContext)
+            IHubContext<ChatHub> hubContext,
+            INicDatetime nicDatetime)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
             _hub = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+            _nicDatetime = nicDatetime;
         }
 
-        public async Task<MessageDto> SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default)
+        public async Task<MessageDto> SendMessageAsync(SendMessageRequest request, bool isContact = false, CancellationToken ct = default)
         {
             if (request.ConversationId <= 0)
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
@@ -39,10 +43,11 @@ namespace CustomerService.API.Services.Implementations
             var msg = new Message
             {
                 ConversationId = request.ConversationId,
-                SenderUserId = request.SenderId,
+                SenderUserId = isContact ? null : request.SenderId,
+                SenderContactId = isContact ? request.SenderId : null,
                 Content = request.Content,
                 MessageType = request.MessageType,
-                SentAt = DateTimeOffset.UtcNow,
+                SentAt = await _nicDatetime.GetNicDatetime(),
                 Status = MessageStatus.Sent,
                 ExternalId = Guid.NewGuid().ToString(),
                 InteractiveId = request.InteractiveId,
@@ -60,8 +65,16 @@ namespace CustomerService.API.Services.Implementations
             //    msg.Attachments.Add(attachment);
             //}
 
-            await _uow.Messages.AddAsync(msg, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
+            await _uow.Messages.AddAsync(msg, ct);
+
+            try
+            {
+                var data = await _uow.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error: " + ex.Message);
+            }
 
             // Enviar via WhatsApp Cloud API
             //if (msg.Attachments.Any())
@@ -74,17 +87,23 @@ namespace CustomerService.API.Services.Implementations
             //}
             //else
             //{
-            await _whatsAppService.SendTextAsync(
+
+            //Solo enviar menajes por whatsapp solo cuando es un usuario y no un  contacto (contacto es quien nos envia, no se puede enviar a el mismo sus respuestas.)
+            if (!isContact)
+            {
+               await _whatsAppService.SendTextAsync(
                 msg.ConversationId,
                 msg.SenderUserId ?? 0,
                 msg.Content,
-                cancellation);
+                ct);
+            }
             //}
 
             var dto = msg.Adapt<MessageDto>();
+
              await _hub.Clients
                 .Group(msg.ConversationId.ToString())
-                .SendAsync("ReceiveMessage", dto, cancellation);
+                .SendAsync("ReceiveMessage", dto, ct);
 
             return dto;
         }

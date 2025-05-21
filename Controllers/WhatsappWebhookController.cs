@@ -100,7 +100,7 @@ namespace CustomerService.API.Controllers
             // Aquí defines quién está enviando:
             //Hay que extraer del jwt el identificador del quien envia el mensaje. Temporalmente se definira al admin 1. No lo elvides...
 
-            await _messageService.SendMessageAsync(req, cancellation);
+            await _messageService.SendMessageAsync(req, false, cancellation);
             //await _whatsAppService
             //    .SendTextAsync(conversationId, BotUserId, req.Body, cancellation);
 

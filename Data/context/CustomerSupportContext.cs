@@ -42,7 +42,7 @@ public partial class CustomerSupportContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=LAPTOP-N56GM63T;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-91LKTJV\\SQLEXPRESS;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -205,9 +205,17 @@ public partial class CustomerSupportContext : DbContext
             .HasConversion<int>()                   
             .HasDefaultValue(PriorityLevel.Normal);
 
-            entity.Property(e => e.Initialized);
+            entity.Property(e => e.Initialized)
+            .HasDefaultValue(false);
 
             entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property(e => e.Status)
+            .HasConversion<string>()
+            .HasDefaultValue(ConversationStatus.Bot);
+
+            entity.Property(e => e.AssignedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
 
             entity.Property(e => e.FirstResponseAt)
@@ -226,11 +234,11 @@ public partial class CustomerSupportContext : DbContext
                 .IsRowVersion()
                 .IsConcurrencyToken();
 
-            entity.HasOne(e => e.Company)
-                .WithMany(c => c.Conversations)
-                .HasForeignKey(e => e.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Conversations_Companies");
+            //entity.HasOne(e => e.Company)
+            //    .WithMany(c => c.Conversations)
+            //    .HasForeignKey(e => e.CompanyId)
+            //    .OnDelete(DeleteBehavior.Restrict)
+            //    .HasConstraintName("FK_Conversations_Companies");
 
             entity.HasOne(e => e.ClientContact)
                 .WithMany(cl => cl.ConversationClient)
@@ -268,6 +276,10 @@ public partial class CustomerSupportContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue(MessageType.Text);
 
+            entity.Property(e => e.ExternalId)
+            .HasMaxLength(255)
+            .IsRequired(false);
+
             entity.Property(e => e.Status)
                 .HasConversion<string>()
                 .HasMaxLength(20)
@@ -285,9 +297,16 @@ public partial class CustomerSupportContext : DbContext
                 .HasColumnType("datetimeoffset(7)")
                 .IsRequired(false);
 
+            entity.Property(e => e.InteractiveId)
+            .IsRequired(false);
+
+            entity.Property(e => e.InteractiveTitle)
+            .HasMaxLength(255)
+            .IsRequired(false);
+
             entity.Property(e => e.ExternalId)
                 .HasMaxLength(100)
-                .IsRequired();
+                .IsRequired(false);
 
             entity.HasOne(e => e.Conversation)
                 .WithMany(c => c.Messages)
@@ -358,6 +377,7 @@ public partial class CustomerSupportContext : DbContext
                 .HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Users_Companies");
+
         });
 
         modelBuilder.Entity<UserRole>(entity =>
@@ -407,12 +427,29 @@ public partial class CustomerSupportContext : DbContext
         modelBuilder.Entity<ConversationTag>(entity => {
             entity.ToTable("ConversationTags", "chat");
             entity.HasKey(ct => new { ct.ConversationId, ct.TagId });
+
             entity.HasOne(ct => ct.Conversation)
                   .WithMany(c => c.ConversationTags)
                   .HasForeignKey(ct => ct.ConversationId);
+
             entity.HasOne(ct => ct.Tag)
                   .WithMany(t => t.ConversationTags)
                   .HasForeignKey(ct => ct.TagId);
+        });
+
+        modelBuilder.Entity<Company>(entity =>
+        {
+            entity.ToTable("Companies", "crm");
+            entity.HasKey(c => c.CompanyId);
+            entity.Property(c => c.Name).HasMaxLength(150).IsRequired();
+            entity.Property(c => c.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(c => c.UpdatedAt).IsRequired(false);
+            //entity.Property(c => c.RowVersion)
+            //    .IsRowVersion()
+            //    .IsConcurrencyToken();
+            entity.Property(c => c.Description).HasMaxLength(255);
+            entity.Property(c => c.Address).HasMaxLength(255);
+
         });
 
         modelBuilder.Entity<Notification>(entity => {

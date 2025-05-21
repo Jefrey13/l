@@ -9,7 +9,11 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public int MessageId { get; set; }
         public int ConversationId { get; set; }
         public int? SenderUserId { get; set; }
+        public string? SenderUserName { get; set; }
+
         public int? SenderContactId { get; set; }
+        public string? SenderContactName { get; set; }
+
         public bool IsIncoming { get; set; }
         public string? Content { get; set; }
         public string ExternalId { get; set; } = string.Empty;

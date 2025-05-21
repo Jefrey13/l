@@ -51,6 +51,10 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.AssignedByUser)
                 .ToListAsync(cancellation);
 
+            var dto = convs.Adapt<ConversationDto>();
+
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
 
@@ -65,6 +69,10 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.AssignedByUser)
                 .ToListAsync(cancellation);
 
+            var dto = convs.Adapt<ConversationDto>();
+
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
         public async Task<ConversationDto> StartAsync(StartConversationRequest request, CancellationToken cancellation = default)
@@ -77,7 +85,7 @@ namespace CustomerService.API.Services.Implementations
             var now = await _nicDatetime.GetNicDatetime();
             var conv = new Conversation
             {
-                CompanyId = request.CompanyId,
+                //CompanyId = request.CompanyId,
                 ClientContactId = request.ClientContactId,
                 Priority = request.Priority,
                 Status = ConversationStatus.Bot,
@@ -104,7 +112,8 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
-            // ④ envía el evento a todos los clientes conectados
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+
             await _hubContext
                 .Clients
                 .All
@@ -139,6 +148,8 @@ namespace CustomerService.API.Services.Implementations
             //    cancellation);
 
             var dto = conv.Adapt<ConversationDto>();
+
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
 
             await _hubContext
             .Clients
@@ -195,7 +206,7 @@ namespace CustomerService.API.Services.Implementations
             var now = await _nicDatetime.GetNicDatetime();
             conv = new Conversation
             {
-                CompanyId = contact.CompanyId,
+                //CompanyId = contact.CompanyId,
                 ClientContactId = clientContactId,
                 Status = ConversationStatus.Bot,
                 CreatedAt = now,
@@ -213,16 +224,17 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+
             await _hubContext
                 .Clients
                 .All
                 .SendAsync("ConversationCreated", dto, cancellation);
 
-
             return dto;
         }
 
-        public async Task UpdateAsync(UpdateConversationRequest request, CancellationToken cancellation = default)
+        public async Task UpdateAsync(UpdateConversationRequest request, CancellationToken ct = default)
         {
             if (request.ConversationId <= 0)
                 throw new ArgumentException("Invalid conversation ID.", nameof(request.ConversationId));
@@ -230,7 +242,7 @@ namespace CustomerService.API.Services.Implementations
             var conv = await _uow.Conversations
                 .GetAll()
                 .Include(c => c.ConversationTags)
-                .SingleOrDefaultAsync(c => c.ConversationId == request.ConversationId, cancellation)
+                .SingleOrDefaultAsync(c => c.ConversationId == request.ConversationId, ct)
                 ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found.");
 
             // Actualizar campos opcionales
@@ -245,17 +257,17 @@ namespace CustomerService.API.Services.Implementations
             if (request.IsArchived.HasValue)
                 conv.IsArchived = request.IsArchived.Value;
 
-            // Actualizar tags: sincronizar la lista
+           // Actualizar tags: sincronizar la lista
             if (request.TagIds != null)
             {
-                var existingTagIds = conv.ConversationTags.Select(ct => ct.TagId).ToList();
+                var existingTagIds = conv.ConversationTags.Select(ctr => ctr.TagId).ToList();
 
                 // Remover tags que ya no están
                 var toRemove = conv.ConversationTags
                     .Where(ct => !request.TagIds.Contains(ct.TagId))
                     .ToList();
-                foreach (var ct in toRemove)
-                    conv.ConversationTags.Remove(ct);
+                foreach (var ctr in toRemove)
+                    conv.ConversationTags.Remove(ctr);
 
                 // Añadir nuevos tags
                 var toAdd = request.TagIds.Except(existingTagIds);
@@ -269,16 +281,18 @@ namespace CustomerService.API.Services.Implementations
 
             conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-            _uow.Conversations.Update(conv);
+            _uow.Conversations.Update(conv, ct);
 
-            await _uow.SaveChangesAsync(cancellation);
+            await _uow.SaveChangesAsync(ct);
 
             var dto = conv.Adapt<ConversationDto>();
+
+            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
 
             await _hubContext
                  .Clients
                  .All
-                 .SendAsync("ConversationUpdated", dto, cancellation);
+                 .SendAsync("ConversationUpdated", dto, ct);
         }
 
         public async Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)
