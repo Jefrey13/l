@@ -16,5 +16,8 @@ namespace CustomerService.API.Hubs
 
         public Task BroadcastConversationCreated(object conversationDto) =>
             Clients.All.SendAsync("ConversationCreated", conversationDto);
+
+        public Task BroadcastConversationUpdated(object conversationDto) =>
+         Clients.All.SendAsync("ConversationUpdated", conversationDto);
     }
 }

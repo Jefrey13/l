@@ -103,5 +103,25 @@ namespace CustomerService.API.Services.Implementations
 
             return principal;
         }
+
+        public ClaimsPrincipal GetPrincipalFromToken(string token)
+        {
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(_key),
+                ValidateIssuer = true,
+                ValidIssuer = _jwtSettings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = _jwtSettings.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero,
+                RoleClaimType = ClaimTypes.Role
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+            // lanza si no es válido
+            return handler.ValidateToken(token, validationParameters, out _);
+        }
     }
 }

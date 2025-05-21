@@ -104,7 +104,7 @@ namespace CustomerService.API.Services.Implementations
                 "ReceiveMessage",
                 dto);
 
-            if (webhook.Type == MessageType.Text && conv.Status == ConversationStatus.New)
+            if (webhook.Type == MessageType.Text && conv.Status == ConversationStatus.New.ToString())
             {
                 var sr = new SupportRequestedDto
                 {

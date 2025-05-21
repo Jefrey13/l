@@ -8,5 +8,7 @@ namespace CustomerService.API.Services.Interfaces
         string GenerateAccessToken(User user);
         string GenerateRefreshToken();
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
+
+        ClaimsPrincipal GetPrincipalFromToken(string token);
     }
 }

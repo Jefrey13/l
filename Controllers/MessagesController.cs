@@ -50,12 +50,12 @@ namespace CustomerService.API.Controllers
         {
             req.ConversationId = conversationId;
 
-            await _messages.SendMessageAsync(req, ct);
+            var dto = await _messages.SendMessageAsync(req, ct);
 
             return CreatedAtRoute(
                 routeName: "GetMessagesByConversation",
                 routeValues: new { conversationId },
-                value: new ApiResponse<MessageDto>(null, "Message sent.")
+                value: new ApiResponse<MessageDto>(dto, "Message sent.")
             );
         }
     }

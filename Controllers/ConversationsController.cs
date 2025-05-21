@@ -93,5 +93,20 @@ namespace CustomerService.API.Controllers
             await _conversations.CloseAsync(id, ct);
             return NoContent();
         }
+
+        [HttpGet("getByRole", Name = "GetByUserRole")]
+        [SwaggerOperation(Summary = "Get conversation details by UserRole")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByUserRole(CancellationToken ct = default)
+        {
+            var jwtToken = HttpContext.Request
+                             .Headers["Authorization"]
+                             .ToString()
+                             .Split(' ')[1];
+
+            var list = await _conversations.GetConversationByRole(jwtToken, ct);
+            return Ok(new ApiResponse<IEnumerable<ConversationDto>>(list,
+                       "Conversations retrieved by user role."));
+        }
     }
 }

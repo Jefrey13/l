@@ -12,5 +12,9 @@ namespace CustomerService.API.Dtos.RequestDtos
         public MessageType MessageType { get; set; } = MessageType.Text;
         public IFormFile? File { get; set; }
         public string? Caption { get; set; }
+
+        public string? InteractiveId { get; set; }
+        public string? InteractiveTitle { get; set; }
+
     }
 }

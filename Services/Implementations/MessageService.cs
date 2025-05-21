@@ -31,7 +31,7 @@ namespace CustomerService.API.Services.Implementations
             _hub = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         }
 
-        public async Task SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default)
+        public async Task<MessageDto> SendMessageAsync(SendMessageRequest request, CancellationToken cancellation = default)
         {
             if (request.ConversationId <= 0)
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
@@ -44,7 +44,9 @@ namespace CustomerService.API.Services.Implementations
                 MessageType = request.MessageType,
                 SentAt = DateTimeOffset.UtcNow,
                 Status = MessageStatus.Sent,
-                ExternalId = Guid.NewGuid().ToString()
+                ExternalId = Guid.NewGuid().ToString(),
+                InteractiveId = request.InteractiveId,
+                InteractiveTitle = request.InteractiveTitle
             };
 
             //if (request.File != null)
@@ -80,9 +82,11 @@ namespace CustomerService.API.Services.Implementations
             //}
 
             var dto = msg.Adapt<MessageDto>();
-            await _hub.Clients
+             await _hub.Clients
                 .Group(msg.ConversationId.ToString())
                 .SendAsync("ReceiveMessage", dto, cancellation);
+
+            return dto;
         }
 
         public async Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default)

@@ -14,7 +14,10 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? Content { get; set; }
         public string ExternalId { get; set; } = string.Empty;
         public MessageType MessageType { get; set; }
-        public MessageStatus Status { get; set; }
+
+        public string? InteractiveId { get; set; }
+        public string? InteractiveTitle { get; set; }
+        public string Status { get; set; }
         public DateTimeOffset SentAt { get; set; }
         public DateTimeOffset? DeliveredAt { get; set; }
         public DateTimeOffset? ReadAt { get; set; }

@@ -16,6 +16,9 @@ namespace CustomerService.API.Models
 
         public string? Content { get; set; }
         public string ExternalId { get; set; } = string.Empty;
+
+        public string? InteractiveId { get; set; }
+        public string? InteractiveTitle { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Text;
 
         public MessageStatus Status { get; set; } = MessageStatus.Sent;

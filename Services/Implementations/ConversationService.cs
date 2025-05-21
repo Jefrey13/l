@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,17 +25,20 @@ namespace CustomerService.API.Services.Implementations
         private readonly INicDatetime _nicDatetime;
         private readonly INotificationService _notification;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly ITokenService _tokenService;
 
         public ConversationService(
             IUnitOfWork uow,
             INicDatetime nicDatetime,
             INotificationService notification,
-            IHubContext<ChatHub> hubContext)
+            IHubContext<ChatHub> hubContext,
+            ITokenService tokenService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
             _notification = notification ?? throw new ArgumentNullException(nameof(notification));
             _hubContext = hubContext;
+            _tokenService = tokenService;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -137,9 +141,9 @@ namespace CustomerService.API.Services.Implementations
             var dto = conv.Adapt<ConversationDto>();
 
             await _hubContext
-                .Clients
-                .All
-                .SendAsync("ConversationCreated", dto, cancellation);
+            .Clients
+            .All
+            .SendAsync("ConversationUpdated", dto, cancellation);
         }
 
         public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -272,9 +276,22 @@ namespace CustomerService.API.Services.Implementations
             var dto = conv.Adapt<ConversationDto>();
 
             await _hubContext
-                .Clients
-                .All
-                .SendAsync("ConversationCreated", dto, cancellation);
+                 .Clients
+                 .All
+                 .SendAsync("ConversationUpdated", dto, cancellation);
+        }
+
+        public async Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)
+        {
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var roles = principal.FindAll(ClaimTypes.Role).Select(r => r.Value);
+
+            if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+                return await GetAllAsync(cancellation);
+
+            var convs = await _uow.Conversations.GetByAgentAsync(userId, cancellation);
+            return convs.Select(c => c.Adapt<ConversationDto>());
         }
 
     }

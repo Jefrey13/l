@@ -6,11 +6,17 @@ public class ConversationDto
     public int ConversationId { get; set; }
     public int? CompanyId { get; set; }
     public int ClientContactId { get; set; }
+    public string? ClientContactName { get; set; }
+    public string? ContactNumber { get; set; }
     public PriorityLevel Priority { get; set; }
     public int? AssignedAgentId { get; set; }
+
+    public string? AssignedAgentName { get; set; }
     public int? AssignedByUserId { get; set; }
+
+    public string? AssignedByUserName { get; set; }
     public DateTime? AssignedAt { get; set; }
-    public ConversationStatus Status { get; set; }
+    public string Status { get; set; }
     public bool Initialized { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? FirstResponseAt { get; set; }

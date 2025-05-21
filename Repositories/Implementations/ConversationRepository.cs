@@ -16,20 +16,6 @@ namespace CustomerService.API.Repositories.Implementations
         public ConversationRepository(CustomerSupportContext context)
             : base(context) { }
 
-        public async Task<IEnumerable<Conversation>> GetByAgentAsync(int agentId, CancellationToken cancellation = default)
-        {
-            if (agentId <= 0)
-                throw new ArgumentException("agentId must be greater than zero.", nameof(agentId));
-
-            return await _dbSet
-                .AsNoTracking()
-                .Where(c => c.AssignedAgentId == agentId)
-                .Include(c => c.Messages)
-                .Include(c => c.ConversationTags)
-                    .ThenInclude(ct => ct.Tag)
-                .ToListAsync(cancellation);
-        }
-
         public async Task<IEnumerable<Conversation>> GetPendingAsync(CancellationToken cancellation = default)
         {
             return await _dbSet
@@ -39,6 +25,20 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(c => c.Messages)
                 .Include(c => c.ConversationTags)
                     .ThenInclude(ct => ct.Tag)
+                .ToListAsync(cancellation);
+        }
+
+        public async Task<IEnumerable<Conversation>> GetByAgentAsync(int agentId, CancellationToken cancellation = default)
+        {
+            if (agentId <= 0) throw new ArgumentException(nameof(agentId));
+
+            return await _dbSet.AsNoTracking()
+                .Where(c => c.AssignedAgentId == agentId)
+                .Include(c => c.ClientContact)
+                .Include(c => c.AssignedAgent)
+                .Include(c => c.AssignedByUser)
+                .Include(c => c.Messages)
+                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .ToListAsync(cancellation);
         }
     }

@@ -68,47 +68,41 @@ namespace CustomerService.API.Pipelines.Implementations
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
         {
-            // 1. Normalizar payload
             var msg = value.Messages.First();
             var payload = new IncomingPayload
             {
                 From = msg.From,
                 TextBody = msg.Text?.Body,
                 InteractiveId = msg.Interactive?.ListReply?.Id,
-                Type = (msg.Interactive?.ListReply != null)
-                                  ? InteractiveType.Interactive
-                                  : InteractiveType.Text
+                Type = msg.Interactive?.ListReply != null
+                                ? InteractiveType.Interactive
+                                : InteractiveType.Text
             };
 
-            // 2. Obtener o crear contacto
-            var contactDto = await _contactService
-                .GetOrCreateByPhoneAsync(payload.From, ct);
+            var contactDto = await _contactService.GetOrCreateByPhoneAsync(payload.From, ct);
             var contactId = contactDto.Id;
 
-            // 3. Obtener o crear conversación
-            var convoDto = await _conversationService
-                .GetOrCreateAsync(contactId, ct);
+            var convoDto = await _conversationService.GetOrCreateAsync(contactId, ct);
 
             var incoming = new Message
             {
                 ConversationId = convoDto.ConversationId,
-                SenderContactId = contactDto.Id,
-                Content = msg.Text?.Body,
-                //Por defecto por el momento es texto.
+                SenderContactId = contactId,
+                Content = payload.TextBody,
                 MessageType = MessageType.Text,
                 SentAt = DateTimeOffset.UtcNow,
                 Status = MessageStatus.Delivered
             };
             await _uow.Messages.AddAsync(incoming, ct);
             await _uow.SaveChangesAsync(ct);
+            await _signalR.NotifyUserAsync(convoDto.ConversationId, "ReceiveMessage", incoming.Adapt<MessageDto>());
 
-            var dto = incoming.Adapt<MessageDto>();
-            await _signalR.NotifyUserAsync(
-                 convoDto.ConversationId,
-                "ReceiveMessage",
-                dto);
+            var buttons = new[]
+            {
+        new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
+        new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
+    };
 
-            // 4. Si no inicializada, enviar saludo + menú interactivo
             if (!convoDto.Initialized)
             {
                 await _conversationService.UpdateAsync(new UpdateConversationRequest
@@ -117,129 +111,103 @@ namespace CustomerService.API.Pipelines.Implementations
                     Initialized = true
                 }, ct);
 
-                // Saludo
-                var sendDto0 = new SendMessageRequest
+                await _messageService.SendMessageAsync(new SendMessageRequest
                 {
                     ConversationId = convoDto.ConversationId,
                     SenderId = BotUserId,
                     Content = "Hola, soy *Sofía*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
-                    MessageType = MessageType.Text,
-                    File = null,
-                    Caption = null
-                };
+                    MessageType = MessageType.Text
+                }, ct);
 
-                await _messageService.SendMessageAsync(sendDto0, ct);
-
-                // Menú interactivo
-                var buttons = new[] {
-                    new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
-                    new WhatsAppInteractiveButton {Id = "2", Title = "Hablar con soporte" }
-                };
                 await _whatsAppService.SendInteractiveButtonsAsync(
-                    convoDto.ConversationId, BotUserId,
-                    "Selecciona una opción:", buttons, ct);
+                    convoDto.ConversationId,
+                    BotUserId,
+                    "Selecciona una opción:",
+                    buttons,
+                    ct
+                );
 
                 return;
             }
 
-            // 5. Si es respuesta interactiva...
             if (payload.Type == InteractiveType.Interactive)
             {
+                var selected = buttons.FirstOrDefault(b => b.Id == payload.InteractiveId);
+                var title = selected?.Title ?? payload.InteractiveId;
+
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = convoDto.ConversationId,
+                    SenderId = contactId,
+                    Content = title,
+                    MessageType = MessageType.Interactive,
+                    InteractiveId = payload.InteractiveId,
+                    InteractiveTitle = title
+                }, ct);
+
                 switch (payload.InteractiveId)
                 {
                     case "1":
-                        // Continuar con bot
                         await _conversationService.UpdateAsync(new UpdateConversationRequest
                         {
                             ConversationId = convoDto.ConversationId,
                             Status = ConversationStatus.Bot
                         }, ct);
 
-                        //await _whatsAppService.SendTextAsync(
-                        //    convoDto.ConversationId, BotUserId,
-                        //    "Perfecto, continuemos. ¿En qué más puedo ayudarte?", ct);
-
-                        var sendDto = new SendMessageRequest
+                        await _messageService.SendMessageAsync(new SendMessageRequest
                         {
                             ConversationId = convoDto.ConversationId,
                             SenderId = BotUserId,
                             Content = "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
-                            MessageType = MessageType.Text,
-                            File = null,
-                            Caption = null
-                        };
-
-                        await _messageService.SendMessageAsync(sendDto, ct);
+                            MessageType = MessageType.Text
+                        }, ct);
                         return;
 
                     case "2":
-                        // Solicitar soporte humano
                         await _conversationService.UpdateAsync(new UpdateConversationRequest
                         {
                             ConversationId = convoDto.ConversationId,
                             Status = ConversationStatus.Waiting
                         }, ct);
 
-                        // Mensaje de confirmación al cliente
-                        //await _whatsAppService.SendTextAsync(
-                        //    convoDto.ConversationId, BotUserId,
-                        //    "Tu solicitud ha sido recibida. En breve un agente te atenderá.", ct);
-
-                        var sendDto1 = new SendMessageRequest
+                        await _messageService.SendMessageAsync(new SendMessageRequest
                         {
                             ConversationId = convoDto.ConversationId,
                             SenderId = BotUserId,
                             Content = "Tu solicitud ha sido recibida. En breve un agente te atenderá.",
-                            MessageType = MessageType.Text,
-                            File = null,
-                            Caption = null
-                        };
+                            MessageType = MessageType.Text
+                        }, ct);
 
-                        await _messageService.SendMessageAsync(sendDto1, ct);
-
-
-                        // Notificar a todos los admins
-                        var admins = await _userService
-                            .GetByRoleAsync("Admin", ct); // devuelve List<UserDto>
-
+                        var admins = await _userService.GetByRoleAsync("Admin", ct);
                         var adminIds = admins.Select(a => a.UserId).ToArray();
-
-                        var supportPayload = JsonSerializer.Serialize(new
+                        var supportJson = JsonSerializer.Serialize(new
                         {
                             convoDto.ConversationId,
                             contactDto.Phone,
                             contactDto.WaName
                         });
-
                         await _notification.CreateAsync(
                             NotificationType.SupportRequested,
-                            supportPayload,
+                            supportJson,
                             adminIds,
-                            ct);
-
+                            ct
+                        );
                         return;
                 }
             }
 
-            // 6. Estado BOT: IA + respuesta
-            if (convoDto.Status == ConversationStatus.Bot)
+            if (convoDto.Status == ConversationStatus.Bot.ToString())
             {
-                // ... tu lógica Gemini y respuesta ...
                 await HandleBotReplyAsync(convoDto, payload.TextBody, ct);
                 return;
             }
 
-            // 7. Estado Waiting/Human: persistir mensaje y notificar por SignalR
             await _messageService.SendMessageAsync(new SendMessageRequest
             {
                 ConversationId = convoDto.ConversationId,
                 SenderId = contactId,
                 Content = payload.TextBody
             }, ct);
-
-            //await _hubContext.Clients
-            //    .Group(convoDto.ConversationId.ToString())
-            //    .SendAsync("ReceiveMessage", sentDto, ct);
         }
 
         private async Task HandleBotReplyAsync(
