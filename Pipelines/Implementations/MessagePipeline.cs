@@ -95,9 +95,10 @@ namespace CustomerService.API.Pipelines.Implementations
                 SenderContactId = contactDto.Id,
                 Content = payload.TextBody,
                 MessageType = MessageType.Text,
-                SentAt = DateTimeOffset.UtcNow,
+                SentAt = await _nicDatetime.GetNicDatetime(),
                 Status = MessageStatus.Delivered
             };
+
             await _uow.Messages.AddAsync(incoming, ct);
             await _uow.SaveChangesAsync(ct);
 
@@ -121,6 +122,7 @@ namespace CustomerService.API.Pipelines.Implementations
                 new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
             };
 
+            //Solo 1 ves, luego de crearse la conversación
             if (!convoDto.Initialized)
             {
                 await _conversationService.UpdateAsync(new UpdateConversationRequest
@@ -151,11 +153,14 @@ namespace CustomerService.API.Pipelines.Implementations
                 return;
             }
 
+            //Cuando el usuario seleccione una opcion de la lista enviada.
             if (payload.Type == InteractiveType.Interactive)
             {
                 var selected = buttons.FirstOrDefault(b => b.Id == payload.InteractiveId);
                 var title = selected?.Title ?? payload.InteractiveId;
 
+
+                //la opcion seleccionada por el cliente, por eso el true
                 await _messageService.SendMessageAsync(new SendMessageRequest
                 {
                     ConversationId = convoDto.ConversationId,
@@ -202,12 +207,16 @@ namespace CustomerService.API.Pipelines.Implementations
 
                         var admins = await _userService.GetByRoleAsync("Admin", ct);
                         var adminIds = admins.Select(a => a.UserId).ToArray();
+                        
+
+                        //Enviar una notificacion a los usuario del sitio web, por medio de signalr para mostrar una alerta con toast, y admeas actualizar el contandor en la opcion de notificaciones menu.
                         var supportJson = JsonSerializer.Serialize(new
                         {
                             convoDto.ConversationId,
                             contactDto.Phone,
                             contactDto.WaName
                         });
+
                         await _notification.CreateAsync(
                             NotificationType.SupportRequested,
                             supportJson,
@@ -224,12 +233,12 @@ namespace CustomerService.API.Pipelines.Implementations
                 return;
             }
 
-            await _messageService.SendMessageAsync(new SendMessageRequest
-            {
-                ConversationId = convoDto.ConversationId,
-                SenderId = contactDto.Id,
-                Content = payload.TextBody
-            }, false , ct);
+            //await _messageService.SendMessageAsync(new SendMessageRequest
+            //{
+            //    ConversationId = convoDto.ConversationId,
+            //    SenderId = contactDto.Id,
+            //    Content = payload.TextBody
+            //}, false , ct);
         }
 
         private async Task HandleBotReplyAsync(
@@ -237,11 +246,11 @@ namespace CustomerService.API.Pipelines.Implementations
             string? userText,
             CancellationToken ct = default)
         {
-            // 1. Recuperar el histórico de la conversación
+            // Recuperar el histórico de la conversación
             var history = await _messageService
                 .GetByConversationAsync(convoDto.ConversationId, ct);
 
-            // 2. Construir el prompt para Gemini
+            // Construir el prompt para Gemini
             var allTexts = history
                 .Select(m => m.Content)
                 .Where(t => !string.IsNullOrWhiteSpace(t));
@@ -252,12 +261,12 @@ namespace CustomerService.API.Pipelines.Implementations
                            + Environment.NewLine
                            + (userText ?? "");
 
-            // 3. Invocar Gemini
+            // Invocar Gemini
             var botReply = (await _geminiClient
                 .GenerateContentAsync(fullPrompt, userText ?? "", ct))
                 .Trim();
 
-            // 4. Enviar y persistir el mensaje del bot
+            // Enviar y persistir el mensaje del bot
             var sendReq = new SendMessageRequest
             {
                 ConversationId = convoDto.ConversationId,

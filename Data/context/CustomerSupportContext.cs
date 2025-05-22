@@ -40,7 +40,7 @@ public partial class CustomerSupportContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=LAPTOP-N56GM63T;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
+        => optionsBuilder.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -359,12 +359,13 @@ public partial class CustomerSupportContext : DbContext
                 .IsRowVersion()
                 .IsConcurrencyToken();
 
+            entity.Property(e => e.LastOnline);
+
             entity.HasOne(e => e.Company)
                 .WithMany(c => c.Users)
                 .HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Users_Companies");
-
         });
 
         modelBuilder.Entity<UserRole>(entity =>

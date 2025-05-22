@@ -26,7 +26,6 @@ namespace CustomerService.API.Repositories.Implementations
             INotificationRecipientRepository notificationRecipientRepository)
         {
             _context = context;
-
             Users = userRepository;
             Roles = roleRepository;
             AuthTokens = authTokenRepository;

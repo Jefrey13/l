@@ -25,6 +25,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly JwtSettings _jwtSettings;
         private readonly ITokenService _jwt;
         private readonly IAuthTokenRepository _tokens;
+        private readonly INicDatetime _nicDatetime;
 
         public UserService(
             IUnitOfWork uow,
@@ -33,7 +34,8 @@ namespace CustomerService.API.Services.Implementations
             IEmailService email,
             IOptions<JwtSettings> jwtOptions,
             ITokenService jwt,
-            IAuthTokenRepository tokens)
+            IAuthTokenRepository tokens,
+            INicDatetime nicDatetime)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
@@ -42,6 +44,7 @@ namespace CustomerService.API.Services.Implementations
             _jwt = jwt ?? throw new ArgumentNullException(nameof(jwt));
             _jwtSettings = jwtOptions?.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
             _tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
+            _nicDatetime = nicDatetime;
         }
 
         public async Task<PagedResponse<UserDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
@@ -158,16 +161,24 @@ namespace CustomerService.API.Services.Implementations
                 FullName = request.FullName,
                 Email = request.Email,
                 PasswordHash = Encoding.UTF8.GetBytes(hash),
-                IsActive = true,
+                IsActive = false,
                 CompanyId = request.CompanyId,
                 Phone = request.Phone,
                 Identifier = request.Identifier,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = await _nicDatetime.GetNicDatetime(),
                 ImageUrl = request.ImageUrl
             };
 
             await _uow.Users.AddAsync(user, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
+
+            try
+            {
+                await _uow.SaveChangesAsync(cancellation);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error", e.Message);
+            }
 
             var currentRoles = new List<RoleDto>();
             if (request.RoleIds.Any())
@@ -269,12 +280,15 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
         }
 
-        public async Task DeleteAsync(int userId, CancellationToken cancellation = default)
+        public async Task ActivationAsync(int userId, CancellationToken cancellation = default)
         {
             if (userId <= 0) throw new ArgumentException("Invalid user ID.", nameof(userId));
 
             var user = await _uow.Users.GetByIdAsync(userId, cancellation) ?? throw new KeyNotFoundException("User not found.");
-            _uow.Users.Remove(user);
+
+            user.IsActive = !user.IsActive;
+            user.UpdatedAt = DateTime.UtcNow;
+            _uow.Users.Update(user);
             await _uow.SaveChangesAsync(cancellation);
         }
 

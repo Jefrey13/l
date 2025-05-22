@@ -68,13 +68,13 @@ namespace CustomerService.API.Controllers
             return NoContent();
         }
 
-        [HttpDelete("{id}", Name = "DeleteUser")]
+        [HttpPatch("{id}", Name = "ActivationUser")]
         [SwaggerOperation(Summary = "Delete a user by ID")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken ct = default)
+        public async Task<IActionResult> Activation([FromRoute] int id, CancellationToken ct = default)
         {
-            await _users.DeleteAsync(id, ct);
+            await _users.ActivationAsync(id, ct);
             return NoContent();
         }
 
@@ -89,7 +89,9 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<IEnumerable<AgentDto>>(agents, $"Usuarios con rol '{role}' obtenidos."));
         }
 
-        [HttpGet("{id}/status")]
+        [HttpGet("{id}/status", Name = "GetStatus")]
+        [SwaggerOperation(Summary = "Estado de conexión del usuario")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<AgentDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatus(int id)
         {
             var last = await _presence.GetLastOnlineAsync(id);

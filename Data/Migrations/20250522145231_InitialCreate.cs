@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CustomerService.API.Migrations
+namespace CustomerService.API.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -46,8 +46,10 @@ namespace CustomerService.API.Migrations
                     CompanyId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    Address = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(sysutcdatetime())")
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -89,20 +91,6 @@ namespace CustomerService.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Notifications", x => x.NotificationId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Tags",
-                schema: "chat",
-                columns: table => new
-                {
-                    TagId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tags", x => x.TagId);
                 });
 
             migrationBuilder.CreateTable(
@@ -232,6 +220,12 @@ namespace CustomerService.API.Migrations
                         .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
                         .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
                         .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
+                    LastOnline = table.Column<DateTime>(type: "datetime2", nullable: true)
+                        .Annotation("SqlServer:IsTemporal", true)
+                        .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
+                        .Annotation("SqlServer:TemporalHistoryTableSchema", "auth")
+                        .Annotation("SqlServer:TemporalPeriodEndColumnName", "ValidTo")
+                        .Annotation("SqlServer:TemporalPeriodStartColumnName", "ValidFrom"),
                     ValidFrom = table.Column<DateTime>(type: "datetime2", nullable: false)
                         .Annotation("SqlServer:IsTemporal", true)
                         .Annotation("SqlServer:TemporalHistoryTableName", "UsersHistory")
@@ -323,20 +317,20 @@ namespace CustomerService.API.Migrations
                 {
                     ConversationId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    CompanyId = table.Column<int>(type: "int", nullable: true),
                     ClientContactId = table.Column<int>(type: "int", nullable: false),
-                    Priority = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    Priority = table.Column<int>(type: "int", nullable: true, defaultValue: 1),
                     AssignedAgentId = table.Column<int>(type: "int", nullable: true),
                     AssignedByUserId = table.Column<int>(type: "int", nullable: true),
-                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "New"),
-                    Initialized = table.Column<bool>(type: "bit", nullable: false),
+                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "SYSUTCDATETIME()"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true, defaultValue: "Bot"),
+                    Initialized = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     FirstResponseAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ClosedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsArchived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    Tags = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -362,13 +356,6 @@ namespace CustomerService.API.Migrations
                         principalSchema: "auth",
                         principalTable: "ContactLogs",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Conversations_Companies",
-                        column: x => x.CompanyId,
-                        principalSchema: "crm",
-                        principalTable: "Companies",
-                        principalColumn: "CompanyId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Conversations_Users_UserId",
@@ -436,33 +423,6 @@ namespace CustomerService.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConversationTags",
-                schema: "chat",
-                columns: table => new
-                {
-                    ConversationId = table.Column<int>(type: "int", nullable: false),
-                    TagId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ConversationTags", x => new { x.ConversationId, x.TagId });
-                    table.ForeignKey(
-                        name: "FK_ConversationTags_Conversations_ConversationId",
-                        column: x => x.ConversationId,
-                        principalSchema: "chat",
-                        principalTable: "Conversations",
-                        principalColumn: "ConversationId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ConversationTags_Tags_TagId",
-                        column: x => x.TagId,
-                        principalSchema: "chat",
-                        principalTable: "Tags",
-                        principalColumn: "TagId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Messages",
                 schema: "chat",
                 columns: table => new
@@ -473,7 +433,9 @@ namespace CustomerService.API.Migrations
                     SenderUserId = table.Column<int>(type: "int", nullable: true),
                     SenderContactId = table.Column<int>(type: "int", nullable: true),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ExternalId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ExternalId = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    InteractiveId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    InteractiveTitle = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     MessageType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Text"),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Sent"),
                     SentAt = table.Column<DateTimeOffset>(type: "datetimeoffset(7)", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
@@ -584,12 +546,6 @@ namespace CustomerService.API.Migrations
                 column: "ClientContactId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Conversations_CompanyId",
-                schema: "chat",
-                table: "Conversations",
-                column: "CompanyId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Conversations_CreatedAt",
                 schema: "chat",
                 table: "Conversations",
@@ -606,12 +562,6 @@ namespace CustomerService.API.Migrations
                 schema: "chat",
                 table: "Conversations",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ConversationTags_TagId",
-                schema: "chat",
-                table: "ConversationTags",
-                column: "TagId");
 
             migrationBuilder.CreateIndex(
                 name: "UQ_RoleMenus_MenuIndex",
@@ -700,10 +650,6 @@ namespace CustomerService.API.Migrations
                 schema: "auth");
 
             migrationBuilder.DropTable(
-                name: "ConversationTags",
-                schema: "chat");
-
-            migrationBuilder.DropTable(
                 name: "NotificationRecipients",
                 schema: "chat");
 
@@ -717,10 +663,6 @@ namespace CustomerService.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "Messages",
-                schema: "chat");
-
-            migrationBuilder.DropTable(
-                name: "Tags",
                 schema: "chat");
 
             migrationBuilder.DropTable(

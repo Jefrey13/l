@@ -4,19 +4,16 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CustomerService.API.Migrations
+namespace CustomerService.API.Data.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    [Migration("20250521153534_UpdatedContext")]
-    partial class UpdatedContext
+    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -313,11 +310,14 @@ namespace CustomerService.API.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
-                        .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("Bot");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -340,21 +340,6 @@ namespace CustomerService.API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Conversations", "chat");
-                });
-
-            modelBuilder.Entity("CustomerService.API.Models.ConversationTag", b =>
-                {
-                    b.Property<int>("ConversationId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ConversationId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("ConversationTags", "chat");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.Menu", b =>
@@ -569,24 +554,6 @@ namespace CustomerService.API.Migrations
                     b.ToTable("RoleMenus", "auth");
                 });
 
-            modelBuilder.Entity("CustomerService.API.Models.Tag", b =>
-                {
-                    b.Property<int>("TagId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TagId"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("TagId");
-
-                    b.ToTable("Tags", "chat");
-                });
-
             modelBuilder.Entity("CustomerService.API.Models.User", b =>
                 {
                     b.Property<int>("UserId")
@@ -629,6 +596,9 @@ namespace CustomerService.API.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastOnline")
+                        .HasColumnType("datetime2");
 
                     b.Property<byte[]>("PasswordHash")
                         .HasMaxLength(256)
@@ -766,25 +736,6 @@ namespace CustomerService.API.Migrations
                     b.Navigation("ClientContact");
                 });
 
-            modelBuilder.Entity("CustomerService.API.Models.ConversationTag", b =>
-                {
-                    b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
-                        .WithMany("ConversationTags")
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("CustomerService.API.Models.Tag", "Tag")
-                        .WithMany("ConversationTags")
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Conversation");
-
-                    b.Navigation("Tag");
-                });
-
             modelBuilder.Entity("CustomerService.API.Models.Message", b =>
                 {
                     b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
@@ -904,8 +855,6 @@ namespace CustomerService.API.Migrations
 
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
-                    b.Navigation("ConversationTags");
-
                     b.Navigation("Messages");
                 });
 
@@ -922,11 +871,6 @@ namespace CustomerService.API.Migrations
             modelBuilder.Entity("CustomerService.API.Models.Notification", b =>
                 {
                     b.Navigation("Recipients");
-                });
-
-            modelBuilder.Entity("CustomerService.API.Models.Tag", b =>
-                {
-                    b.Navigation("ConversationTags");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.User", b =>

@@ -22,7 +22,7 @@ namespace CustomerService.API.Models
         public int? AssignedByUserId { get; set; }
         public DateTime? AssignedAt { get; set; }
 
-        public ConversationStatus Status { get; set; } = ConversationStatus.New;
+        public ConversationStatus? Status { get; set; } = ConversationStatus.New;
         public bool Initialized { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

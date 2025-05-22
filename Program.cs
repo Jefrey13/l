@@ -182,7 +182,6 @@ builder.Services.AddAuthorization(opts =>
 {
     opts.AddPolicy("AdminPolicy", p => p.RequireRole("Admin"));
     opts.AddPolicy("AgentPolicy", p => p.RequireRole("Support"));
-    opts.AddPolicy("ClientPolicy", p => p.RequireRole("Customer"));
 });
 
 // --------------------- Swagger ---------------------

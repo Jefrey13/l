@@ -177,6 +177,7 @@ namespace CustomerService.API.Services.Implementations
             if (clientContactId <= 0)
                 throw new ArgumentException("Invalid contact ID.", nameof(clientContactId));
 
+
             var conv = await _uow.Conversations.GetAll()
                 .Where(c => c.ClientContactId == clientContactId
                          && c.Status != ConversationStatus.Closed)
@@ -192,7 +193,6 @@ namespace CustomerService.API.Services.Implementations
             var now = await _nicDatetime.GetNicDatetime();
             conv = new Conversation
             {
-                //CompanyId = contact.CompanyId,
                 ClientContactId = clientContactId,
                 Status = ConversationStatus.Bot,
                 CreatedAt = now,
@@ -202,10 +202,10 @@ namespace CustomerService.API.Services.Implementations
             await _uow.Conversations.AddAsync(conv, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            var full = await _uow.Conversations.GetAll()
-                .Where(c => c.ConversationId == conv.ConversationId)
-                .Include(c => c.Messages)
-                .SingleAsync(cancellation);
+            //var full = await _uow.Conversations.GetAll()
+            //    .Where(c => c.ConversationId == conv.ConversationId)
+            //    .Include(c => c.Messages)m
+            //    .SingleAsync(cancellation);
 
             var dto = conv.Adapt<ConversationDto>();
 
