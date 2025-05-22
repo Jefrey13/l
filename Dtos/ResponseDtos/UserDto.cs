@@ -14,8 +14,8 @@
 
         public string? ImageUrl { get; init; }
         public string ClientType { get; init; } = "Nuevo";
-        public DateTime? LastOnline { get; init; }
-        public bool IsOnline { get; init; }
+        public DateTime? LastOnline { get; set; }
+        public bool IsOnline { get; set; }
 
         public IEnumerable<RoleDto> Roles { get; set; } = new List<RoleDto>();
     }

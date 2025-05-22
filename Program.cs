@@ -91,7 +91,6 @@ builder.Services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 builder.Services.AddScoped<IRoleMenuRepository, RoleMenuRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRespository>();
-builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
 
@@ -113,7 +112,6 @@ builder.Services.AddScoped<IMessagePipeline, MessagePipeline>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IContactLogService, ContactLogService>();
 builder.Services.AddScoped<INicDatetime, NicDatetime>();
-builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
 
@@ -270,6 +268,7 @@ app.MapHealthChecksUI();
 // SignalR hub
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationsHub>("/hubs/notifications");
+app.MapHub<PresenceHub>("/hubs/presence");
 
 // API controllers
 app.MapControllers();

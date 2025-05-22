@@ -13,25 +13,30 @@ namespace CustomerService.API.Utils
     {
         public void Register(TypeAdapterConfig config)
         {
+            // Usuarios
             config.NewConfig<CreateUserRequest, User>();
-
             config.NewConfig<User, UserDto>();
 
+            // Conversación: creación
             config.NewConfig<CreateConversationRequest, Conversation>()
                 //.Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.ClientContactId, s => s.ClientContactId)
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.Status, _ => ConversationStatus.New)
-                .Map(d => d.CreatedAt, _ => DateTime.UtcNow);
+                .Map(d => d.CreatedAt, _ => DateTime.UtcNow)
+                .Map(d => d.Tags, s => s.Tags);
 
+            // Conversación: actualización parcial
             config.NewConfig<UpdateConversationRequest, Conversation>()
                 .IgnoreNullValues(true)
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.Status, s => s.Status)
                 .Map(d => d.AssignedAgentId, s => s.AssignedAgentId)
                 .Map(d => d.IsArchived, s => s.IsArchived)
-                .Map(d => d.UpdatedAt, _ => DateTime.UtcNow);
+                .Map(d => d.UpdatedAt, _ => DateTime.UtcNow)
+                .Map(d => d.Tags, s => s.Tags);
 
+            // Conversación: entidad a DTO
             config.NewConfig<Conversation, ConversationDto>()
                 .Map(d => d.ConversationId, s => s.ConversationId)
                 //.Map(d => d.CompanyId, s => s.CompanyId)
@@ -44,7 +49,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.AssignedByUserName, s => s.AssignedByUser != null ? s.AssignedByUser.FullName : null)
                 .Map(d => d.ContactNumber, s => s.ClientContact != null ? s.ClientContact.Phone : null)
                 .Map(d => d.AssignedAt, s => s.AssignedAt)
-                .Map(d => d.Status, s => s.Status)
+                .Map(d => d.Status, s => s.Status.ToString())
                 .Map(d => d.Initialized, s => s.Initialized)
                 .Map(d => d.CreatedAt, s => s.CreatedAt)
                 .Map(d => d.FirstResponseAt, s => s.FirstResponseAt)
@@ -53,12 +58,13 @@ namespace CustomerService.API.Utils
                 .Map(d => d.IsArchived, s => s.IsArchived)
                 .Map(d => d.TotalMessages, s => s.Messages.Count)
                 .Map(d => d.LastActivity, s => s.Messages.Any() ? s.Messages.Max(m => m.SentAt.UtcDateTime) : s.CreatedAt)
-                .Map(d => d.Duration, s => ((s.ClosedAt ?? DateTime.UtcNow) - s.CreatedAt).ToString(@"hh\:mm\:ss"))
+                .Map(d => d.Duration, s => (s.ClosedAt ?? DateTime.UtcNow) - s.CreatedAt)
                 .Map(d => d.TimeToFirstResponse, s => s.FirstResponseAt.HasValue ? s.FirstResponseAt.Value - s.CreatedAt : (TimeSpan?)null)
                 .Map(d => d.IsClosed, s => s.Status == ConversationStatus.Closed)
                 .Map(d => d.Messages, s => s.Messages.Adapt<List<MessageDto>>())
-                .Map(d => d.Tags, s => s.ConversationTags.Select(ct => ct.Tag).Adapt<List<TagDto>>());
+                .Map(d => d.Tags, s => s.Tags);
 
+            // Mensajes
             config.NewConfig<SendMessageRequest, Message>()
                 .Map(d => d.ConversationId, s => s.ConversationId)
                 .Map(d => d.Content, s => s.Content)
@@ -72,7 +78,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.SenderUserId, s => s.SenderUserId)
                 .Map(d => d.SenderUserName, s => s.SenderUser != null ? s.SenderUser.FullName : null)
                 .Map(d => d.SenderContactId, s => s.SenderContactId)
-                .Map(d=> d.SenderContactName, s=> s.SenderContact != null ? s.SenderContact.WaName : null)
+                .Map(d => d.SenderContactName, s => s.SenderContact != null ? s.SenderContact.WaName : null)
                 .Map(d => d.IsIncoming, s => s.SenderContactId != null)
                 .Map(d => d.Content, s => s.Content)
                 .Map(d => d.ExternalId, s => s.ExternalId)
@@ -83,16 +89,15 @@ namespace CustomerService.API.Utils
                 .Map(d => d.ReadAt, s => s.ReadAt)
                 .Map(d => d.Attachments, s => s.Attachments.Adapt<List<AttachmentDto>>());
 
+            // Contactos
             config.NewConfig<CreateContactLogRequestDto, ContactLog>();
             config.NewConfig<UpdateContactLogRequestDto, ContactLog>();
             config.NewConfig<ContactLog, ContactLogResponseDto>();
 
-            config.NewConfig<Tag, TagDto>()
-                .Map(d => d.TagId, s => s.TagId)
-                .Map(d => d.Name, s => s.Name);
-
+            // Empresa
             config.NewConfig<Company, CompanyDto>();
 
+            // Notificaciones
             config.NewConfig<NotificationRecipient, NotificationDto>()
                .Map(d => d.NotificationRecipientId, s => s.NotificationRecipientId)
                .Map(d => d.NotificationId, s => s.NotificationId)
@@ -107,13 +112,16 @@ namespace CustomerService.API.Utils
                 .Map(d => d.Priority, s => s.Priority)
                 .Map(d => d.Status, _ => ConversationStatus.Bot)
                 .Map(d => d.CreatedAt, _ => DateTime.UtcNow)
-                .IgnoreNullValues(true);
+                .IgnoreNullValues(true)
+                .Map(d => d.Tags, s => s.Tags);
+
             config.NewConfig<Notification, NotificationDto>()
                 .Map(d => d.NotificationId, s => s.NotificationId)
                 .Map(d => d.Type, s => s.Type)
                 .Map(d => d.Payload, s => s.Payload)
                 .Map(d => d.CreatedAt, s => s.CreatedAt);
 
+            // Eventos de dominio
             config.NewConfig<NewContactCreatedDto, NewContactCreatedDto>();
             config.NewConfig<SupportRequestedDto, SupportRequestedDto>();
             config.NewConfig<ConversationAssignedDto, ConversationAssignedDto>();

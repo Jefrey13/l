@@ -7,5 +7,7 @@ namespace CustomerService.API.Repositories.Interfaces
         Task<IEnumerable<Conversation>> GetPendingAsync(CancellationToken cancellation = default);
 
         Task<IEnumerable<Conversation>> GetByAgentAsync(int agentId, CancellationToken cancellation = default);
+
+        Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default);
     }
 }

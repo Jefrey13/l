@@ -17,7 +17,6 @@ namespace CustomerService.API.Repositories.Interfaces
         IMenuRepository Menus { get; }
         IRoleMenuRepository RoleMenus { get; }
         IContactLogRepository ContactLogs { get; }
-        ITagRepository Tags { get; }
         INotificationRepository Notifications { get; }
         INotificationRecipientRepository NotificationRecipients { get; }
 

@@ -22,7 +22,6 @@ namespace CustomerService.API.Repositories.Implementations
             IRoleMenuRepository roleMenuRepository,
             IMenuRepository menuRepository,
             IContactLogRepository contactLogRepository,
-            ITagRepository tagRepository,
             INotificationRepository notificationRepository,
             INotificationRecipientRepository notificationRecipientRepository)
         {
@@ -40,7 +39,6 @@ namespace CustomerService.API.Repositories.Implementations
             RoleMenus = roleMenuRepository;
             ContactLogs = contactLogRepository;
 
-            Tags = tagRepository;
             Notifications = notificationRepository;
             NotificationRecipients = notificationRecipientRepository;
         }
@@ -56,8 +54,6 @@ namespace CustomerService.API.Repositories.Implementations
         public IMenuRepository Menus { get; }
         public IRoleMenuRepository RoleMenus { get; }
         public IContactLogRepository ContactLogs { get; }
-
-        public ITagRepository Tags { get; }
         public INotificationRepository Notifications { get; }
         public INotificationRecipientRepository NotificationRecipients { get; }
 

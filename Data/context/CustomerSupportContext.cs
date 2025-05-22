@@ -34,15 +34,13 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<RoleMenu> MenuRoles { get; set; }
     public virtual DbSet<ContactLog> ContactLogs { get; set; }
 
-    public virtual DbSet<Tag> Tags { get; set; }
-    public virtual DbSet<ConversationTag> ConversationTags { get; set; }
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-91LKTJV\\SQLEXPRESS;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
+        => optionsBuilder.UseSqlServer("Server=LAPTOP-N56GM63T;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -234,12 +232,6 @@ public partial class CustomerSupportContext : DbContext
                 .IsRowVersion()
                 .IsConcurrencyToken();
 
-            //entity.HasOne(e => e.Company)
-            //    .WithMany(c => c.Conversations)
-            //    .HasForeignKey(e => e.CompanyId)
-            //    .OnDelete(DeleteBehavior.Restrict)
-            //    .HasConstraintName("FK_Conversations_Companies");
-
             entity.HasOne(e => e.ClientContact)
                 .WithMany(cl => cl.ConversationClient)
                 .HasForeignKey(e => e.ClientContactId)
@@ -258,11 +250,6 @@ public partial class CustomerSupportContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Conversations_AssignedByUser");
 
-            entity
-                .HasMany(e => e.ConversationTags)
-                .WithOne(ct => ct.Conversation)
-                .HasForeignKey(ct => ct.ConversationId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
 
@@ -416,25 +403,6 @@ public partial class CustomerSupportContext : DbContext
             .HasForeignKey(p => p.MenuId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_RoleMenus_Menus");
-        });
-
-        modelBuilder.Entity<Tag>(entity => {
-            entity.ToTable("Tags", "chat");
-            entity.HasKey(t => t.TagId);
-            entity.Property(t => t.Name).HasMaxLength(50).IsRequired();
-        });
-
-        modelBuilder.Entity<ConversationTag>(entity => {
-            entity.ToTable("ConversationTags", "chat");
-            entity.HasKey(ct => new { ct.ConversationId, ct.TagId });
-
-            entity.HasOne(ct => ct.Conversation)
-                  .WithMany(c => c.ConversationTags)
-                  .HasForeignKey(ct => ct.ConversationId);
-
-            entity.HasOne(ct => ct.Tag)
-                  .WithMany(t => t.ConversationTags)
-                  .HasForeignKey(ct => ct.TagId);
         });
 
         modelBuilder.Entity<Company>(entity =>

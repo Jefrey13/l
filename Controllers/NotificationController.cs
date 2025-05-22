@@ -17,22 +17,31 @@ namespace CustomerService.API.Controllers
         private readonly INotificationRecipientService _recipientService;
 
         public NotificationsController(INotificationRecipientService recipientService)
-        {
-            _recipientService = recipientService;
-        }
+            => _recipientService = recipientService;
 
-        private int CurrentUserId =>
-            int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        private int CurrentUserId
+            => int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
         [HttpGet(Name = "GetUserNotifications")]
         [SwaggerOperation(Summary = "Retrieve paged list of your notifications")]
         [ProducesResponseType(typeof(ApiResponse<PagedResponse<NotificationDto>>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll(
+        public async Task<IActionResult> Get(
             [FromQuery] PaginationParams @params,
+            [FromQuery] bool unreadOnly = false,
             CancellationToken ct = default)
         {
-            var paged = await _recipientService.GetByUserAsync(@params, CurrentUserId, ct);
-            return Ok(new ApiResponse<PagedResponse<NotificationDto>>(paged, "Notifications retrieved."));
+            if (unreadOnly)
+            {
+                var pagedUnread = await _recipientService
+                    .GetUnreadByUserAsync(@params, CurrentUserId, ct);
+                return Ok(new ApiResponse<PagedResponse<NotificationDto>>(pagedUnread, "Unread notifications retrieved."));
+            }
+            else
+            {
+                var pagedAll = await _recipientService
+                    .GetByUserAsync(@params, CurrentUserId, ct);
+                return Ok(new ApiResponse<PagedResponse<NotificationDto>>(pagedAll, "All notifications retrieved."));
+            }
         }
 
         [HttpGet("unread-count", Name = "GetUnreadNotificationCount")]
@@ -53,6 +62,15 @@ namespace CustomerService.API.Controllers
             CancellationToken ct = default)
         {
             await _recipientService.MarkAsReadAsync(recipientId, ct);
+            return NoContent();
+        }
+
+        [HttpPut("read-all", Name = "MarkAllNotificationsAsRead")]
+        [SwaggerOperation(Summary = "Mark all notifications as read")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> MarkAllRead(CancellationToken ct = default)
+        {
+            await _recipientService.MarkAllReadAsync(CurrentUserId, ct);
             return NoContent();
         }
     }

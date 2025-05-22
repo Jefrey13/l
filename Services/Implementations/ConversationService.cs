@@ -16,6 +16,8 @@ using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using WhatsappBusiness.CloudApi.Webhook;
+using Conversation = CustomerService.API.Models.Conversation;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -45,7 +47,6 @@ namespace CustomerService.API.Services.Implementations
         {
             var convs = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -63,7 +64,6 @@ namespace CustomerService.API.Services.Implementations
             var convs = await _uow.Conversations.GetAll()
                 .Where(c => c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Bot)
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -90,25 +90,13 @@ namespace CustomerService.API.Services.Implementations
                 Priority = request.Priority,
                 Status = ConversationStatus.Bot,
                 CreatedAt = now,
-                FirstResponseAt = null
+                FirstResponseAt = null,
+                Tags = request.Tags ?? new List<string>()
             };
 
             await _uow.Conversations.AddAsync(conv, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            if (request.TagIds != null && request.TagIds.Any())
-            {
-                foreach (var tagId in request.TagIds.Distinct())
-                {
-                    conv.ConversationTags.Add(new ConversationTag
-                    {
-                        ConversationId = conv.ConversationId,
-                        TagId = tagId
-                    });
-                }
-                _uow.Conversations.Update(conv);
-                await _uow.SaveChangesAsync(cancellation);
-            }
 
             var dto = conv.Adapt<ConversationDto>();
 
@@ -162,7 +150,6 @@ namespace CustomerService.API.Services.Implementations
             if (id <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(id));
             var conv = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -194,7 +181,6 @@ namespace CustomerService.API.Services.Implementations
                 .Where(c => c.ClientContactId == clientContactId
                          && c.Status != ConversationStatus.Closed)
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .SingleOrDefaultAsync(cancellation);
 
             if (conv != null)
@@ -219,7 +205,6 @@ namespace CustomerService.API.Services.Implementations
             var full = await _uow.Conversations.GetAll()
                 .Where(c => c.ConversationId == conv.ConversationId)
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .SingleAsync(cancellation);
 
             var dto = conv.Adapt<ConversationDto>();
@@ -241,7 +226,6 @@ namespace CustomerService.API.Services.Implementations
 
             var conv = await _uow.Conversations
                 .GetAll()
-                .Include(c => c.ConversationTags)
                 .SingleOrDefaultAsync(c => c.ConversationId == request.ConversationId, ct)
                 ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found.");
 
@@ -257,27 +241,8 @@ namespace CustomerService.API.Services.Implementations
             if (request.IsArchived.HasValue)
                 conv.IsArchived = request.IsArchived.Value;
 
-           // Actualizar tags: sincronizar la lista
-            if (request.TagIds != null)
-            {
-                var existingTagIds = conv.ConversationTags.Select(ctr => ctr.TagId).ToList();
-
-                // Remover tags que ya no están
-                var toRemove = conv.ConversationTags
-                    .Where(ct => !request.TagIds.Contains(ct.TagId))
-                    .ToList();
-                foreach (var ctr in toRemove)
-                    conv.ConversationTags.Remove(ctr);
-
-                // Añadir nuevos tags
-                var toAdd = request.TagIds.Except(existingTagIds);
-                foreach (var tagId in toAdd)
-                    conv.ConversationTags.Add(new ConversationTag
-                    {
-                        ConversationId = conv.ConversationId,
-                        TagId = tagId
-                    });
-            }
+            if (request.Tags != null)
+                conv.Tags = request.Tags;
 
             conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
@@ -293,6 +258,13 @@ namespace CustomerService.API.Services.Implementations
                  .Clients
                  .All
                  .SendAsync("ConversationUpdated", dto, ct);
+        }
+
+
+        public async Task<int> GetAssignedCountAsync(int agentUserId, CancellationToken cancellation = default)
+        {
+            return await _uow.Conversations.CountAssignedAsync(agentUserId, cancellation);
+
         }
 
         public async Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)

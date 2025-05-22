@@ -13,6 +13,6 @@ namespace CustomerService.API.Dtos.RequestDtos
 
         public PriorityLevel Priority { get; set; } = PriorityLevel.Normal;
 
-        public List<int>? TagIds { get; set; }
+        public List<string>? Tags { get; set; }
     }
 }

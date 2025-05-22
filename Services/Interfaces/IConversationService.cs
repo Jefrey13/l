@@ -16,6 +16,7 @@ namespace CustomerService.API.Services.Interfaces
 
         Task UpdateAsync(UpdateConversationRequest request, CancellationToken cancellation = default);
 
+        Task<int> GetAssignedCountAsync(int agentUserId, CancellationToken cancellation = default);
         Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default);
     }
 }

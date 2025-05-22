@@ -23,8 +23,6 @@ namespace CustomerService.API.Repositories.Implementations
                 .Where(c => c.Status == ConversationStatus.Waiting
                          || c.Status == ConversationStatus.Bot)
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags)
-                    .ThenInclude(ct => ct.Tag)
                 .ToListAsync(cancellation);
         }
 
@@ -38,8 +36,21 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
                 .Include(c => c.Messages)
-                .Include(c => c.ConversationTags).ThenInclude(ct => ct.Tag)
                 .ToListAsync(cancellation);
+        }
+
+        public async Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default)
+        {
+            if (agentId <= 0) throw new ArgumentException(nameof(agentId));
+
+            return await _dbSet
+                .AsNoTracking()
+                .Where(c =>
+                    c.AssignedAgentId == agentId
+                    && c.Status == ConversationStatus.Human
+                    && !c.IsArchived
+                )
+                .CountAsync(cancellation);
         }
     }
 }

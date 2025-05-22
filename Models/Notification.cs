@@ -21,6 +21,7 @@ namespace CustomerService.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual ICollection<NotificationRecipient> Recipients { get; set; }
+
             = new List<NotificationRecipient>();
     }
 }

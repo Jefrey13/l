@@ -16,10 +16,11 @@ namespace CustomerService.API.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _users;
-
-        public UsersController(IUserService users)
+        private readonly IPresenceService _presence;
+        public UsersController(IUserService users, IPresenceService presence)
         {
             _users = users;
+            _presence = presence;
         }
 
         [HttpGet(Name = "GetAllUsers")]
@@ -86,6 +87,20 @@ namespace CustomerService.API.Controllers
                 return BadRequest(ApiResponse<object>.Fail("Debe especificar el parámetro 'role' para filtrar."));
             var agents = await _users.GetByRoleAsync(role, ct);
             return Ok(new ApiResponse<IEnumerable<AgentDto>>(agents, $"Usuarios con rol '{role}' obtenidos."));
+        }
+
+        [HttpGet("{id}/status")]
+        public async Task<IActionResult> GetStatus(int id)
+        {
+            var last = await _presence.GetLastOnlineAsync(id);
+            var isOnline = last.HasValue
+                && (DateTime.UtcNow - last.Value).TotalMinutes < 5;
+
+            return Ok(new
+            {
+                lastOnline = last,
+                isOnline
+            });
         }
     }
 }

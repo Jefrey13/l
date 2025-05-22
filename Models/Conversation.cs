@@ -14,7 +14,7 @@ namespace CustomerService.API.Models
     public class Conversation
     {
         public int ConversationId { get; set; }
-        //public int? CompanyId { get; set; }
+
         public int ClientContactId { get; set; }
         public PriorityLevel? Priority { get; set; } = PriorityLevel.Normal;
 
@@ -23,7 +23,6 @@ namespace CustomerService.API.Models
         public DateTime? AssignedAt { get; set; }
 
         public ConversationStatus Status { get; set; } = ConversationStatus.New;
-
         public bool Initialized { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -35,9 +34,6 @@ namespace CustomerService.API.Models
         [Timestamp]
         public byte[] RowVersion { get; set; } = null!;
 
-        //[ForeignKey(nameof(CompanyId))]
-        //public virtual Company? Company { get; set; }
-
         [ForeignKey(nameof(ClientContactId))]
         public virtual ContactLog ClientContact { get; set; } = null!;
 
@@ -48,8 +44,15 @@ namespace CustomerService.API.Models
         public virtual User? AssignedByUser { get; set; }
 
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
-        public virtual ICollection<ConversationTag> ConversationTags { get; set; } = new List<ConversationTag>();
 
+        /// <summary>
+        /// Lista de etiquetas asociadas a la conversación,
+        /// serializada como JSON en la base de datos.
+        /// </summary>
+        [Column(TypeName = "nvarchar(max)")]
+        public List<string> Tags { get; set; } = new List<string>();
+
+        // Campos calculados (no mapeados a la BD)
         [NotMapped]
         public int TotalMessages => Messages.Count;
 

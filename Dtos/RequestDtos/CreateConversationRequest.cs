@@ -7,6 +7,6 @@ namespace CustomerService.API.Dtos.RequestDtos
         public int CompanyId { get; set; }
         public int ClientContactId { get; set; }
         public PriorityLevel Priority { get; set; } = PriorityLevel.Normal;
-        public List<int>? TagIds { get; set; }
+        public List<string>? Tags { get; set; }
     }
 }

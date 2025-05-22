@@ -94,6 +94,15 @@ namespace CustomerService.API.Controllers
             return NoContent();
         }
 
+        [HttpGet("{id}/assigned-count")]
+        [SwaggerOperation(Summary = "Get count of assigned conversations for an agent")]
+        [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAssignedCount([FromRoute] int id, CancellationToken ct = default)
+        {
+            var count = await _conversations.GetAssignedCountAsync(id, ct);
+            return Ok(count);
+        }
+
         [HttpGet("getByRole", Name = "GetByUserRole")]
         [SwaggerOperation(Summary = "Get conversation details by UserRole")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationDto>>), StatusCodes.Status200OK)]

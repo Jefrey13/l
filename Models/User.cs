@@ -35,12 +35,11 @@ namespace CustomerService.API.Models
         [NotMapped]
         public string ClientType { get; set; } = "Nuevo";
 
-        [NotMapped]
+
         public DateTime? LastOnline { get; set; }
 
         [NotMapped]
         public bool IsOnline
-            => LastOnline.HasValue
-               && (DateTime.UtcNow - LastOnline.Value).TotalMinutes < 5;
+            => LastOnline.HasValue && (DateTime.UtcNow - LastOnline.Value).TotalMinutes < 5;
     }
 }
