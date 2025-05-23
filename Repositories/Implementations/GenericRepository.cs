@@ -17,7 +17,7 @@ namespace CustomerService.API.Repositories.Implementations
             _dbSet = _context.Set<T>();
         }
 
-        public IQueryable<T> GetAll() =>
+        public virtual IQueryable<T> GetAll() =>
             _dbSet.AsNoTracking();
 
         public async Task<T?> GetByIdAsync(int id, CancellationToken cancellation = default)

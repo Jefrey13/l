@@ -18,6 +18,8 @@ using Microsoft.Extensions.Configuration;
 using CustomerService.API.Dtos.ResponseDtos;
 using WhatsappBusiness.CloudApi.Messages.Requests;
 using Microsoft.AspNetCore;
+using CustomerService.API.Hubs;
+using CustomerService.API.Utils;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -32,6 +34,8 @@ namespace CustomerService.API.Services.Implementations
         private readonly string _token;
         private readonly string _phoneNumberId;
         private readonly string _version;
+        private readonly IHubContext<ChatHub> _hubContext;
+        private readonly INicDatetime _nicDatetime;
 
         public WhatsAppService(
             HttpClient http,
@@ -40,7 +44,9 @@ namespace CustomerService.API.Services.Implementations
             IContactLogService contactService,
             IConversationService conversationService,
             ISignalRNotifyService signalR,
-            IConfiguration config)
+            IConfiguration config,
+            IHubContext<ChatHub> hubContext,
+            INicDatetime nicDatetime)
         {
             _http = http;
             _uow = uow;
@@ -51,6 +57,8 @@ namespace CustomerService.API.Services.Implementations
             _token = config["WhatsApp:Token"]!;
             _phoneNumberId = config["WhatsApp:PhoneNumberId"]!;
             _version = config["WhatsApp:ApiVersion"]!;
+            _hubContext = hubContext;
+            _nicDatetime = nicDatetime;
         }
 
         public async Task HandleWebhookAsync(WhatsAppWebhookRequestDto webhook, CancellationToken cancellation = default)
@@ -249,11 +257,16 @@ namespace CustomerService.API.Services.Implementations
                 ConversationId = conversationId,
                 //El que envie mensaje es el bot, por lo cual se asocia con los usuario y no con contactos.
                 SenderUserId = senderId,
-                Content = header  +
-                interactive.body.text.ToString() + 
-                interactive.footer.text.ToString() +
-                listSections.Select(t=> t.rows.Select(r=> r.title)),
-                SentAt = DateTimeOffset.UtcNow,
+                Content =
+                    header + "\n" +
+                    interactive.body.text + "\n" +
+                    interactive.footer.text + "\n\n" +
+                    "Opciones:\n" +
+                    string.Join(
+                        "\n",
+                        buttons.Select(b => $"- {b.Title}")
+                    ),
+                SentAt = await _nicDatetime.GetNicDatetime(),
                 Status = MessageStatus.Delivered
             };
 
@@ -261,11 +274,17 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
 
             var dto = incoming.Adapt<MessageDto>();
+            await _hubContext
+                .Clients
+                .Group(conversationId.ToString())
+                .SendAsync("ReceiveMessage", dto, CancellationToken.None);
 
-            await _signalR.NotifyUserAsync(
-                conversationId,
-                "ReceiveMessage",
-                dto);
+            //var dto = incoming.Adapt<MessageDto>();
+
+            //await _signalR.NotifyUserAsync(
+            //    conversationId,
+            //    "ReceiveMessage",
+            //    dto);
         }
     }
 }

@@ -52,5 +52,12 @@ namespace CustomerService.API.Repositories.Implementations
                 )
                 .CountAsync(cancellation);
         }
+
+        public override IQueryable<Conversation> GetAll()
+            => _dbSet
+                .AsNoTracking()
+                .Include(c => c.ClientContact)
+                .Include(c => c.AssignedAgent)
+                .Include(c => c.Messages);
     }
 }

@@ -13,6 +13,7 @@ using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -35,7 +36,10 @@ namespace CustomerService.API.Services.Implementations
             _nicDatetime = nicDatetime;
         }
 
-        public async Task<MessageDto> SendMessageAsync(SendMessageRequest request, bool isContact = false, CancellationToken ct = default)
+        public async Task<MessageDto> SendMessageAsync(
+            SendMessageRequest request,
+            bool isContact = false,
+            CancellationToken ct = default)
         {
             if (request.ConversationId <= 0)
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
@@ -54,56 +58,30 @@ namespace CustomerService.API.Services.Implementations
                 InteractiveTitle = request.InteractiveTitle
             };
 
-            //if (request.File != null)
-            //{
-            //    var attachment = new Attachment
-            //    {
-            //        FileName = request.File.FileName,
-            //        MimeType = request.File.ContentType,
-            //        MediaUrl = await _whatsAppService.UploadMediaAsync(request.File, cancellation)
-            //    };
-            //    msg.Attachments.Add(attachment);
-            //}
-
             await _uow.Messages.AddAsync(msg, ct);
+            await _uow.SaveChangesAsync(ct);
 
-            try
-            {
-                var data = await _uow.SaveChangesAsync(ct);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error: " + ex.Message);
-            }
-
-            // Enviar via WhatsApp Cloud API
-            //if (msg.Attachments.Any())
-            //{
-            //    await _whatsAppService.SendMediaAsync(
-            //        msg.ConversationId,
-            //        msg.SenderUserId ?? 0,
-            //        msg.ExternalId,
-            //        cancellation);
-            //}
-            //else
-            //{
-
-            //Solo enviar menajes por whatsapp solo cuando es un usuario y no un  contacto (contacto es quien nos envia, no se puede enviar a el mismo sus respuestas.)
             if (!isContact)
             {
-               await _whatsAppService.SendTextAsync(
-                msg.ConversationId,
-                msg.SenderUserId ?? 0,
-                msg.Content,
-                ct);
+                await _whatsAppService.SendTextAsync(
+                    msg.ConversationId,
+                    msg.SenderUserId!.Value,
+                    msg.Content,
+                    ct);
             }
-            //}
 
-            var dto = msg.Adapt<MessageDto>();
+            var reloaded = await _uow.Messages.GetAll()
+                .Where(m => m.MessageId == msg.MessageId)
+                .Include(m => m.SenderUser)
+                .Include(m => m.SenderContact)
+                .Include(m => m.Attachments)
+                .SingleAsync(ct);
 
-             await _hub.Clients
-                .Group(msg.ConversationId.ToString())
-                .SendAsync("ReceiveMessage", dto, ct);
+            var dto = reloaded.Adapt<MessageDto>();
+
+            await _hub.Clients
+               .Group(reloaded.ConversationId.ToString())
+               .SendAsync("ReceiveMessage", dto, ct);
 
             return dto;
         }

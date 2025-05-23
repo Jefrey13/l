@@ -234,14 +234,16 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRouting();
+
+app.UseCors("CorsPolicy");
+
 app.UseResponseCompression();
 app.UseResponseCaching();
 app.UseIpRateLimiting();
 app.UseErrorHandling();
 
-app.UseRouting();
-
-app.UseCors("CorsPolicy");
 
 
 
