@@ -223,7 +223,7 @@
                            .All
                            .SendAsync("ConversationUpdated", convDto, ct);
 
-                        var admins = await _userService.GetByRoleAsync("Admin", ct);
+                            var admins = await _userService.GetByRoleAsync("Admin", ct);
                             var adminIds = admins.Select(a => a.UserId).ToArray();
                         
 

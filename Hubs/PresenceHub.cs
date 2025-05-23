@@ -20,7 +20,7 @@
             {
                 if (int.TryParse(Context.UserIdentifier, out var id))
                     await _presence.UserDisconnectedAsync(id);
-                await base.OnDisconnectedAsync(ex);
+                        await base.OnDisconnectedAsync(ex);
             }
         }
     }
