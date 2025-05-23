@@ -54,7 +54,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = convs.Adapt<ConversationDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
@@ -71,7 +71,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = convs.Adapt<ConversationDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
@@ -100,7 +100,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
             await _hubContext
                 .Clients
@@ -137,7 +137,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
             await _hubContext
             .Clients
@@ -209,7 +209,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
             await _hubContext
                 .Clients
@@ -244,20 +244,33 @@ namespace CustomerService.API.Services.Implementations
             if (request.Tags != null)
                 conv.Tags = request.Tags;
 
-            conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
+            try
+            {
+                conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-            _uow.Conversations.Update(conv, ct);
 
-            await _uow.SaveChangesAsync(ct);
+                _uow.Conversations.Update(conv, ct);
 
-            var dto = conv.Adapt<ConversationDto>();
+                await _uow.SaveChangesAsync(ct);
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 1 : dto.TotalMessages;
+                var dto = conv.Adapt<ConversationDto>();
 
-            await _hubContext
-                 .Clients
-                 .All
-                 .SendAsync("ConversationUpdated", dto, ct);
+                dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+
+
+                await _hubContext
+                     .Clients
+                     .All
+                     .SendAsync("ConversationUpdated", dto, ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+
+               
+            }
+
+           
         }
 
 
@@ -277,6 +290,7 @@ namespace CustomerService.API.Services.Implementations
                 return await GetAllAsync(cancellation);
 
             var convs = await _uow.Conversations.GetByAgentAsync(userId, cancellation);
+
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
 

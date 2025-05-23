@@ -56,6 +56,9 @@ namespace CustomerService.API.Repositories.Implementations
         public INotificationRepository Notifications { get; }
         public INotificationRecipientRepository NotificationRecipients { get; }
 
+        public void ClearChangeTracker()
+        => _context.ChangeTracker.Clear();
+
         public Task<int> SaveChangesAsync(CancellationToken cancellation = default) =>
             _context.SaveChangesAsync(cancellation);
     }

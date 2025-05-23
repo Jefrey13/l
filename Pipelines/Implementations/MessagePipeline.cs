@@ -80,7 +80,8 @@
                                     : InteractiveType.Text
                 };
 
-                var contactDto = await _contactService.GetOrCreateByPhoneAsync(
+
+            var contactDto = await _contactService.GetOrCreateByPhoneAsync(
                     payload.From,
                     value.Contacts.First().WaId,
                     value.Contacts.First().Profile.Name,
@@ -89,42 +90,19 @@
 
                 var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
 
-                //var incoming = new Message
-                //{
-                //    ConversationId = convoDto.ConversationId,
-                //    SenderContactId = contactDto.Id,
-                //    Content = payload.TextBody,
-                //    MessageType = MessageType.Text,
-                //    SentAt = await _nicDatetime.GetNicDatetime(),
-                //    Status = MessageStatus.Delivered
-                //};
-
-                //await _uow.Messages.AddAsync(incoming, ct);
-                //await _uow.SaveChangesAsync(ct);
-
-            // await _signalR.NotifyUserAsync(convoDto.ConversationId, "ReceiveMessage", incoming.Adapt<MessageDto>());
-
-            //var dto = msg.Adapt<MessageDto>();
-
-            //await _hubContext.Clients
-            //   .Group(convoDto.ConversationId.ToString())
-            //   .SendAsync("ReceiveMessage", dto, ct);
-
-            //var msgdto = msg.Adapt<MessageDto>();
-
-            //await _hubContext.Clients
-            //   .Group(convoDto.ConversationId.ToString())
-            //   .SendAsync("ReceiveMessage", msgdto, ct);
-
-            await _messageService.SendMessageAsync(new SendMessageRequest
+            if(payload.Type == InteractiveType.Text)
             {
-                ConversationId = convoDto.ConversationId,
-                SenderId = contactDto.Id,
-                Content = payload.TextBody,
-                MessageType = MessageType.Text
-            }, isContact: true, ct);
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = convoDto.ConversationId,
+                    SenderId = contactDto.Id,
+                    Content = payload.TextBody,
+                    MessageType = MessageType.Text
+                }, isContact: true, ct);
+            }
 
             var convEntity = await _uow.Conversations.GetAll()
+            .AsNoTracking()
             .Where(c => c.ConversationId == convoDto.ConversationId)
             .Include(c => c.ClientContact)
             .SingleAsync(ct);
@@ -146,7 +124,9 @@
                 //Solo 1 ves, luego de crearse la conversación
                 if (!convoDto.Initialized)
                 {
-                    await _conversationService.UpdateAsync(new UpdateConversationRequest
+                _uow.ClearChangeTracker();
+
+                await _conversationService.UpdateAsync(new UpdateConversationRequest
                     {
                         ConversationId = convoDto.ConversationId,
                         Initialized = true,
