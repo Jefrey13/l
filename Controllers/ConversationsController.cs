@@ -82,6 +82,16 @@ namespace CustomerService.API.Controllers
             return NoContent();
         }
 
+        [HttpPut("{id}", Name = "UpdateTag")]
+        [SwaggerOperation(Summary = "Update conversation's tags")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Update([FromQuery] UpdateConversationRequest request, CancellationToken ct = default)
+        {
+            await _conversations.UpdateTags(request, ct);
+            return NoContent();
+        }
+
         [HttpPut("{id}/close", Name = "CloseConversation")]
         [SwaggerOperation(Summary = "Close an active conversation")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

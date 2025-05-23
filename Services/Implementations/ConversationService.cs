@@ -231,7 +231,7 @@ namespace CustomerService.API.Services.Implementations
 
             // Actualizar campos opcionales
             if (request.Priority.HasValue)
-                conv.Priority = request.Priority.Value;
+                     conv.Priority = request.Priority.Value;
             if (request.Initialized.HasValue)
                 conv.Initialized = request.Initialized.Value;
             if (request.Status.HasValue)
@@ -266,11 +266,7 @@ namespace CustomerService.API.Services.Implementations
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-
-               
             }
-
-           
         }
 
 
@@ -294,5 +290,25 @@ namespace CustomerService.API.Services.Implementations
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
 
+        public async Task UpdateTags(UpdateConversationRequest request, CancellationToken ct = default)
+        {
+            if (request.Tags is null) throw new ArgumentException("Por favor pasar las tags.");
+
+            var conv = await _uow.Conversations.GetByIdAsync(request.ConversationId);
+
+            conv.Tags = request.Tags;
+            conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
+
+            _uow.Conversations.Update(conv, ct);
+
+            await _uow.SaveChangesAsync();
+
+            var dto = conv.Adapt<ConversationDto>();
+
+            await _hubContext
+                .Clients
+                .All
+                .SendAsync("ConversationUpdated", dto, ct);
+        }
     }
 }

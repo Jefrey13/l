@@ -155,7 +155,6 @@ builder.Services.AddHealthChecksUI().AddInMemoryStorage();
 // --------------------- SignalR ---------------------
 builder.Services.AddSignalR();
 
-// --------------------- Authentication & Authorization ---------------------
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -175,6 +174,25 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
         RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero
+    };
+
+    // Esto permite que el JWT que SignalR manda como ?access_token=…
+    // sea reconocido y validado antes de entrar al hub.
+    opt.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/hubs/chat") ||
+                 path.StartsWithSegments("/hubs/notifications") ||
+                 path.StartsWithSegments("/hubs/presence")))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 

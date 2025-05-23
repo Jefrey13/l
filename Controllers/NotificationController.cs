@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -11,6 +12,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace CustomerService.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/v1/[controller]")]
     public class NotificationsController : ControllerBase
     {

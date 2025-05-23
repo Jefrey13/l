@@ -28,7 +28,7 @@ BEGIN TRY
 	);
 
 	-- =================================================================================
-	-- 3) Seed admin and support users and assign roles
+	-- 3) Seed Bot, admin and support users and assign roles
 	-- =================================================================================
 	DECLARE
 		@AdminUserId   INT,
@@ -45,6 +45,51 @@ BEGIN TRY
 	-- get role ids
 	SELECT @AdminRoleId   = RoleId FROM auth.AppRoles WHERE RoleName = 'Admin';
 	SELECT @SupportRoleId = RoleId FROM auth.AppRoles WHERE RoleName = 'Support';
+
+	-- seed Support user
+	IF NOT EXISTS (
+	  SELECT 1 FROM auth.Users u WHERE u.Email = 'jefreyzunia13@gmail.com'
+	)
+	BEGIN
+	  INSERT INTO auth.Users (
+		  FullName,
+		  Email,
+		  PasswordHash,
+		  IsActive,
+		  CompanyId,
+		  DataRequested,
+		  ImageUrl
+	  )
+	  VALUES (
+		'Bot',
+		'ljefreyzunia13@gmail.com',
+		CONVERT(VARBINARY(256), '$2a$12$I61KQba9vQ58Usx6nFjxP.mOF6RXikH.mmi5lgfkOZRFiCCC0sJma'),
+		1,
+		@PCGroupId,
+		0,
+		'https://i.ibb.co/G3xsSdpX/bot.webp'
+	  );
+	  SET @SupportUserId = SCOPE_IDENTITY();
+	END
+	ELSE
+	BEGIN
+	  SELECT @SupportUserId = UserId
+		FROM auth.Users
+	   WHERE Email = 'ladoral441@neuraxo.com';
+	END
+
+	-- assign Support role
+	IF NOT EXISTS (
+	  SELECT 1
+	  FROM auth.UserRoles ur
+	  WHERE ur.UserId = @SupportUserId
+		AND ur.RoleId = @SupportRoleId
+	)
+	BEGIN
+	  INSERT INTO auth.UserRoles (UserId, RoleId)
+	  VALUES (@SupportUserId, @AdminRoleId);
+	END
+
 
 	-- seed Admin user
 	IF NOT EXISTS (
@@ -190,38 +235,10 @@ BEGIN CATCH
 	THROW;
 END CATCH;
 GO
--- =========================================================== --
-BEGIN TRANSACTION;
 
-DECLARE @ContactId    INT,
-		@ConversationId INT;
 
--- 1) Insert a new contact
-INSERT INTO auth.ContactLogs
-	(FullName, Phone, WaId, WaName)
-VALUES
-	('Test Client', '+10000000000', 'waid_test', 'TestClient');
 
-SET @ContactId = SCOPE_IDENTITY();
-
--- 2) Insert a new conversation for that contact, assigned to user 1
-INSERT INTO chat.Conversations
-	(CompanyId, ClientContactId, AssignedAgentId, AssignedByUserId, Status, Initialized, CreatedAt, UpdatedAt)
-VALUES
-	(1, @ContactId, 1, 1, 'New', 0, SYSUTCDATETIME(), SYSUTCDATETIME());
-
-SET @ConversationId = SCOPE_IDENTITY();
-
--- 3) Insert a new message from the client in that conversation
-INSERT INTO chat.Messages
-	(ConversationId, SenderContactId, Content, ExternalId, MessageType, DeliveredAt)
-VALUES
-	(@ConversationId, @ContactId, 'Hello, I need assistance', NEWID(), 'text', SYSUTCDATETIME());
-
-COMMIT;
-
--- =========================================================== --
-
+-- ==================EXTRA ==========================
 USE CustomerSupportDB;
 
 SELECT * FROM chat.Conversations
@@ -240,3 +257,5 @@ UPDATE auth.Menus SET [Url] = 'login' WHERE MenuId = 6
 SELECT * FROM  crm.Companies;
 
 UPDATE chat.Conversations SET Status = 'Closed'
+
+UPDATE chat.Conversations SET Status  = 'Closed'  where ConversationId = 12
