@@ -118,10 +118,8 @@ namespace CustomerService.API.Services.Implementations
                 ?? throw new KeyNotFoundException("Conversation not found.");
 
             conv.AssignedAgentId = agentUserId;
-            conv.AssignedByUserId = null; // o setear desde contexto si lo tienes
+            conv.AssignedByUserId = null; // o setear desde contexto.
             conv.AssignedAt = await _nicDatetime.GetNicDatetime();
-
-            //conv.Status = status;
 
             conv.Status = ConversationStatus.Human;
             _uow.Conversations.Update(conv);
@@ -134,7 +132,7 @@ namespace CustomerService.API.Services.Implementations
             //    payload,
             //    new[] { agentUserId },
             //    cancellation);
-
+            
             var dto = conv.Adapt<ConversationDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
@@ -290,13 +288,13 @@ namespace CustomerService.API.Services.Implementations
             return convs.Select(c => c.Adapt<ConversationDto>());
         }
 
-        public async Task UpdateTags(UpdateConversationRequest request, CancellationToken ct = default)
+        public async Task UpdateTags(int id, List<string> request, CancellationToken ct = default)
         {
-            if (request.Tags is null) throw new ArgumentException("Por favor pasar las tags.");
+            if (request.Count <= 0) throw new ArgumentException("Por favor pasar las tags.");
 
-            var conv = await _uow.Conversations.GetByIdAsync(request.ConversationId);
+            var conv = await _uow.Conversations.GetByIdAsync(id);
 
-            conv.Tags = request.Tags;
+            conv.Tags = request;
             conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
             _uow.Conversations.Update(conv, ct);

@@ -82,13 +82,13 @@ namespace CustomerService.API.Controllers
             return NoContent();
         }
 
-        [HttpPut("{id}", Name = "UpdateTag")]
+        [HttpPut("tags/{id}", Name = "UpdateTag")]
         [SwaggerOperation(Summary = "Update conversation's tags")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Update([FromQuery] UpdateConversationRequest request, CancellationToken ct = default)
+        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] List<string> request, CancellationToken ct = default)
         {
-            await _conversations.UpdateTags(request, ct);
+            await _conversations.UpdateTags(id, request, ct);
             return NoContent();
         }
 

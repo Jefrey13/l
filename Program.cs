@@ -289,7 +289,6 @@ app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationsHub>("/hubs/notifications");
 app.MapHub<PresenceHub>("/hubs/presence");
 
-// API controllers
 app.MapControllers();
 
 app.Run();

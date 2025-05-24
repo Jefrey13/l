@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
+using WhatsappBusiness.CloudApi.Messages.Requests;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -14,19 +16,24 @@ namespace CustomerService.API.Services.Implementations
     {
         private readonly ConcurrentDictionary<int, DateTime> _lastOnline = new();
         private readonly IUnitOfWork _uow;
+        private readonly INicDatetime _nicDatetime;
 
-        public PresenceService(IUnitOfWork uow)
+        public PresenceService(IUnitOfWork uow,
+            INicDatetime nicDatetime)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
+            _nicDatetime = nicDatetime;
         }
 
         public async Task UserConnectedAsync(int userId, CancellationToken cancellation = default)
         {
-            var now = DateTime.UtcNow;
+            var now = await _nicDatetime.GetNicDatetime();
+
             _lastOnline[userId] = now;
 
             var user = await _uow.Users.GetByIdAsync(userId, cancellation)
                        ?? throw new KeyNotFoundException($"User {userId} not found");
+
             user.LastOnline = now;
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync(cancellation);
@@ -35,10 +42,12 @@ namespace CustomerService.API.Services.Implementations
         public async Task UserDisconnectedAsync(int userId, CancellationToken cancellation = default)
         {
             _lastOnline.TryRemove(userId, out _);
-            var now = DateTime.UtcNow;
+
+            var now = await _nicDatetime.GetNicDatetime();
 
             var user = await _uow.Users.GetByIdAsync(userId, cancellation)
                        ?? throw new KeyNotFoundException($"User {userId} not found");
+
             user.LastOnline = now;
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync(cancellation);
@@ -60,6 +69,7 @@ namespace CustomerService.API.Services.Implementations
                           ? (DateTime?)dt
                           : null
                 );
+
             return Task.FromResult<IDictionary<int, DateTime?>>(result);
         }
     }

@@ -24,6 +24,6 @@ namespace CustomerService.API.Services.Interfaces
 
         Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default);
 
-        Task UpdateTags(UpdateConversationRequest request, CancellationToken ct = default);
+        Task UpdateTags(int id, List<string> request, CancellationToken ct = default);
     }
 }

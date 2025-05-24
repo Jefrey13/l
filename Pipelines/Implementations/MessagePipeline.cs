@@ -121,7 +121,6 @@
                     new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
                 };
 
-                //Solo 1 ves, luego de crearse la conversación
                 if (!convoDto.Initialized)
                 {
                 _uow.ClearChangeTracker();
@@ -185,6 +184,8 @@
                 switch (payload.InteractiveId)
                     {
                         case "1":
+                            if(convDto.Status != ConversationStatus.Human.ToString())
+                        {
                             await _conversationService.UpdateAsync(new UpdateConversationRequest
                             {
                                 ConversationId = convoDto.ConversationId,
@@ -197,50 +198,83 @@
                                 SenderId = BotUserId,
                                 Content = "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
                                 MessageType = MessageType.Text
-                            },  false ,ct);
+                            }, false, ct);
 
-                        await _hubContext.Clients
-                            .All
-                            .SendAsync("ConversationUpdated", convDto, ct);
-                        return;
-
-                        case "2":
-                            await _conversationService.UpdateAsync(new UpdateConversationRequest
-                            {
-                                ConversationId = convoDto.ConversationId,
-                                Status = ConversationStatus.Waiting
-                            }, ct);
-
+                            await _hubContext.Clients
+                                .All
+                                .SendAsync("ConversationUpdated", convDto, ct);
+                        }
+                        else
+                        {
                             await _messageService.SendMessageAsync(new SendMessageRequest
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = "Tu solicitud ha sido recibida. En breve un agente te atenderá.",
+                                Content = "Lo sentimos, su conversación esta procesada por un miembro de soporte, por el momento no puede comunicarse con el bot.",
                                 MessageType = MessageType.Text
                             }, false, ct);
 
-                        await _hubContext.Clients
-                           .All
-                           .SendAsync("ConversationUpdated", convDto, ct);
+                            await _hubContext.Clients
+                                .All
+                                .SendAsync("ConversationUpdated", convDto, ct);
+                        }
+                        return;
 
-                            var admins = await _userService.GetByRoleAsync("Admin", ct);
-                            var adminIds = admins.Select(a => a.UserId).ToArray();
-                        
-
-                            //Enviar una notificacion a los usuario del sitio web, por medio de signalr para mostrar una alerta con toast, y admeas actualizar el contandor en la opcion de notificaciones menu.
-                            var supportJson = JsonSerializer.Serialize(new
+                        case "2":
+                            if(convDto.Status != ConversationStatus.Waiting.ToString())
                             {
-                                convoDto.ConversationId,
-                                contactDto.Phone,
-                                contactDto.WaName
-                            });
+                                await _conversationService.UpdateAsync(new UpdateConversationRequest
+                                {
+                                    ConversationId = convoDto.ConversationId,
+                                    Status = ConversationStatus.Waiting
+                                }, ct);
 
-                            await _notification.CreateAsync(
-                                NotificationType.SupportRequested,
-                                supportJson,
-                                adminIds,
-                                ct
-                            );
+                                await _messageService.SendMessageAsync(new SendMessageRequest
+                                {
+                                    ConversationId = convoDto.ConversationId,
+                                    SenderId = BotUserId,
+                                    Content = "Tu solicitud ha sido recibida. En breve un agente te atenderá.",
+                                    MessageType = MessageType.Text
+                                }, false, ct);
+
+                                await _hubContext.Clients
+                                   .All
+                                   .SendAsync("ConversationUpdated", convDto, ct);
+
+                                var admins = await _userService.GetByRoleAsync("Admin", ct);
+                                var adminIds = admins.Select(a => a.UserId).ToArray();
+
+
+                                //Enviar una notificacion a los usuario del sitio web, por medio de signalr para mostrar una alerta con toast, y admeas actualizar el contandor en la opcion de notificaciones menu.
+                                var supportJson = JsonSerializer.Serialize(new
+                                {
+                                    convoDto.ConversationId,
+                                    contactDto.Phone,
+                                    contactDto.WaName
+                                });
+
+                                await _notification.CreateAsync(
+                                    NotificationType.SupportRequested,
+                                    supportJson,
+                                    adminIds,
+                                    ct
+                                );
+                        }
+                        else
+                        {
+                            await _messageService.SendMessageAsync(new SendMessageRequest
+                            {
+                                ConversationId = convoDto.ConversationId,
+                                SenderId = BotUserId,
+                                Content = "Lo sentimo su conversación esta siendo atendida por un agente de soporte, por el momento deve de finalizar ka conversación actual.",
+                                MessageType = MessageType.Text
+                            }, false, ct);
+
+                            await _hubContext.Clients
+                               .All
+                               .SendAsync("ConversationUpdated", convDto, ct);
+                        }
+
                             return;
                     }
                 }
