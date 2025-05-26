@@ -45,16 +45,12 @@ namespace CustomerService.API.Models
 
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
-        /// <summary>
-        /// Lista de etiquetas asociadas a la conversación,
-        /// serializada como JSON en la base de datos.
-        /// </summary>
         [Column(TypeName = "nvarchar(max)")]
         public List<string> Tags { get; set; } = new List<string>();
 
         // Campos calculados (no mapeados a la BD)
         [NotMapped]
-        public int TotalMessages => Messages.Count;
+        public int TotalMessages => Messages.Count();
 
         [NotMapped]
         public DateTime LastActivity =>

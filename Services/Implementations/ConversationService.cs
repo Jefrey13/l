@@ -166,6 +166,15 @@ namespace CustomerService.API.Services.Implementations
             conv.ClosedAt = await _nicDatetime.GetNicDatetime();
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(cancellation);
+
+            var dto = conv.Adapt<ConversationDto>();
+
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+
+            await _hubContext
+            .Clients
+            .All
+            .SendAsync("ConversationUpdated", dto, cancellation);
         }
 
         public async Task<ConversationDto> GetOrCreateAsync(
@@ -303,6 +312,7 @@ namespace CustomerService.API.Services.Implementations
 
             var dto = conv.Adapt<ConversationDto>();
 
+            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
             await _hubContext
                 .Clients
                 .All
