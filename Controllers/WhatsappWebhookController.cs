@@ -186,7 +186,7 @@ namespace CustomerService.API.Controllers
                     };
 
                     // llama al servicio
-                    await _messageService.SendMediaAsync(svcReq, jwtToken, isContact: false, cancellation);
+                    await _messageService.SendMediaAsync(svcReq, jwtToken, cancellation);
 
                     return Ok(ApiResponse<object>.Ok("Multimedia enviada correctamente."));
                 }

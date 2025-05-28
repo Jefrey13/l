@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,25 +29,29 @@ namespace CustomerService.API.Services.Implementations
         private readonly INotificationService _notification;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly ITokenService _tokenService;
+        private readonly IGeminiClient _geminiClient;
 
         public ConversationService(
             IUnitOfWork uow,
             INicDatetime nicDatetime,
             INotificationService notification,
             IHubContext<ChatHub> hubContext,
-            ITokenService tokenService)
+            ITokenService tokenService,
+            IGeminiClient geminiClient)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
             _notification = notification ?? throw new ArgumentNullException(nameof(notification));
             _hubContext = hubContext;
             _tokenService = tokenService;
+            _geminiClient = geminiClient;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetAllAsync(CancellationToken cancellation = default)
         {
             var convs = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
+                    .ThenInclude(a=>a.Attachments)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -148,6 +153,7 @@ namespace CustomerService.API.Services.Implementations
             if (id <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(id));
             var conv = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
+                    .ThenInclude(a => a.Attachments)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -318,6 +324,62 @@ namespace CustomerService.API.Services.Implementations
                 .Clients
                 .All
                 .SendAsync("ConversationUpdated", dto, ct);
+        }
+
+        public async Task<IEnumerable<ConversationHistoryDto>> GetHistoryByContactAsync(int contactId, CancellationToken ct = default)
+        {
+            var convs = await _uow.Conversations.GetAll()
+                .Where(c => c.ClientContactId == contactId)
+                .Include(c => c.Messages)
+                    .ThenInclude(m => m.Attachments)
+                .OrderBy(c => c.CreatedAt)
+                .ToListAsync(ct);
+
+            return convs.Select(c => new ConversationHistoryDto
+            {
+                ConversationId = c.ConversationId,
+                CreatedAt = c.CreatedAt,
+                Status = c.Status!.Value,
+                Messages = c.Messages
+                                     .OrderBy(m => m.SentAt)
+                                     .Select(m => new MessageWithAttachmentsDto
+                                     {
+                                         MessageId = m.MessageId,
+                                         SenderUserId = m.SenderUserId,
+                                         SenderContactId = m.SenderContactId,
+                                         Content = m.Content,
+                                         SentAt = m.SentAt,
+                                         MessageType = m.MessageType,
+                                         Attachments = m.Attachments
+                                                                .Select(a => a.Adapt<AttachmentDto>())
+                                     })
+            });
+        }
+
+        public async Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default)
+        {
+            // 1) Traer el historial completo con mensajes y attachments
+            var history = await GetHistoryByContactAsync(contactId, ct);
+
+            // 2) Construir el texto plano
+            var sb = new StringBuilder();
+            foreach (var conv in history)
+            {
+                sb.AppendLine($"--- Conversación #{conv.ConversationId} ({conv.CreatedAt:g}) ---");
+                foreach (var msg in conv.Messages)
+                {
+                    var who = msg.SenderUserId.HasValue ? "Agente" : "Cliente";
+                    sb.AppendLine($"{who}: {msg.Content}");
+                    foreach (var att in msg.Attachments)
+                    {
+                        sb.AppendLine($"   📎 {att.FileName} ({att.MimeType})");
+                    }
+                }
+            }
+
+            // 3) Invocar a Gemini para resumir
+            var prompt = "Resume este histórico completo en un párrafo breve:";
+            return await _geminiClient.GenerateContentAsync(prompt, sb.ToString(), ct);
         }
     }
 }

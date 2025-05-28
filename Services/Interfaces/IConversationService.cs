@@ -25,5 +25,12 @@ namespace CustomerService.API.Services.Interfaces
         Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default);
 
         Task UpdateTags(int id, List<string> request, CancellationToken ct = default);
+
+        Task<IEnumerable<ConversationHistoryDto>> GetHistoryByContactAsync(int contactId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Obtiene el resumen de todas las conversaciones de un cliente.
+        /// </summary>
+        Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default);
     }
 }

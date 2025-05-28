@@ -18,7 +18,6 @@ namespace CustomerService.API.Services.Interfaces
         Task<MessageDto> SendMediaAsync(
            SendMediaRequest request,
            string jwtToken,
-           bool isContact = false,
            CancellationToken cancellation = default
        );
     }

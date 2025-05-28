@@ -114,7 +114,7 @@ builder.Services.AddScoped<IContactLogService, ContactLogService>();
 builder.Services.AddScoped<INicDatetime, NicDatetime>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
-
+builder.Services.AddHttpContextAccessor();
 //builder.Services.AddScoped<IHostedService, ConversationCleanupService>();
 
 // --------------------- Mapster ---------------------
@@ -253,8 +253,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseRouting();
 
+app.UseStaticFiles();
+
+app.UseRouting();
 app.UseCors("CorsPolicy");
 
 app.UseResponseCompression();
@@ -271,7 +273,6 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1"));
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseStaticFiles();
 
 // Liveness
 app.MapGet("/liveness", () => Results.Ok(new { status = "alive" }))

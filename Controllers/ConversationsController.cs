@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Services.Implementations;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using Microsoft.AspNetCore.Http;
@@ -127,5 +128,24 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<IEnumerable<ConversationDto>>(list,
                        "Conversations retrieved by user role."));
         }
+
+        [HttpGet("{contactId}/history", Name = "GetHistoryByContact")]
+        [SwaggerOperation("GetHistoryByContact")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationHistoryDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetHistory([FromRoute] int contactId, CancellationToken ct)
+        {
+            var history = await _conversations.GetHistoryByContactAsync(contactId, ct);
+            return Ok(new ApiResponse<IEnumerable<ConversationHistoryDto>>(history, "Historial obtenido."));
+        }
+
+        [HttpPost("{contactId}/summary", Name = "SummarizeAllByContact")]
+        [SwaggerOperation("SummarizeAllByContact")]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SummarizeAllByContact([FromRoute] int contactId, CancellationToken ct)
+        {
+            var summary = await _conversations.SummarizeAllByContactAsync(contactId, ct);
+            return Ok(new ApiResponse<string>(summary, "Resumen generado."));
+        }
+
     }
 }

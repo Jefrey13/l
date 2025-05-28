@@ -36,6 +36,7 @@
             private readonly ISignalRNotifyService _signalR;
             private readonly IUnitOfWork _uow;
             private readonly IAttachmentService _attachmentService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         private const int BotUserId = 1;
 
@@ -52,7 +53,8 @@
                 IUnitOfWork uow,
                 ISignalRNotifyService signalR,
                 IOptions<GeminiOptions> geminiOpts,
-                IAttachmentService attachmentService)
+                IAttachmentService attachmentService,
+                IHttpContextAccessor httpContextAccessor)
             {
                 _contactService = contactService;
                 _conversationService = conversationService;
@@ -67,6 +69,7 @@
                 _uow = uow;
                 _signalR = signalR;
                 _attachmentService = attachmentService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
             public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -94,72 +97,87 @@
                 var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
 
 
-            // 2) Si traemos media (imagen, video, audio, sticker, documento)…
+            // 2) Si traemos media… (imagen, video, audio, sticker, documento)
             if (msg.Image != null
              || msg.Video != null
              || msg.Audio != null
              || msg.Sticker != null
              || msg.Document != null)
             {
-                // 2.1) Extraer mediaId, mimeType y caption (si existiera)
+                // 2.1) Extraer mediaId, mimeType y caption
                 string mediaId = msg.Image?.Id
                                ?? msg.Video?.Id
                                ?? msg.Audio?.Id
                                ?? msg.Sticker?.Id
-                               ?? msg.Document?.Id!;
-                
+                               ?? msg.Document!.Id!;
                 string mimeType = msg.Image?.MimeType
                                 ?? msg.Video?.MimeType
                                 ?? msg.Audio?.MimeType
                                 ?? msg.Sticker?.MimeType
                                 ?? msg.Document!.MimeType;
-                
                 string? caption = msg.Caption;
 
-                // 2.2) Descargar URL y luego el binario
+                // 2.2) Descargar URL y binario
                 var downloadUrl = await _whatsAppService.DownloadMediaUrlAsync(mediaId, ct);
                 var data = await _whatsAppService.DownloadMediaAsync(downloadUrl, ct);
 
-                try
-                {
-                    //Save local storage
-                    var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "media");
-                    Directory.CreateDirectory(folder);
-                    var ext = Path.GetExtension(downloadUrl) ?? ".bin";
-                    var file = $"{mediaId}{ext}";
-                    var path = Path.Combine(folder, file);
-                    await File.WriteAllBytesAsync(path, data, ct);
-                    var publicUrl = $"/media/{file}";
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
+                // 2.3) Guardar el fichero en wwwroot/media y montar URL pública
+                var wwwroot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "media");
+                Directory.CreateDirectory(wwwroot);
 
-                // 2.3) Persistir el mensaje en BD (isContact = true)
+                // inferir extensión a partir del mimeType o del filename original
+                var ext = mimeType switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/webp" => ".webp",
+                    "video/mp4" => ".mp4",
+                    "audio/ogg" or "audio/opus" => ".ogg",
+                    "application/pdf" => ".pdf",
+                    "application/msword" => ".doc",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+                    "application/vnd.ms-excel" => ".xls",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation" => ".pptx",
+                    // si viene un documento genérico con nombre original, usar su extensión
+                    _ when msg.Document?.Filename is not null => Path.GetExtension(msg.Document.Filename)!,
+                    _ => ".bin"
+                };
+
+                var fileName = $"{mediaId}{ext}";
+                var filePath = Path.Combine(wwwroot, fileName);
+                await File.WriteAllBytesAsync(filePath, data, ct);
+
+                // construir tu URL pública contra la API
+                var req = _httpContextAccessor.HttpContext!.Request;
+                var baseUrl = $"{req.Scheme}://{req.Host}";
+                var publicUrl = $"{baseUrl}/media/{fileName}";
+
+                // 2.4) Persistir el mensaje en BD (como contacto)
                 var sendReq = new SendMessageRequest
                 {
                     ConversationId = convoDto.ConversationId,
                     SenderId = contactDto.Id,
                     Content = caption,
-                    MessageType =  mimeType.Equals("image/webp") ? MessageType.Sticker
-                                   : mimeType.StartsWith("image/") ? MessageType.Image
-                                   : mimeType.StartsWith("video/") ? MessageType.Video
-                                   : mimeType.StartsWith("audio/") ? MessageType.Audio
-                                   : MessageType.Document
+                    MessageType = mimeType switch
+                    {
+                        var m when m.Equals("image/webp", StringComparison.OrdinalIgnoreCase) => MessageType.Sticker,
+                        var m when m.StartsWith("image/") => MessageType.Image,
+                        var m when m.StartsWith("video/") => MessageType.Video,
+                        var m when m.StartsWith("audio/") => MessageType.Audio,
+                        _ => MessageType.Document
+                    }
                 };
-
                 var messageDto = await _messageService.SendMessageAsync(sendReq, isContact: true, CancellationToken.None);
 
-                // 2.4) Guardar el attachment en BD
+                // 2.5) Guardar el attachment en BD con TU URL pública
                 var attachReq = new UploadAttachmentRequest
                 {
                     MessageId = messageDto.MessageId,
                     MediaId = mediaId,
                     MimeType = mimeType,
-                    FileName = msg.Document?.Filename ?? mediaId,
-                    MediaUrl = downloadUrl,
-                    // Opcional: FileSize = data.Length
+                    FileName = fileName,
+                    MediaUrl = publicUrl
                 };
                 await _attachmentService.UploadAsync(attachReq, CancellationToken.None);
 
@@ -229,6 +247,8 @@
 
                 return;
                 }
+
+
 
                 //Cuando el usuario seleccione una opcion de la lista enviada.
                 if (payload.Type == InteractiveType.Interactive)

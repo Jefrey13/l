@@ -141,27 +141,28 @@ namespace CustomerService.API.Services.Implementations
         }
 
         public async Task<MessageDto> SendMediaAsync(
-       SendMediaRequest req,
-       string jwtToken,
-       bool isContact = false,
-       CancellationToken ct = default
-    )
+     SendMediaRequest req,
+     string jwtToken,
+     CancellationToken ct = default
+ )
         {
-            // extrae senderId del token
+            // 0) Extraer senderId del token
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
-            req.SenderId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var senderId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            // 1) subir media a WhatsApp Cloud
-            var mediaId = await _whatsAppService.UploadMediaAsync(req.Data, req.MimeType, req.FileName, ct);
+            // 1) Subir media a WhatsApp Cloud
+            var mediaId = await _whatsAppService
+                .UploadMediaAsync(req.Data, req.MimeType, req.FileName, ct);
 
-            // 2) enviar media
-            await _whatsAppService.SendMediaAsync(req.ConversationId, req.SenderId, mediaId, req.MimeType, req.Caption, ct);
+            // 2) Enviar media por la API de WhatsApp
+            await _whatsAppService
+                .SendMediaAsync(req.ConversationId, senderId, mediaId, req.MimeType, req.Caption, ct);
 
-            // 3) crear mensaje en BD (sin attachment aún)
-            var sendReq = new SendMessageRequest
+            // 3) Persistir el mensaje en BD directamente
+            var msg = new Message
             {
                 ConversationId = req.ConversationId,
-                SenderId = req.SenderId,
+                SenderUserId = senderId,
                 Content = req.Caption,
                 MessageType = req.MimeType switch
                 {
@@ -170,34 +171,64 @@ namespace CustomerService.API.Services.Implementations
                     var m when m.StartsWith("video/") => MessageType.Video,
                     var m when m.StartsWith("audio/") => MessageType.Audio,
                     _ => MessageType.Document
-                }
+                },
+                SentAt = await _nicDatetime.GetNicDatetime(),
+                Status = MessageStatus.Sent,
+                ExternalId = Guid.NewGuid().ToString()
             };
-            var msgDto = await SendMessageAsync(sendReq, isContact: false, ct);
+            await _uow.Messages.AddAsync(msg, ct);
+            await _uow.SaveChangesAsync(ct);
 
-            // 4) guarda el fichero en wwwroot/media y calcula su URL pública
+            // 4) Crear DTO y notificar por SignalR
+            var dto = msg.Adapt<MessageDto>();
+            await _hub.Clients
+                .Group(req.ConversationId.ToString())
+                .SendAsync("ReceiveMessage", dto, ct);
+
+            // 5) Guardar el binario en wwwroot/media y montar URL pública
             var wwwroot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "media");
             Directory.CreateDirectory(wwwroot);
-            var ext = Path.GetExtension(req.FileName) ?? "";
+
+            var ext = req.MimeType switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                "video/mp4" => ".mp4",
+                "audio/ogg" or "audio/opus" => ".ogg",
+                "application/pdf" => ".pdf",
+                "application/msword" => ".doc",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+                "application/vnd.ms-excel" => ".xls",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation" => ".pptx",
+                _ when Path.HasExtension(req.FileName) => Path.GetExtension(req.FileName)!,
+                _ => ".bin"
+            };
+
             var fileName = $"{mediaId}{ext}";
             var filePath = Path.Combine(wwwroot, fileName);
             await File.WriteAllBytesAsync(filePath, req.Data, ct);
 
-            // construye la URL usando el request actual
-            var reqHttp = _ctx.HttpContext!.Request;
-            var baseUrl = $"{reqHttp.Scheme}://{reqHttp.Host}";
+            // 6) Construir URL pública
+            var httpReq = _ctx.HttpContext!.Request;
+            var baseUrl = $"{httpReq.Scheme}://{httpReq.Host}";
             var publicUrl = $"{baseUrl}/media/{fileName}";
 
-            // 5) persiste el attachment con la URL pública
-            await _attachSvc.UploadAsync(new UploadAttachmentRequest
+            // 7) Persistir attachment en BD
+            var attach = new Attachment
             {
-                MessageId = msgDto.MessageId,
+                MessageId = msg.MessageId,
                 MediaId = mediaId,
                 MimeType = req.MimeType,
                 FileName = fileName,
                 MediaUrl = publicUrl,
-            }, ct);
+                CreatedAt = await _nicDatetime.GetNicDatetime()
+            };
+            await _uow.Attachments.AddAsync(attach, ct);
+            await _uow.SaveChangesAsync(ct);
 
-            return msgDto;
+            return dto;
         }
     }
 }

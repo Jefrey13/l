@@ -36,6 +36,7 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
                 .Include(c => c.Messages)
+                    .ThenInclude(a=> a.Attachments)
                 .ToListAsync(cancellation);
         }
 
@@ -58,6 +59,7 @@ namespace CustomerService.API.Repositories.Implementations
                 .AsNoTracking()
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
-                .Include(c => c.Messages);
+                .Include(c => c.Messages)
+                        .ThenInclude(a=>  a.Attachments);
     }
 }
