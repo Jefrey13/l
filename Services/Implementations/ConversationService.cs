@@ -17,6 +17,7 @@ using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using WhatsappBusiness.CloudApi.Webhook;
 using Conversation = CustomerService.API.Models.Conversation;
 
@@ -116,28 +117,36 @@ namespace CustomerService.API.Services.Implementations
 
         }
 
-        public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, CancellationToken cancellation = default)
+        public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, string jwtToken, CancellationToken ct = default)
         {
             if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
-            var conv = await _uow.Conversations.GetByIdAsync(conversationId, cancellation)
+            
+            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                 ?? throw new KeyNotFoundException("Conversation not found.");
 
+
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
             conv.AssignedAgentId = agentUserId;
-            conv.AssignedByUserId = null; // o setear desde contexto.
+            conv.AssignedByUserId = userId;
             conv.AssignedAt = await _nicDatetime.GetNicDatetime();
 
             conv.Status = ConversationStatus.Human;
             _uow.Conversations.Update(conv);
-            await _uow.SaveChangesAsync(cancellation);
+            await _uow.SaveChangesAsync(ct);
 
             var payload = JsonSerializer.Serialize(new { conv.ConversationId, Agent = agentUserId });
-            
+
             //await _notification.CreateAsync(
             //    NotificationType.ConversationAssigned,
             //    payload,
             //    new[] { agentUserId },
             //    cancellation);
-            
+
+           conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+               ?? throw new KeyNotFoundException("Conversation not found.");
+
             var dto = conv.Adapt<ConversationDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
@@ -145,7 +154,7 @@ namespace CustomerService.API.Services.Implementations
             await _hubContext
             .Clients
             .All
-            .SendAsync("ConversationUpdated", dto, cancellation);
+            .SendAsync("ConversationUpdated", dto, ct);
         }
 
         public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -162,16 +171,16 @@ namespace CustomerService.API.Services.Implementations
             return conv == null ? null : conv.Adapt<ConversationDto>();
         }
 
-        public async Task CloseAsync(int conversationId, CancellationToken cancellation = default)
+        public async Task CloseAsync(int conversationId, CancellationToken ct = default)
         {
             if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
-            var conv = await _uow.Conversations.GetByIdAsync(conversationId, cancellation)
+            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                 ?? throw new KeyNotFoundException("Conversation not found.");
 
             conv.Status = ConversationStatus.Closed;
             conv.ClosedAt = await _nicDatetime.GetNicDatetime();
             _uow.Conversations.Update(conv);
-            await _uow.SaveChangesAsync(cancellation);
+            await _uow.SaveChangesAsync(ct);
 
             var dto = conv.Adapt<ConversationDto>();
 
@@ -180,7 +189,7 @@ namespace CustomerService.API.Services.Implementations
             await _hubContext
             .Clients
             .All
-            .SendAsync("ConversationUpdated", dto, cancellation);
+            .SendAsync("ConversationUpdated", dto, ct);
         }
 
         public async Task<ConversationDto> GetOrCreateAsync(
@@ -326,34 +335,55 @@ namespace CustomerService.API.Services.Implementations
                 .SendAsync("ConversationUpdated", dto, ct);
         }
 
-        public async Task<IEnumerable<ConversationHistoryDto>> GetHistoryByContactAsync(int contactId, CancellationToken ct = default)
+        public async Task<IEnumerable<ConversationHistoryDto>> GetHistoryByContactAsync(int convId, CancellationToken ct = default)
         {
-            var convs = await _uow.Conversations.GetAll()
-                .Where(c => c.ClientContactId == contactId)
-                .Include(c => c.Messages)
-                    .ThenInclude(m => m.Attachments)
-                .OrderBy(c => c.CreatedAt)
-                .ToListAsync(ct);
-
-            return convs.Select(c => new ConversationHistoryDto
+            try
             {
-                ConversationId = c.ConversationId,
-                CreatedAt = c.CreatedAt,
-                Status = c.Status!.Value,
-                Messages = c.Messages
-                                     .OrderBy(m => m.SentAt)
-                                     .Select(m => new MessageWithAttachmentsDto
-                                     {
-                                         MessageId = m.MessageId,
-                                         SenderUserId = m.SenderUserId,
-                                         SenderContactId = m.SenderContactId,
-                                         Content = m.Content,
-                                         SentAt = m.SentAt,
-                                         MessageType = m.MessageType,
-                                         Attachments = m.Attachments
-                                                                .Select(a => a.Adapt<AttachmentDto>())
-                                     })
-            });
+                var conv = await _uow.Conversations.GetByIdAsync(convId, ct) ?? new Conversation();
+
+                var convs = await _uow.Conversations.GetAll()
+                    .Where(c => c.ClientContact.Id == conv.ClientContactId)
+                    .Include(cl => cl.ClientContact)
+                    .Include(cl => cl.AssignedAgent)
+                    .Include(cl => cl.AssignedByUser)
+                    .Include(c => c.Messages)
+                        .ThenInclude(s => s.SenderUser)
+                    .Include(c => c.Messages)
+                        .ThenInclude(s => s.SenderContact)
+                    .Include(c => c.Messages)
+                        .ThenInclude(m => m.Attachments)
+                    .OrderBy(c => c.CreatedAt)
+                    .ToListAsync(ct);
+
+                var convDto = convs.Select(c => new ConversationHistoryDto
+                {
+                    ConversationId = c.ConversationId,
+                    CreatedAt = c.CreatedAt,
+                    Status = c.Status!.Value,
+                    Messages = c.Messages
+                                         .OrderBy(m => m.SentAt)
+                                         .Select(m => new MessageWithAttachmentsDto
+                                         {
+                                             MessageId = m.MessageId,
+                                             SenderUserId = m.SenderUserId,
+                                             SenderUserName = m.SenderUser?.FullName,
+                                             SenderContactId = m.SenderContactId,
+                                             SenderContactName =m.SenderContact?.WaName,
+                                             Content = m.Content,
+                                             SentAt = m.SentAt,
+                                             MessageType = m.MessageType,
+                                             Attachments = m.Attachments
+                                                                    .Select(a => a.Adapt<AttachmentDto>())
+                                         })
+                });
+
+                return convDto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al obtener el historial de conversaciones: {ex.Message}");
+                return Enumerable.Empty<ConversationHistoryDto>();
+            }
         }
 
         public async Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default)

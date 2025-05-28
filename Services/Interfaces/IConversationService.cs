@@ -11,7 +11,7 @@ namespace CustomerService.API.Services.Interfaces
 
         Task<IEnumerable<ConversationDto>> GetPendingAsync(CancellationToken cancellation = default);
 
-        Task AssignAgentAsync(int conversationId, int agentUserId, string status, CancellationToken cancellation = default);
+        Task AssignAgentAsync(int conversationId, int agentUserId, string status, string jwtToken, CancellationToken cancellation = default);
 
         Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default);
         Task CloseAsync(int conversationId, CancellationToken cancellation = default);

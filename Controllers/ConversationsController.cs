@@ -79,7 +79,12 @@ namespace CustomerService.API.Controllers
             [FromQuery] string status,
             CancellationToken ct = default)
         {
-            await _conversations.AssignAgentAsync(id, agentUserId, status , ct);
+            var jwtToken = HttpContext.Request
+                             .Headers["Authorization"]
+                             .ToString()
+                             .Split(' ')[1];
+
+            await _conversations.AssignAgentAsync(id, agentUserId, status , jwtToken, ct);
             return NoContent();
         }
 
@@ -146,6 +151,5 @@ namespace CustomerService.API.Controllers
             var summary = await _conversations.SummarizeAllByContactAsync(contactId, ct);
             return Ok(new ApiResponse<string>(summary, "Resumen generado."));
         }
-
     }
 }

@@ -61,5 +61,19 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.Messages)
                         .ThenInclude(a=>  a.Attachments);
+
+        public override async Task<Conversation?> GetByIdAsync(int id, CancellationToken ct = default)
+        {
+            var conversation = await _dbSet
+                .AsNoTracking()
+                .Where(c => c.ConversationId == id)
+                .Include(c => c.ClientContact)
+                .Include(c => c.AssignedByUser)
+                .Include(u => u.AssignedAgent)
+                .Include(u => u.Messages)
+                    .ThenInclude(a=> a.Attachments)
+                    .FirstOrDefaultAsync(ct);
+            return conversation ?? throw new KeyNotFoundException($"Conversation with ID {id} not found.");
+        }
     }
 }

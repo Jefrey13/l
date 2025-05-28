@@ -17,6 +17,8 @@ namespace CustomerService.API.Repositories.Implementations
             return await _dbSet
                 .AsNoTracking()
                 .Where(m => m.ConversationId == conversationId)
+                .Include(m => m.SenderUser)
+                .Include(m => m.SenderContact)
                 .Include(m => m.Attachments)
                 .OrderBy(m => m.DeliveredAt)
                 .ToListAsync(cancellation);

@@ -257,6 +257,7 @@ namespace CustomerService.API.Services.Implementations
             {
                 Content = JsonContent.Create(payload)
             };
+
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
 
             var res = await _http.SendAsync(req, cancellation);

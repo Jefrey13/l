@@ -20,7 +20,7 @@ namespace CustomerService.API.Repositories.Implementations
         public virtual IQueryable<T> GetAll() =>
             _dbSet.AsNoTracking();
 
-        public async Task<T?> GetByIdAsync(int id, CancellationToken cancellation = default)
+        public virtual async Task<T?> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             if (id <= 0) throw new ArgumentException("El id debe ser mayor que cero", nameof(id));
             return await _dbSet.FindAsync(new object[] { id }, cancellation);
