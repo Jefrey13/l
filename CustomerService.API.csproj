@@ -56,6 +56,7 @@
   <ItemGroup>
     <Folder Include="Logs\" />
     <Folder Include="Migrations\" />
+    <Folder Include="wwwroot\media\" />
   </ItemGroup>
 
 </Project>

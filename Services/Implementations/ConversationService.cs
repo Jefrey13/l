@@ -287,6 +287,7 @@ namespace CustomerService.API.Services.Implementations
         {
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
             var roles = principal.FindAll(ClaimTypes.Role).Select(r => r.Value);
 
             if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.Wh;
 using CustomerService.API.Dtos.ResponseDtos;
 
 namespace CustomerService.API.Services.Interfaces
@@ -13,5 +14,12 @@ namespace CustomerService.API.Services.Interfaces
         Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default);
         Task UpdateDeliveryStatusAsync(int messageId, DateTimeOffset deliveredAt, CancellationToken cancellation = default);
         Task MarkAsReadAsync(int messageId, DateTimeOffset readAt, CancellationToken cancellation = default);
+
+        Task<MessageDto> SendMediaAsync(
+           SendMediaRequest request,
+           string jwtToken,
+           bool isContact = false,
+           CancellationToken cancellation = default
+       );
     }
 }

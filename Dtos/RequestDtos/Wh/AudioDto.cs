@@ -1,14 +1,11 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace CustomerService.API.Dtos.RequestDtos
+namespace CustomerService.API.Dtos.RequestDtos.Wh
 {
-    public class DocumentDto
+    public class AudioDto
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = null!;
-
-        [JsonPropertyName("filename")]
-        public string Filename { get; set; } = null!;
 
         [JsonPropertyName("mime_type")]
         public string MimeType { get; set; } = null!;

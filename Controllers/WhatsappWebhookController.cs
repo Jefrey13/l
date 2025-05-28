@@ -148,5 +148,47 @@ namespace CustomerService.API.Controllers
 
             return Ok();
         }
+
+        [HttpPost("{conversationId}/send/media")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> SendMediaAsync(
+            int conversationId,
+            IFormFile file,
+            [FromForm] string? caption,
+            CancellationToken cancellation
+        )
+                {
+
+            var jwtToken = HttpContext.Request
+                             .Headers["Authorization"]
+                             .ToString()
+                             .Split(' ')[1];
+
+            if (file == null || file.Length == 0)
+                        return BadRequest(ApiResponse<object>.Fail("No se envió archivo."));
+
+
+                    // convierte IFormFile → byte[]
+                    byte[] data;
+                    await using (var ms = new MemoryStream())
+                    {
+                        await file.CopyToAsync(ms, cancellation);
+                        data = ms.ToArray();
+                    }
+
+                    var svcReq = new SendMediaRequest
+                    {
+                        ConversationId = conversationId,
+                        Data = data,
+                        FileName = file.FileName,
+                        MimeType = file.ContentType,
+                        Caption = caption
+                    };
+
+                    // llama al servicio
+                    await _messageService.SendMediaAsync(svcReq, jwtToken, isContact: false, cancellation);
+
+                    return Ok(ApiResponse<object>.Ok("Multimedia enviada correctamente."));
+                }
     }
 }

@@ -5,7 +5,9 @@
         Text,
         Image,
         Audio,
+        Video,
         Document,
+        Sticker,
         Interactive
     }
 }

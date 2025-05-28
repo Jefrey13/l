@@ -271,6 +271,8 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1"));
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseStaticFiles();
+
 // Liveness
 app.MapGet("/liveness", () => Results.Ok(new { status = "alive" }))
    .AllowAnonymous();

@@ -20,6 +20,9 @@ using WhatsappBusiness.CloudApi.Messages.Requests;
 using Microsoft.AspNetCore;
 using CustomerService.API.Hubs;
 using CustomerService.API.Utils;
+using System.Text.Json.Serialization;
+using WhatsappBusiness.CloudApi.Response;
+using Message = CustomerService.API.Models.Message;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -61,69 +64,6 @@ namespace CustomerService.API.Services.Implementations
             _nicDatetime = nicDatetime;
         }
 
-        public async Task HandleWebhookAsync(WhatsAppWebhookRequestDto webhook, CancellationToken cancellation = default)
-        {
-            var phone = webhook.From;
-            ContactLogResponseDto contact;
-            try
-            {
-                contact = await _contactService.GetByPhoneAsync(phone, cancellation);
-            }
-            catch
-            {
-                var create = new CreateContactLogRequestDto
-                {
-                    Phone = phone,
-                    WaName = webhook.Name,
-                    WaId = webhook.WaId,
-                    WaUserId = webhook.WaUserId
-                };
-                contact = await _contactService.CreateAsync(create, cancellation);
-            }
-
-            var conv = (await _conversationService.GetAllAsync(cancellation))
-                .FirstOrDefault(c => c.ClientContactId == contact.Id && !c.IsClosed);
-            if (conv == null)
-            {
-                var start = new StartConversationRequest
-                {
-                    CompanyId = contact.CompanyId ?? 0,
-                    ClientContactId = contact.Id,
-                    Priority = PriorityLevel.Normal
-                };
-                conv = await _conversationService.StartAsync(start, cancellation);
-            }
-
-            var incoming = new Message
-            {
-                ConversationId = conv.ConversationId,
-                SenderContactId = contact.Id,
-                Content = webhook.Text,
-                MessageType = webhook.Type,
-                SentAt = DateTimeOffset.UtcNow,
-                Status = MessageStatus.Delivered
-            };
-            await _uow.Messages.AddAsync(incoming, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
-
-            var dto = incoming.Adapt<MessageDto>();
-            await _signalR.NotifyUserAsync(
-                conv.ConversationId,
-                "ReceiveMessage",
-                dto);
-
-            if (webhook.Type == MessageType.Text && conv.Status == ConversationStatus.New.ToString())
-            {
-                var sr = new SupportRequestedDto
-                {
-                    ConversationId = conv.ConversationId,
-                    Phone = phone,
-                    WaName = webhook.Name
-                };
-                await _signalR.NotifySupportRequestedAsync(sr, cancellation);
-            }
-        }
-
         public async Task SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default)
         {
             var convo = await _uow.Conversations.GetAll()
@@ -140,45 +80,6 @@ namespace CustomerService.API.Services.Implementations
                 type = "text",
                 text = new { body = text }
             };
-            using var req = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Content = JsonContent.Create(payload)
-            };
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-            var res = await _http.SendAsync(req, cancellation);
-            res.EnsureSuccessStatusCode();
-        }
-
-        public async Task<string> UploadMediaAsync(byte[] data, string mimeType)
-        {
-            var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
-            using var content = new MultipartFormDataContent
-            {
-                { new ByteArrayContent(data), "file", "upload" },
-                { new StringContent("whatsapp"), "messaging_product" }
-            };
-            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-            var res = await _http.SendAsync(req);
-            res.EnsureSuccessStatusCode();
-            var body = await res.Content.ReadFromJsonAsync<MediaUploadResponse>();
-            return body!.Id;
-        }
-
-        public async Task SendMediaAsync(int conversationId, int senderId, string mediaId, string mimeType, string? caption = null, CancellationToken cancellation = default)
-        {
-            var phone = await _uow.Conversations.GetAll()
-                .Where(c => c.ConversationId == conversationId)
-                .Select(c => c.ClientContact.Phone)
-                .SingleAsync(cancellation);
-
-            object payload = mimeType.StartsWith("image/")
-                ? new { messaging_product = "whatsapp", to = phone, type = "image", image = new { id = mediaId, caption } }
-                : mimeType.StartsWith("video/")
-                ? new { messaging_product = "whatsapp", to = phone, type = "video", video = new { id = mediaId, caption } }
-                : new { messaging_product = "whatsapp", to = phone, type = "document", document = new { id = mediaId, filename = "file", caption } };
-
-            var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
             using var req = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = JsonContent.Create(payload)
@@ -286,5 +187,114 @@ namespace CustomerService.API.Services.Implementations
             //    "ReceiveMessage",
             //    dto);
         }
+
+
+        public async Task<string> UploadMediaAsync(
+    byte[] data,
+    string mimeType,
+    string fileName = "file",
+    CancellationToken cancellation = default)
+        {
+            var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/media";
+
+            using var content = new MultipartFormDataContent
+    {
+        { new StringContent("whatsapp"), "messaging_product" },
+
+        {
+            new ByteArrayContent(data) {
+                Headers = { ContentType = new MediaTypeHeaderValue(mimeType) }
+            },
+            "file",
+            fileName
+        }
+    };
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+
+            var res = await _http.SendAsync(req, cancellation);
+            res.EnsureSuccessStatusCode();
+
+            var body = await res.Content
+                .ReadFromJsonAsync<MediaUploadResponse>(cancellation)
+                ?? throw new InvalidOperationException("Respuesta vacía al subir media");
+
+            return body.Id;
+        }
+
+        public async Task SendMediaAsync(
+        int conversationId,
+        int senderId,
+        string mediaId,
+        string mimeType,
+        string? caption = null,
+        CancellationToken cancellation = default)
+        {
+            var toPhone = await _uow.Conversations.GetAll()
+                .Where(c => c.ConversationId == conversationId)
+                .Select(c => c.ClientContact.Phone)
+                .SingleAsync(cancellation);
+
+            object payload = mimeType.StartsWith("image/")
+                ? new { messaging_product = "whatsapp", to = toPhone, type = "image", image = new { id = mediaId, caption } }
+            : mimeType.StartsWith("video/")
+                ? new { messaging_product = "whatsapp", to = toPhone, type = "video", video = new { id = mediaId, caption } }
+            : mimeType.StartsWith("audio/")
+                ? new { messaging_product = "whatsapp", to = toPhone, type = "audio", audio = new { id = mediaId } }
+            : mimeType.Equals("image/webp", StringComparison.OrdinalIgnoreCase)
+                ? new { messaging_product = "whatsapp", to = toPhone, type = "sticker", sticker = new { id = mediaId } }
+            : new
+            { // documentos y otros
+                messaging_product = "whatsapp",
+                to = toPhone,
+                type = "document",
+                document = new { id = mediaId, filename = "file", caption }
+            };
+
+            var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = JsonContent.Create(payload)
+            };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+
+            var res = await _http.SendAsync(req, cancellation);
+            res.EnsureSuccessStatusCode();
+        }
+
+        public async Task<string> DownloadMediaUrlAsync(
+            string mediaId,
+            CancellationToken cancellation = default)
+        {
+            try
+            {
+                var url = $"https://graph.facebook.com/{_version}/{mediaId}";
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+
+                var res = await _http.SendAsync(req, cancellation);
+                res.EnsureSuccessStatusCode();
+
+                var body = await res.Content.ReadFromJsonAsync<MediaUrlResponse>(cancellation);
+                if (body?.Url is null)
+                    throw new InvalidOperationException("No se obtuvo URL de media desde WhatsApp");
+                return body.Url;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return "";
+            }
+        }
+
+        public async Task<byte[]> DownloadMediaAsync(string mediaUrl, CancellationToken cancellation = default)
+        {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, mediaUrl);
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                    using var res = await _http.SendAsync(req, cancellation);
+                    res.EnsureSuccessStatusCode();
+                return await res.Content.ReadAsByteArrayAsync(cancellation);
+            }
     }
 }

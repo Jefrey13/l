@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.Wh;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Hubs;
 using CustomerService.API.Models;
@@ -14,6 +16,7 @@ using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -21,19 +24,28 @@ namespace CustomerService.API.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
         private readonly IWhatsAppService _whatsAppService;
+        private readonly IAttachmentService _attachSvc;
         private readonly IHubContext<ChatHub> _hub;
         private readonly INicDatetime _nicDatetime; 
+        private readonly ITokenService  _tokenService;
+        private readonly IHttpContextAccessor _ctx;
 
         public MessageService(
             IUnitOfWork uow,
             IWhatsAppService whatsAppService,
             IHubContext<ChatHub> hubContext,
-            INicDatetime nicDatetime)
+            INicDatetime nicDatetime,
+            IAttachmentService attachSvc,
+            ITokenService tokenService,
+            IHttpContextAccessor ctx)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
             _hub = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _nicDatetime = nicDatetime;
+            _attachSvc = attachSvc;
+            _tokenService = tokenService;
+            _ctx = ctx;
         }
 
         public async Task<MessageDto> SendMessageAsync(
@@ -41,49 +53,52 @@ namespace CustomerService.API.Services.Implementations
             bool isContact = false,
             CancellationToken ct = default)
         {
-            if (request.ConversationId <= 0)
-                throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
-
-            var msg = new Message
+            try
             {
-                ConversationId = request.ConversationId,
-                SenderUserId = isContact ? null : request.SenderId,
-                SenderContactId = isContact ? request.SenderId : null,
-                Content = request.Content,
-                MessageType = request.MessageType,
-                SentAt = await _nicDatetime.GetNicDatetime(),
-                Status = MessageStatus.Sent,
-                ExternalId = Guid.NewGuid().ToString(),
-                InteractiveId = request.InteractiveId,
-                InteractiveTitle = request.InteractiveTitle
-            };
+                if (request.ConversationId <= 0)
+                    throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
 
-            await _uow.Messages.AddAsync(msg, ct);
-            await _uow.SaveChangesAsync(ct);
+                var msg = new Message
+                {
+                    ConversationId = request.ConversationId,
+                    SenderUserId = isContact ? null : request.SenderId,
+                    SenderContactId = isContact ? request.SenderId : null,
+                    Content = request.Content,
+                    MessageType = request.MessageType,
+                    SentAt = await _nicDatetime.GetNicDatetime(),
+                    Status = MessageStatus.Sent,
+                    ExternalId = Guid.NewGuid().ToString(),
+                    InteractiveId = request.InteractiveId,
+                    InteractiveTitle = request.InteractiveTitle
+                };
 
-            if (!isContact)
-            {
-                await _whatsAppService.SendTextAsync(
-                    msg.ConversationId,
-                    msg.SenderUserId!.Value,
-                    msg.Content,
-                    ct);
+                await _uow.Messages.AddAsync(msg, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                if (!isContact)
+                {
+                    await _whatsAppService.SendTextAsync(
+                        msg.ConversationId,
+                        msg.SenderUserId!.Value,
+                        msg.Content,
+                        ct);
+                }
+
+                var reloaded = await _uow.Messages.GetByIdAsync(msg.MessageId, ct);
+
+                var dto = reloaded.Adapt<MessageDto>();
+
+                await _hub.Clients
+                   .Group(reloaded.ConversationId.ToString())
+                   .SendAsync("ReceiveMessage", dto, ct);
+
+                return dto;
             }
-
-            var reloaded = await _uow.Messages.GetAll()
-                .Where(m => m.MessageId == msg.MessageId)
-                .Include(m => m.SenderUser)
-                .Include(m => m.SenderContact)
-                .Include(m => m.Attachments)
-                .SingleAsync(ct);
-
-            var dto = reloaded.Adapt<MessageDto>();
-
-            await _hub.Clients
-               .Group(reloaded.ConversationId.ToString())
-               .SendAsync("ReceiveMessage", dto, ct);
-
-            return dto;
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new MessageDto();
+            }
         }
 
         public async Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default)
@@ -123,6 +138,66 @@ namespace CustomerService.API.Services.Implementations
             await _hub.Clients
                 .Group(msg.ConversationId.ToString())
                 .SendAsync("MessageRead", new { msg.MessageId, readAt }, cancellation);
+        }
+
+        public async Task<MessageDto> SendMediaAsync(
+       SendMediaRequest req,
+       string jwtToken,
+       bool isContact = false,
+       CancellationToken ct = default
+    )
+        {
+            // extrae senderId del token
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            req.SenderId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            // 1) subir media a WhatsApp Cloud
+            var mediaId = await _whatsAppService.UploadMediaAsync(req.Data, req.MimeType, req.FileName, ct);
+
+            // 2) enviar media
+            await _whatsAppService.SendMediaAsync(req.ConversationId, req.SenderId, mediaId, req.MimeType, req.Caption, ct);
+
+            // 3) crear mensaje en BD (sin attachment aún)
+            var sendReq = new SendMessageRequest
+            {
+                ConversationId = req.ConversationId,
+                SenderId = req.SenderId,
+                Content = req.Caption,
+                MessageType = req.MimeType switch
+                {
+                    var m when m.Equals("image/webp", StringComparison.OrdinalIgnoreCase) => MessageType.Sticker,
+                    var m when m.StartsWith("image/") => MessageType.Image,
+                    var m when m.StartsWith("video/") => MessageType.Video,
+                    var m when m.StartsWith("audio/") => MessageType.Audio,
+                    _ => MessageType.Document
+                }
+            };
+            var msgDto = await SendMessageAsync(sendReq, isContact: false, ct);
+
+            // 4) guarda el fichero en wwwroot/media y calcula su URL pública
+            var wwwroot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "media");
+            Directory.CreateDirectory(wwwroot);
+            var ext = Path.GetExtension(req.FileName) ?? "";
+            var fileName = $"{mediaId}{ext}";
+            var filePath = Path.Combine(wwwroot, fileName);
+            await File.WriteAllBytesAsync(filePath, req.Data, ct);
+
+            // construye la URL usando el request actual
+            var reqHttp = _ctx.HttpContext!.Request;
+            var baseUrl = $"{reqHttp.Scheme}://{reqHttp.Host}";
+            var publicUrl = $"{baseUrl}/media/{fileName}";
+
+            // 5) persiste el attachment con la URL pública
+            await _attachSvc.UploadAsync(new UploadAttachmentRequest
+            {
+                MessageId = msgDto.MessageId,
+                MediaId = mediaId,
+                MimeType = req.MimeType,
+                FileName = fileName,
+                MediaUrl = publicUrl,
+            }, ct);
+
+            return msgDto;
         }
     }
 }
