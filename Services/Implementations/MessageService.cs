@@ -26,8 +26,8 @@ namespace CustomerService.API.Services.Implementations
         private readonly IWhatsAppService _whatsAppService;
         private readonly IAttachmentService _attachSvc;
         private readonly IHubContext<ChatHub> _hub;
-        private readonly INicDatetime _nicDatetime; 
-        private readonly ITokenService  _tokenService;
+        private readonly INicDatetime _nicDatetime;
+        private readonly ITokenService _tokenService;
         private readonly IHttpContextAccessor _ctx;
 
         public MessageService(
@@ -94,7 +94,7 @@ namespace CustomerService.API.Services.Implementations
 
                 return dto;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 return new MessageDto();
@@ -156,7 +156,7 @@ namespace CustomerService.API.Services.Implementations
 
                 // 1) Subir media a WhatsApp Cloud
                 var mediaId = await _whatsAppService
-                    .UploadMediaAsync(req.Data, req.MimeType, req.FileName, ct);
+                    .UploadMediaAsync(req.Data, req.MimeType, req.FileName, CancellationToken.None);
 
                 // 2) Enviar media por la API de WhatsApp
                 await _whatsAppService
@@ -223,12 +223,12 @@ namespace CustomerService.API.Services.Implementations
                     MediaUrl = publicUrl,
                     CreatedAt = await _nicDatetime.GetNicDatetime()
                 };
-                await _uow.Attachments.AddAsync(attach, ct);
-                await _uow.SaveChangesAsync(ct);
+                await _uow.Attachments.AddAsync(attach, CancellationToken.None);
+                await _uow.SaveChangesAsync(CancellationToken.None);
 
 
                 // 4) Crear DTO y notificar por SignalR
-                var reloadedMsg = await _uow.Messages.GetByIdAsync(msg.MessageId, ct);
+                var reloadedMsg = await _uow.Messages.GetByIdAsync(msg.MessageId, CancellationToken.None);
 
                 var dto = reloadedMsg.Adapt<MessageDto>();
                 await _hub.Clients
@@ -237,7 +237,7 @@ namespace CustomerService.API.Services.Implementations
 
                 return dto;
             }
-            catch ( Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 return new MessageDto();

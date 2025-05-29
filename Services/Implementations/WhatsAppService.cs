@@ -291,11 +291,11 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task<byte[]> DownloadMediaAsync(string mediaUrl, CancellationToken cancellation = default)
         {
-                    using var req = new HttpRequestMessage(HttpMethod.Get, mediaUrl);
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-                    using var res = await _http.SendAsync(req, cancellation);
-                    res.EnsureSuccessStatusCode();
-                return await res.Content.ReadAsByteArrayAsync(cancellation);
-            }
+            using var req = new HttpRequestMessage(HttpMethod.Get, mediaUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            using var res = await _http.SendAsync(req, cancellation);
+            res.EnsureSuccessStatusCode();
+            return await res.Content.ReadAsByteArrayAsync(cancellation);
+        }
     }
 }

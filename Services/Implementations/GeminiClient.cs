@@ -54,13 +54,13 @@ namespace CustomerService.API.Services.Implementations
             {
                 model = "models/gemini-2.0-flash",
                 contents = new[] {
-    new {
-      parts = new[] {
-        new { text = systemContext },
-        new { text = userPrompt    }
-      }
-    }
-  },
+                    new {
+                      parts = new[] {
+                        new { text = systemContext },
+                        new { text = userPrompt    }
+                      }
+                    }
+                  },
                 generationConfig = new
                 {
                     temperature = 0,
@@ -69,7 +69,6 @@ namespace CustomerService.API.Services.Implementations
                     candidate_count = 1
                 }
             };
-
 
             var json = JsonConvert.SerializeObject(payload, Formatting.None, _serializerSettings);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
