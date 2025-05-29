@@ -13,17 +13,12 @@ namespace CustomerService.API.Hubs
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (int.TryParse(userId, out var uid))
             {
-                // Grupo individual
+                // canal individual
                 await Groups.AddToGroupAsync(Context.ConnectionId, uid.ToString());
-
-                // Si es admin, agregar en el grupo "Admins"
-                var roles = Context.User.FindAll(ClaimTypes.Role).Select(r => r.Value);
-                if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
-                {
+                // si es admin, también al grupo "Admins"
+                if (Context.User.IsInRole("Admin"))
                     await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
-                }
             }
-
             await base.OnConnectedAsync();
         }
 

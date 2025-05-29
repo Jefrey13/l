@@ -46,13 +46,12 @@ namespace CustomerService.API.Services.Implementations
                        .User(userId.ToString())
                        .SendAsync(method, payload, cancellation);
         }
-
-        public Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationDto dto, CancellationToken cancellation = default)
+        public Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationDto dto, CancellationToken ct = default)
         {
-            var tasks = new List<Task>();
-            foreach (var id in userIds)
-                tasks.Add(_hub.Clients.User(id.ToString()).SendAsync("Notification", dto, cancellation));
-            return Task.WhenAll(tasks);
+            return Task.WhenAll(userIds.Select(id =>
+              _hub.Clients.Group(id.ToString())
+                         .SendAsync("Notification", dto, ct)
+            ));
         }
     }
 }

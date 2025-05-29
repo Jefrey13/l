@@ -136,25 +136,34 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
 
-            var payload = JsonSerializer.Serialize(new { conv.ConversationId, Agent = agentUserId });
+            
+            
+            await _notification.CreateAsync(
+                NotificationType.ConversationAssigned,
+                "Se te ha asignado la conversación",
+                new[] { agentUserId },   // aquí va solo el id del agente
+                ct);
 
-            //await _notification.CreateAsync(
-            //    NotificationType.ConversationAssigned,
-            //    payload,
-            //    new[] { agentUserId },
-            //    cancellation);
-
-           conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+            conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
             var dto = conv.Adapt<ConversationDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext
-            .Clients
-            .All
-            .SendAsync("ConversationUpdated", dto, ct);
+            //await _hubContext
+            //.Clients
+            //.All
+            //.SendAsync("ConversationUpdated", dto, ct);
+
+            await _hubContext.Clients
+             .Group("Admin")
+             .SendAsync("ConversationUpdated", dto, ct);
+
+            // al usuario de Support al que acabamos de asignar
+            await _hubContext.Clients
+                .User(agentUserId.ToString())
+                .SendAsync("ConversationUpdated", dto, ct);
         }
 
         public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -233,10 +242,13 @@ namespace CustomerService.API.Services.Implementations
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext
-                .Clients
-                .All
+            //await _hubContext
+            //    .Clients
+            //    .All
+            //    .SendAsync("ConversationCreated", dto, cancellation);
+            await _hubContext.Clients.Group("Admin")
                 .SendAsync("ConversationCreated", dto, cancellation);
+
 
             return dto;
         }
