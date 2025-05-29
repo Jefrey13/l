@@ -32,7 +32,7 @@ namespace CustomerService.API.Repositories.Implementations
             return await _dbSet.AsNoTracking().AnyAsync(predicate, cancellation);
         }
 
-        public async Task AddAsync(T entity, CancellationToken cancellation = default)
+        public virtual async Task AddAsync(T entity, CancellationToken cancellation = default)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             await _dbSet.AddAsync(entity, cancellation);

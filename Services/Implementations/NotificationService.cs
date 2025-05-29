@@ -30,29 +30,40 @@ namespace CustomerService.API.Services.Implementations
             _signalR = signalR;
         }
 
-        public async Task CreateAsync(NotificationType type, string payload, IEnumerable<int> recipientUserIds, CancellationToken cancellation = default)
+        public async Task CreateAsync(NotificationType type, string payload, IEnumerable<int> recipientUserIds, CancellationToken ct = default)
         {
-            var notification = new Notification
+            try
             {
-                Type = type,
-                Payload = payload,
-                CreatedAt = DateTime.UtcNow
-            };
-            await _notifications.AddAsync(notification, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
-
-            foreach (var userId in recipientUserIds)
-            {
-                var rec = new NotificationRecipient
+                var notification = new Notification
                 {
-                    NotificationId = notification.NotificationId,
-                    UserId = userId
+                    Type = type,
+                    Payload = payload,
+                    CreatedAt = DateTime.UtcNow
                 };
-                await _recipients.AddAsync(rec, cancellation);
-            }
-            await _uow.SaveChangesAsync(cancellation);
 
-            await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationDto>());
+                //var newNotification = await _notifications.AddNotificationAsync(notification, ct);
+                await _uow.Notifications.AddAsync(notification, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                foreach (var userId in recipientUserIds)
+                {
+                    var rec = new NotificationRecipient
+                    {
+                        NotificationId = notification.NotificationId,
+                        UserId = userId
+                    };
+
+                    await _recipients.AddAsync(rec, ct);
+                }
+
+                await _uow.SaveChangesAsync(ct);
+
+                await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationDto>());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 }

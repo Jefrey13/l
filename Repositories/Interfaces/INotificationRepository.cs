@@ -12,5 +12,7 @@ namespace CustomerService.API.Repositories.Interfaces
         Task<Notification?> GetWithRecipientsAsync(
             int notificationId,
             CancellationToken cancellation = default);
+
+      //  Task<Notification> AddNotificationAsync(Notification entity, CancellationToken cancellation = default);
     }
 }

@@ -11,7 +11,6 @@ namespace CustomerService.API.Models
     [Index(nameof(CreatedAt))]
     public class Notification
     {
-        [Key]
         public int NotificationId { get; set; }
 
         public NotificationType Type { get; set; }

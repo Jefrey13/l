@@ -300,7 +300,9 @@ namespace CustomerService.API.Services.Implementations
                 {
                     UserId = ur.User.UserId,
                     FullName = ur.User.FullName,
-                    Email = ur.User.Email
+                    Email = ur.User.Email,
+                    IsActive = ur.User.IsActive,
+                    ImageUrl = ur.User.ImageUrl,
                 })
                 .Distinct()
                 .ToListAsync(cancellation);

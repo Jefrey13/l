@@ -6,7 +6,6 @@ namespace CustomerService.API.Models
 {
     public class NotificationRecipient
     {
-        [Key]
         public int NotificationRecipientId { get; set; }
 
         public int NotificationId { get; set; }

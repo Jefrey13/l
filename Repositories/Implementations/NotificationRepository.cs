@@ -34,5 +34,24 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(n => n.Recipients)
                 .FirstOrDefaultAsync(n => n.NotificationId == notificationId, cancellation);
         }
+
+        //public async Task<Notification> AddNotificationAsync(Notification entity, CancellationToken cancellation = default)
+        //{
+        //    try
+        //    {
+        //        if (entity == null)
+        //            throw new ArgumentNullException(nameof(entity));
+
+        //        var newNotification = await _dbSet.AddAsync(entity, CancellationToken.None);
+        //        await _dbSet(cancellation);
+
+        //        return newNotification.Entity;
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        Console.WriteLine(ex);
+        //        return new Notification();
+        //    }
+        //}
     }
 }

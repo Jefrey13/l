@@ -422,12 +422,19 @@ public partial class CustomerSupportContext : DbContext
         });
 
         modelBuilder.Entity<Notification>(entity => {
-            entity.ToTable("Notifications", "chat");
             entity.HasKey(n => n.NotificationId);
+
+            entity.ToTable("Notifications", "chat");
+
+            entity.Property(n => n.NotificationId)
+                  .ValueGeneratedOnAdd();
+
             entity.Property(n => n.Payload).IsRequired();
+
             entity.Property(n => n.CreatedAt)
                   .HasDefaultValueSql("SYSUTCDATETIME()");
         });
+
 
         modelBuilder.Entity<NotificationRecipient>(entity => {
             entity.ToTable("NotificationRecipients", "chat");
@@ -435,9 +442,11 @@ public partial class CustomerSupportContext : DbContext
             entity.HasOne(nr => nr.Notification)
                   .WithMany(n => n.Recipients)
                   .HasForeignKey(nr => nr.NotificationId);
+
             entity.HasOne(nr => nr.User)
                   .WithMany(u => u.NotificationRecipients)
                   .HasForeignKey(nr => nr.UserId);
+
             entity.Property(nr => nr.IsRead).HasDefaultValue(false);
         });
 

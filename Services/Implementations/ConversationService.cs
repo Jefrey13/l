@@ -119,6 +119,9 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, string jwtToken, CancellationToken ct = default)
         {
+            try
+            {
+
             if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
             
             var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
@@ -136,39 +139,52 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
 
-            var payload = JsonSerializer.Serialize(new { conv.ConversationId, Agent = agentUserId });
+            
+            
+            await _notification.CreateAsync(
+                NotificationType.ConversationAssigned,
+                "Se te ha asignado la conversación",
+                new[] { agentUserId },   // aquí va solo el id del agente
+                ct);
 
-            //await _notification.CreateAsync(
-            //    NotificationType.ConversationAssigned,
-            //    payload,
-            //    new[] { agentUserId },
-            //    cancellation);
-
-           conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+            conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
             var dto = conv.Adapt<ConversationDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext
-            .Clients
-            .All
-            .SendAsync("ConversationUpdated", dto, ct);
+            await _hubContext.Clients
+             .Group("Admin")
+             .SendAsync("ConversationUpdated", dto, ct);
+
+            // al usuario de Support al que se le asigno la conversación
+            await _hubContext.Clients
+                .User(agentUserId.ToString())
+                .SendAsync("ConversationUpdated", dto, ct);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
-            if (id <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(id));
-            var conv = await _uow.Conversations.GetAll()
-                .Include(c => c.Messages)
-                    .ThenInclude(a => a.Attachments)
-                .Include(c => c.ClientContact)
-                .Include(c => c.AssignedAgent)
-                .Include(c => c.AssignedByUser)
-                .SingleOrDefaultAsync(c => c.ConversationId == id, cancellation);
+            try
+            {
+                if (id <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(id));
 
-            return conv == null ? null : conv.Adapt<ConversationDto>();
+                var conv = await _uow.Conversations.GetByIdAsync(id, CancellationToken.None);
+
+                return conv == null ? null : conv.Adapt<ConversationDto>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new ConversationDto();
+            }
         }
 
         public async Task CloseAsync(int conversationId, CancellationToken ct = default)
@@ -182,7 +198,9 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = conv.Adapt<ConversationDto>();
+            var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+
+            var dto = updatedConv.Adapt<ConversationDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -233,10 +251,13 @@ namespace CustomerService.API.Services.Implementations
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext
-                .Clients
-                .All
+            //await _hubContext
+            //    .Clients
+            //    .All
+            //    .SendAsync("ConversationCreated", dto, cancellation);
+            await _hubContext.Clients.Group("Admin")
                 .SendAsync("ConversationCreated", dto, cancellation);
+
 
             return dto;
         }
@@ -408,7 +429,7 @@ namespace CustomerService.API.Services.Implementations
             }
 
             // 3) Invocar a Gemini para resumir
-            var prompt = "Resume este histórico completo en un párrafo breve:";
+            var prompt = "Resume este histórico completo en un párrafo breve, de los mensajes enviados por el clintes. Es para ver el resumen de sus mensajes:";
             return await _geminiClient.GenerateContentAsync(prompt, sb.ToString(), ct);
         }
     }

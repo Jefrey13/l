@@ -12,6 +12,7 @@ using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
+using Humanizer;
 using Mapster;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.SignalR;
@@ -60,7 +61,7 @@ namespace CustomerService.API.Pipelines.Implementations
             _conversationService = conversationService;
             _messageService = messageService;
             _whatsAppService = whatsAppService;
-            _notification = notification;
+            _notification = notification ?? throw new ArgumentNullException(nameof(notification));
             _userService = userService;
             _hubContext = hubContext;
             _geminiClient = geminiClient;
@@ -85,7 +86,6 @@ namespace CustomerService.API.Pipelines.Implementations
                                 ? InteractiveType.Interactive
                                 : InteractiveType.Text
             };
-
 
             var contactDto = await _contactService.GetOrCreateByPhoneAsync(
                     payload.From,
@@ -228,7 +228,7 @@ namespace CustomerService.API.Pipelines.Implementations
                 {
                     ConversationId = convoDto.ConversationId,
                     SenderId = BotUserId,
-                    Content = "Hola, soy *Sofía*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
+                    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
                     MessageType = MessageType.Text
                 }, false, ct);
 
@@ -244,11 +244,8 @@ namespace CustomerService.API.Pipelines.Implementations
                    .All
                    .SendAsync("ConversationUpdated", convDto, ct);
 
-
                 return;
             }
-
-
 
             //Cuando el usuario seleccione una opcion de la lista enviada.
             if (payload.Type == InteractiveType.Interactive)
@@ -331,28 +328,22 @@ namespace CustomerService.API.Pipelines.Implementations
 
                             var updatedConv = await _conversationService.GetByIdAsync(convoDto.ConversationId, ct);
 
+                            var usersAdmin = await _userService.GetByRoleAsync("Admin", ct);
+                            
+                            var agents = usersAdmin
+                                .Where(u => u.IsActive)
+                                .Select(u => u.UserId)
+                                .ToArray();
+
+                             await _notification.CreateAsync(
+                                NotificationType.SupportRequested,
+                                $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
+                                agents, //Enviar a todos los usuarios admin
+                                ct);
+
                             await _hubContext.Clients
-                                   .All
-                                   .SendAsync("ConversationUpdated", updatedConv, ct);
-
-                            //var admins = await _userService.GetByRoleAsync("Admin", ct);
-                            //var adminIds = admins.Select(a => a.UserId).ToArray();
-
-
-                            ////Enviar una notificacion a los usuario del sitio web, por medio de signalr para mostrar una alerta con toast, y admeas actualizar el contandor en la opcion de notificaciones menu.
-                            //var supportJson = JsonSerializer.Serialize(new
-                            //{
-                            //    convoDto.ConversationId,
-                            //    contactDto.Phone,
-                            //    contactDto.WaName
-                            //});
-
-                            //await _notification.CreateAsync(
-                            //    NotificationType.SupportRequested,
-                            //    supportJson,
-                            //    adminIds,
-                            //    ct
-                            //);
+                                .Group("Admin")
+                                .SendAsync("ConversationUpdated", updatedConv, ct);
                         }
                         else
                         {
@@ -378,13 +369,6 @@ namespace CustomerService.API.Pipelines.Implementations
                 await HandleBotReplyAsync(convoDto, payload.TextBody, ct);
                 return;
             }
-
-            //await _messageService.SendMessageAsync(new SendMessageRequest
-            //{
-            //    ConversationId = convoDto.ConversationId,
-            //    SenderId = contactDto.Id,
-            //    Content = payload.TextBody
-            //}, false , ct);
         }
 
         private async Task HandleBotReplyAsync(
@@ -431,8 +415,6 @@ namespace CustomerService.API.Pipelines.Implementations
             await _hubContext.Clients
                 .All
                 .SendAsync("ConversationUpdated", convDto, ct);
-            // (MessageService internamente guarda en BD, envía por WhatsApp API y dispara SignalR)
         }
-
     }
 }
