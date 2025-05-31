@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
@@ -12,12 +13,14 @@ using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
+using CustomerService.API.WhContext;
 using Humanizer;
 using Mapster;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Identity.Client;
 using WhatsappBusiness.CloudApi.Messages.Requests;
 
 namespace CustomerService.API.Pipelines.Implementations
@@ -38,6 +41,8 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly IUnitOfWork _uow;
         private readonly IAttachmentService _attachmentService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly MessagePrompts _prompts;
+        private readonly MessageKeywords _keywords;
 
         private const int BotUserId = 1;
 
@@ -55,7 +60,9 @@ namespace CustomerService.API.Pipelines.Implementations
             ISignalRNotifyService signalR,
             IOptions<GeminiOptions> geminiOpts,
             IAttachmentService attachmentService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IOptions<MessagePrompts> promptOpts,
+            IOptions<MessageKeywords> keywordOpts)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -71,6 +78,8 @@ namespace CustomerService.API.Pipelines.Implementations
             _signalR = signalR;
             _attachmentService = attachmentService;
             _httpContextAccessor = httpContextAccessor;
+            _prompts = promptOpts.Value;
+            _keywords = keywordOpts.Value;
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -95,6 +104,173 @@ namespace CustomerService.API.Pipelines.Implementations
                     ct);
 
             var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
+
+            // ───────────────────────────────────────────────────────────────────
+            //   PEDIR “FullName” si Status == New o AwaitingFullName
+            // ───────────────────────────────────────────────────────────────────
+
+            try
+            {
+
+            if (contactDto.Status == ContactStatus.New
+             || contactDto.Status == ContactStatus.AwaitingFullName)
+            {
+                // Si es NEW, enviamos la pregunta de nombre completo y cambiamos a AwaitingFullName
+                if (contactDto.Status == ContactStatus.New)
+                {
+                    await _messageService.SendMessageAsync(
+                        new SendMessageRequest
+                        {
+                            ConversationId = convoDto.ConversationId,
+                            SenderId = BotUserId,
+                            Content = _prompts.AskFullName,    // “¿Cuál es tu nombre completo?”
+                            MessageType = MessageType.Text
+                        },
+                        isContact: false,
+                        ct);
+
+                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                    {
+                        Id = contactDto.Id,
+                        Status = ContactStatus.AwaitingFullName
+                    }, ct);
+
+                    return;
+                }
+
+                // Si ya estaba en AwaitingFullName → recibimos el nombre en payload.TextBody
+                var nombre = payload.TextBody?.Trim() ?? "";
+
+                await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                {
+                    Id = contactDto.Id,
+                    FullName = nombre,
+                    Status = ContactStatus.AwaitingIdCard
+                }, ct);
+
+                var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
+                await _messageService.SendMessageAsync(
+                    new SendMessageRequest
+                    {
+                        ConversationId = convoDto.ConversationId,
+                        SenderId = BotUserId,
+                        Content = textoParaCedula,   // “{Nombre}, por favor envía tu cédula (10 dígitos)”
+                        MessageType = MessageType.Text
+                    },
+                    isContact: false,
+                    ct);
+
+                return;
+            }
+
+
+            // ───────────────────────────────────────────────────────────────────
+            //   BLOQUE B: VALIDAR “IdCard” si Status == AwaitingIdCard
+            // ───────────────────────────────────────────────────────────────────
+            if (contactDto.Status == ContactStatus.AwaitingIdCard)
+            {
+                var cedula = payload.TextBody?.Trim() ?? "";
+
+                // Regex para 10 dígitos consecutivos (Nicaragua)
+                if (!Regex.IsMatch(cedula, @"^\d{3}-?\d{6}-?\d{4}[A-Za-z]$"))
+                {
+                    await _messageService.SendMessageAsync(
+                        new SendMessageRequest
+                        {
+                            ConversationId = convoDto.ConversationId,
+                            SenderId = BotUserId,
+                            Content = _prompts.InvalidIdFormat, // “Formato inválido. Debe ser 10 dígitos.”
+                            MessageType = MessageType.Text
+                        },
+                        isContact: false,
+                        ct);
+
+                    return;
+                }
+
+                // Si cédula válida, guardamos IdCard y cambiamos a Completed
+                await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                {
+                    Id = contactDto.Id,
+                    IdCard = cedula,
+                    Status = ContactStatus.Completed
+                }, ct);
+
+                await _messageService.SendMessageAsync(
+                    new SendMessageRequest
+                    {
+                        ConversationId = convoDto.ConversationId,
+                        SenderId = BotUserId,
+                        Content = _prompts.DataComplete,
+                        MessageType = MessageType.Text
+                    },
+                    isContact: false,
+                    ct);
+
+                // A partir de aquí, el pipeline continúa con el flujo normal
+            }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Hola", ex);
+            }
+
+            // Solo aplicamos esta detección si el mensaje es texto y no es un payload interactivo:
+            if (payload.Type == InteractiveType.Text && !string.IsNullOrWhiteSpace(payload.TextBody))
+            {
+                // Convertimos a minusculas para comparación
+                var textoMinuscula = payload.TextBody.Trim().ToLowerInvariant();
+
+                // Revisar si alguna de las palabras clave está contenida
+                bool quiereSoporte = _keywords.Keywords
+                    .Any(kw => textoMinuscula.Contains(kw.ToLowerInvariant()));
+
+                if (quiereSoporte
+                    && convoDto.Status.ToString() == ConversationStatus.Bot.ToString())
+                {
+                    // Definir los botones que ya tenías:
+                    var buttons1 = new[]
+                    {
+                            new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
+                            new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
+                        };
+
+                    // Enviar el mensaje interactivo con lista de opciones
+                    await _whatsAppService.SendInteractiveButtonsAsync(
+                        convoDto.ConversationId,
+                        BotUserId,
+                        "Parece que deseas hablar con un agente. ¿Qué prefieres?",
+                        buttons1,
+                        ct
+                    );
+
+                    var updatedConv = await _conversationService.GetByIdAsync(convoDto.ConversationId, ct);
+
+                    await _hubContext.Clients
+                               .Group("Admin")
+                               .SendAsync("ConversationUpdated", updatedConv, ct);
+
+                    // Terminar aquí el procesamiento (no pasar a flujo de bot/texto normal)
+                    return;
+                }
+                else if (quiereSoporte
+                    && convoDto.Status.ToString() != ConversationStatus.Bot.ToString())
+                {
+                    await _messageService.SendMessageAsync(new SendMessageRequest
+                    {
+                        ConversationId = convoDto.ConversationId,
+                        SenderId = BotUserId,
+                        Content = "Lo sentimos, su conversación esta procesada por un miembro de soporte, por el momento no puede comunicarse con el bot.",
+                        MessageType = MessageType.Text
+                    }, false, ct);
+
+                    await _hubContext.Clients
+                        .All
+                        .SendAsync("ConversationUpdated", convoDto, ct);
+                    return;
+                }
+            }
 
 
             // 2) Si traemos media… (imagen, video, audio, sticker, documento)
@@ -197,7 +373,6 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var convEntity = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-            // 2) mapea a DTO
             var convDto = convEntity.Adapt<ConversationDto>();
 
             // 3) emítelo por SignalR
@@ -224,13 +399,13 @@ namespace CustomerService.API.Pipelines.Implementations
                     IsArchived = false
                 }, ct);
 
-                await _messageService.SendMessageAsync(new SendMessageRequest
-                {
-                    ConversationId = convoDto.ConversationId,
-                    SenderId = BotUserId,
-                    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
-                    MessageType = MessageType.Text
-                }, false, ct);
+                //await _messageService.SendMessageAsync(new SendMessageRequest
+                //{
+                //    ConversationId = convoDto.ConversationId,
+                //    SenderId = BotUserId,
+                //    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
+                //    MessageType = MessageType.Text
+                //}, false, ct);
 
                 await _whatsAppService.SendInteractiveButtonsAsync(
                     convoDto.ConversationId,
@@ -275,17 +450,26 @@ namespace CustomerService.API.Pipelines.Implementations
                     case "1":
                         if (convDto.Status != ConversationStatus.Human.ToString())
                         {
+                            _uow.ClearChangeTracker();
+
                             await _conversationService.UpdateAsync(new UpdateConversationRequest
                             {
                                 ConversationId = convoDto.ConversationId,
                                 Status = ConversationStatus.Bot
                             }, ct);
 
+                            //await _messageService.SendMessageAsync(new SendMessageRequest
+                            //{
+                            //    ConversationId = convoDto.ConversationId,
+                            //    SenderId = BotUserId,
+                            //    Content = "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
+                            //    MessageType = MessageType.Text
+                            //}, false, ct);
                             await _messageService.SendMessageAsync(new SendMessageRequest
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
+                                Content = _prompts.WelcomeBot,
                                 MessageType = MessageType.Text
                             }, false, ct);
 
@@ -312,17 +496,23 @@ namespace CustomerService.API.Pipelines.Implementations
                     case "2":
                         if (convDto.Status != ConversationStatus.Waiting.ToString())
                         {
+
+                            var nowNic = await _nicDatetime.GetNicDatetime();
+                            _uow.ClearChangeTracker();
+
                             await _conversationService.UpdateAsync(new UpdateConversationRequest
                             {
                                 ConversationId = convoDto.ConversationId,
-                                Status = ConversationStatus.Waiting
+                                Status = ConversationStatus.Waiting,
+                                RequestedAgentAt = nowNic,
+
                             }, ct);
 
                             await _messageService.SendMessageAsync(new SendMessageRequest
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = "Tu solicitud ha sido recibida. En breve un agente te atenderá.",
+                                Content = _prompts.SupportRequestReceived,
                                 MessageType = MessageType.Text
                             }, false, ct);
 
@@ -351,7 +541,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = "Lo sentimo su conversación esta siendo atendida por un agente de soporte, por el momento deve de finalizar ka conversación actual.",
+                                Content = "Lo sentimo su conversación esta siendo atendida por un agente de soporte, por el momento deve de finalizar la conversación actual.",
                                 MessageType = MessageType.Text
                             }, false, ct);
 

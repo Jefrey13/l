@@ -264,7 +264,10 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task UpdateAsync(UpdateConversationRequest request, CancellationToken ct = default)
         {
-            if (request.ConversationId <= 0)
+
+            try
+            {
+                if (request.ConversationId <= 0)
                 throw new ArgumentException("Invalid conversation ID.", nameof(request.ConversationId));
 
             var conv = await _uow.Conversations
@@ -287,8 +290,6 @@ namespace CustomerService.API.Services.Implementations
             if (request.Tags != null)
                 conv.Tags = request.Tags;
 
-            try
-            {
                 conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
 

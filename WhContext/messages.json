@@ -1,0 +1,37 @@
+﻿{
+  "Prompts": {
+    "WelcomeBot": "¡🙌 Bienvenido a PC GROUP S.A.! Soy *Milena*, tu asistente virtual de atención al cliente 🤖. Estoy aquí para brindarte información útil y optimizar tu tiempo. ¿En qué puedo ayudarte hoy?",
+    "AskFullName": "¡Hola 👋 Bienvenido a PC GROUP S.A.! Para comenzar, por favor indícanos tu *nombre completo* (al proporcionarlo, nos das tu permiso para registrar y usar tu información de manera segura).",
+    "AskIdCard": "Gracias, {0}. Ahora envíanos tu *número de cédula* (formato: 001-120203-1062W o 0011202031062W).",
+    "InvalidIdFormat": "😕 Formato inválido. Debe ser 13 caracteres (3 dígitos + 6 dígitos + 4 dígitos + letra), con o sin guiones (ej: 001-120203-1062W o 0011202031062W).",
+    "DataComplete": "🎉 ¡Excelente! Has quedado registrado exitosamente y ¡bienvenido a nuestra agenda de clientes! A continuación continuamos con tu consulta.",
+    "InactivityWarning": "⚠️ No hemos recibido respuesta en un tiempo. Tu conversación se cerrará pronto por inactividad. Si deseas continuar, envía cualquier mensaje.",
+    "InactivityClosed": "🔒 Tu conversación se cierra por inactividad. Seguimos aquí para cuando nos necesites. ¡Que tengas un buen día!",
+    "SupportRequestReceived": "✅ ¡Gracias! Hemos recibido tu solicitud de atención por un agente humano. Un miembro de nuestro equipo te atenderá en breve."
+  },
+  "Keywords": {
+    "Keywords": [
+      "agente",
+      "soporte",
+      "humano",
+      "hablar con soporte",
+      "quiero hablar con un agente",
+      "atención humana",
+      "operador",
+      "hablar con un humano",
+      "necesito un agente",
+      "quiero hablar con un operador",
+      "contactar a soporte",
+      "contactar a un humano",
+      "necesito atención personalizada",
+      "agente disponible",
+      "hablar con atención al cliente",
+      "asistente humano",
+      "conectar con un agente",
+      "por favor un humano",
+      "estado de soporte",
+      "hablar con servicio al cliente",
+      "necesito ayuda de un agente"
+    ]
+  }
+}

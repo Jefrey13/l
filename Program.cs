@@ -32,6 +32,8 @@ using MapsterMapper;
 using System.Reflection;
 using CustomerService.API.Hubs;
 using System.Text.Json.Serialization;
+using CustomerService.API.WhContext;
+using CustomerService.API.Hosted;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,8 +45,13 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // --------------------- DbContext ---------------------
-builder.Services.AddDbContext<CustomerSupportContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<CustomerSupportContext>(opts =>
+{
+    opts.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    opts.EnableSensitiveDataLogging();
+    opts.LogTo(Console.WriteLine, LogLevel.Information);
+
+});
 
 // --------------------- CORS ---------------------
 var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -54,6 +61,19 @@ builder.Services.AddCors(o => o.AddPolicy("CorsPolicy", p =>
      .AllowAnyMethod()
      .AllowCredentials()
 ));
+
+
+builder.Configuration
+       .SetBasePath(Directory.GetCurrentDirectory())
+       .AddJsonFile(Path.Combine("WhContext", "messages.json"), optional: false, reloadOnChange: true);
+
+builder.Services.Configure<MessagePrompts>(
+    builder.Configuration.GetSection("Prompts")
+);
+
+builder.Services.Configure<MessageKeywords>(
+    builder.Configuration.GetSection("Keywords")
+);
 
 // --------------------- HttpClients ---------------------
 // 1) Vincula tu sección "Gemini" a GeminiOptions
@@ -115,6 +135,8 @@ builder.Services.AddScoped<INicDatetime, NicDatetime>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
 builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddHostedService<InactivityHostedService>();
 //builder.Services.AddScoped<IHostedService, ConversationCleanupService>();
 
 // --------------------- Mapster ---------------------

@@ -17,10 +17,12 @@ namespace CustomerService.API.Controllers
     {
         private readonly IUserService _users;
         private readonly IPresenceService _presence;
-        public UsersController(IUserService users, IPresenceService presence)
+        private readonly INicDatetime _nicDatetime;
+        public UsersController(IUserService users, IPresenceService presence, INicDatetime nicDatetime)
         {
             _users = users;
             _presence = presence;
+            _nicDatetime = nicDatetime;
         }
 
         [HttpGet(Name = "GetAllUsers")]
@@ -91,18 +93,23 @@ namespace CustomerService.API.Controllers
 
         [HttpGet("{id}/status", Name = "GetStatus")]
         [SwaggerOperation(Summary = "Estado de conexión del usuario")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<AgentDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PresenceDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatus(int id)
         {
             var last = await _presence.GetLastOnlineAsync(id);
-            var isOnline = last.HasValue
-                && (DateTime.UtcNow - last.Value).TotalMinutes < 5;
 
-            return Ok(new
+            var nowManagua = await _nicDatetime.GetNicDatetime();
+
+            var isOnline = last.HasValue
+                && (nowManagua - last.Value).TotalMinutes < 1;
+
+            var dto = new PresenceDto
             {
-                lastOnline = last,
-                isOnline
-            });
+                LastOnline = last,
+                IsOnline = isOnline
+            };
+
+            return Ok(new ApiResponse<PresenceDto>(dto, "Status retrieved."));
         }
     }
 }

@@ -5,9 +5,12 @@
     /// </summary>
     public enum ContactStatus
     {
-        New,
-        PendingApproval,
-        Approved,
-        Rejected
+        New,                // recién creado, sin datos
+        PendingApproval,    // aprobación manual
+        Approved,           // aprobado completamente
+        Rejected,           // rechazado manualmente
+        AwaitingFullName,   // nombre completo
+        AwaitingIdCard,     // número de cédula
+        Completed           // ya recibimos ambos datos
     }
 }

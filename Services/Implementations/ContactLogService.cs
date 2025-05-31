@@ -186,5 +186,22 @@ namespace CustomerService.API.Services.Implementations
 
                 return contact.Adapt<ContactLogResponseDto>();
             }
+
+        public async Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)
+        {
+            var entity = await _uow.ContactLogs.GetByIdAsync(requestDto.Id, cancellation)
+                         ?? throw new KeyNotFoundException($"ContactLog {requestDto.Id} not found");
+
+            if (!string.IsNullOrWhiteSpace(requestDto.FullName))
+                entity.FullName = requestDto.FullName;
+
+            if (!string.IsNullOrWhiteSpace(requestDto.IdCard))
+                entity.IdCard = requestDto.IdCard;
+
+            entity.Status = requestDto.Status;
+            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+
+            await _uow.SaveChangesAsync(cancellation);
+        }
     }
 }

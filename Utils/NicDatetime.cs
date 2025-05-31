@@ -13,13 +13,14 @@ namespace CustomerService.API.Utils
             DateTime fechaNicaragua = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, nicaraguaTimeZone);
 
 
-            // Eliminar segundos y milisegundos
+            // Eliminar milisegundos
             fechaNicaragua = new DateTime(
             fechaNicaragua.Year,
             fechaNicaragua.Month,
             fechaNicaragua.Day,
             fechaNicaragua.Hour,
             fechaNicaragua.Minute,
+            fechaNicaragua.Second,
             0
           );
             return fechaNicaragua;

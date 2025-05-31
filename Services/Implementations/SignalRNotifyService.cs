@@ -48,10 +48,17 @@ namespace CustomerService.API.Services.Implementations
         }
         public Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationDto dto, CancellationToken ct = default)
         {
-            return Task.WhenAll(userIds.Select(id =>
+            var tasks = userIds.Select(id =>
               _hub.Clients.Group(id.ToString())
                          .SendAsync("Notification", dto, ct)
-            ));
+            );
+
+            tasks = tasks.Append(
+              _hub.Clients.Group("Admins").SendAsync("Notification", dto, ct)
+            );
+
+            return Task.WhenAll(tasks);
+
         }
     }
 }

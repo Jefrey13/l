@@ -11,6 +11,8 @@ namespace CustomerService.API.Dtos.RequestDtos
         public bool? Initialized { get; set; }
         public ConversationStatus? Status { get; set; }
         public int? AssignedAgentId { get; set; }
+
+        public DateTime? RequestedAgentAt { get; set; }
         public List<string>? Tags { get; set; }
         public bool? IsArchived { get; set; }
     }

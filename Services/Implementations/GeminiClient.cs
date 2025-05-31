@@ -43,6 +43,10 @@ namespace CustomerService.API.Services.Implementations
             string userPrompt,
             CancellationToken cancellationToken)
         {
+
+            try
+            {
+
             if (string.IsNullOrWhiteSpace(systemContext))
                 throw new ArgumentException("System context cannot be empty.", nameof(systemContext));
             if (string.IsNullOrWhiteSpace(userPrompt))
@@ -96,6 +100,13 @@ namespace CustomerService.API.Services.Implementations
 
             _logger.LogInformation("Respuesta de Gemini recibida.");
             return result;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return "";
+            }
         }
     }
 }

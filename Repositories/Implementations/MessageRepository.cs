@@ -23,5 +23,12 @@ namespace CustomerService.API.Repositories.Implementations
                 .OrderBy(m => m.DeliveredAt)
                 .ToListAsync(cancellation);
         }
+
+        public async Task<Message?> GetByIdNoTrackingAsync(int id, CancellationToken ct = default)
+{
+    return await _context.Messages
+        .AsNoTracking()
+        .SingleOrDefaultAsync(m => m.MessageId == id, ct);
+}
     }
 }

@@ -27,8 +27,14 @@ namespace CustomerService.API.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? FirstResponseAt { get; set; }
+        public DateTime? ClientLastMessageAt { get; set; }
+        public DateTime? AgentFirstMessageAt { get; set; }
+        public DateTime? AgentLastMessageAt { get; set; }
+        public DateTime? RequestedAgentAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+
+        public DateTime? WarningSentAt { get; set; }
         public bool IsArchived { get; set; } = false;
 
         [Timestamp]
@@ -48,7 +54,6 @@ namespace CustomerService.API.Models
         [Column(TypeName = "nvarchar(max)")]
         public List<string> Tags { get; set; } = new List<string>();
 
-        // Campos calculados (no mapeados a la BD)
         [NotMapped]
         public int TotalMessages => Messages.Count();
 
@@ -59,13 +64,24 @@ namespace CustomerService.API.Models
                 : CreatedAt;
 
         [NotMapped]
-        public TimeSpan Duration =>
-            (ClosedAt ?? DateTime.UtcNow) - CreatedAt;
+        public TimeSpan Duration
+        {
+            get
+            {
+                var nicaraguaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Managua");
+                var nowNic = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, nicaraguaTimeZone);
+                DateTime reference = ClosedAt.HasValue
+                    ? TimeZoneInfo.ConvertTimeFromUtc(ClosedAt.Value.ToUniversalTime(), nicaraguaTimeZone)
+                    : nowNic;
+                var createdNic = TimeZoneInfo.ConvertTimeFromUtc(CreatedAt.ToUniversalTime(), nicaraguaTimeZone);
+                return reference - createdNic;
+            }
+        }
 
         [NotMapped]
         public TimeSpan? TimeToFirstResponse =>
             FirstResponseAt.HasValue
-                ? FirstResponseAt - CreatedAt
+                ? FirstResponseAt.Value - CreatedAt
                 : null;
 
         [NotMapped]

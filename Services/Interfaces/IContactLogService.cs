@@ -22,5 +22,7 @@ namespace CustomerService.API.Services.Interfaces
            string waName,
            string userId,
             CancellationToken cancellation = default);
+
+        Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default);
     }
 }

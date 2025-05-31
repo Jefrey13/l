@@ -1,26 +1,34 @@
-﻿    using CustomerService.API.Services.Interfaces;
-    using Microsoft.AspNetCore.SignalR;
+﻿using System;
+using System.Threading.Tasks;
+using CustomerService.API.Services.Interfaces;
+using Microsoft.AspNetCore.SignalR;
 
-    namespace CustomerService.API.Hubs
+namespace CustomerService.API.Hubs
+{
+    public class PresenceHub : Hub
     {
-        public class PresenceHub : Hub
+        private readonly IPresenceService _presence;
+
+        public PresenceHub(IPresenceService presence) => _presence = presence;
+
+        public override async Task OnConnectedAsync()
         {
-            private readonly IPresenceService _presence;
-
-            public PresenceHub(IPresenceService presence) => _presence = presence;
-
-            public override async Task OnConnectedAsync()
+            if (int.TryParse(Context.UserIdentifier, out var userId))
             {
-                if (int.TryParse(Context.UserIdentifier, out var id))
-                    await _presence.UserConnectedAsync(id);
-                await base.OnConnectedAsync();
+                await _presence.UserConnectedAsync(userId);
+                await Clients.Others.SendAsync("UserIsOnline", userId);
             }
+            await base.OnConnectedAsync();
+        }
 
-            public override async Task OnDisconnectedAsync(Exception? ex)
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            if (int.TryParse(Context.UserIdentifier, out var userId))
             {
-                if (int.TryParse(Context.UserIdentifier, out var id))
-                    await _presence.UserDisconnectedAsync(id);
-                        await base.OnDisconnectedAsync(ex);
+                await _presence.UserDisconnectedAsync(userId);
+                await Clients.Others.SendAsync("UserIsOffline", userId);
             }
+            await base.OnDisconnectedAsync(exception);
         }
     }
+}

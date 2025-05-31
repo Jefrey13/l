@@ -58,6 +58,7 @@ namespace CustomerService.API.Services.Implementations
                 if (request.ConversationId <= 0)
                     throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
 
+                // Crear el objeto Message con la hora nicaragüense
                 var msg = new Message
                 {
                     ConversationId = request.ConversationId,
@@ -65,7 +66,7 @@ namespace CustomerService.API.Services.Implementations
                     SenderContactId = isContact ? request.SenderId : null,
                     Content = request.Content,
                     MessageType = request.MessageType,
-                    SentAt = await _nicDatetime.GetNicDatetime(),
+                    SentAt = await _nicDatetime.GetNicDatetime(),  // hora nica
                     Status = MessageStatus.Sent,
                     ExternalId = Guid.NewGuid().ToString(),
                     InteractiveId = request.InteractiveId,
@@ -75,17 +76,48 @@ namespace CustomerService.API.Services.Implementations
                 await _uow.Messages.AddAsync(msg, ct);
                 await _uow.SaveChangesAsync(ct);
 
+                // Recuperar la conversación para actualizar sus marcas de tiempo
+                var conv = await _uow.Conversations.GetByIdAsync(request.ConversationId, ct)
+                           ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found");
+
+                // msg.SentAt ya está en hora nica
+                var sentAtNic = msg.SentAt.DateTime;
+
+                // 3) Si el remitente es el cliente y aún no hay FirstResponseAt, se marca aquí
+                if (conv.FirstResponseAt == null && isContact)
+                {
+                    conv.FirstResponseAt = sentAtNic;
+                }
+
+                // Siempre actualizamos UpdatedAt con hora nica
+                conv.UpdatedAt = sentAtNic;
+
+                // Si el remitente es un agente (no es contacto), actualizar sus marcas
                 if (!isContact)
                 {
+                    if (conv.AgentFirstMessageAt == null)
+                        conv.AgentFirstMessageAt = sentAtNic;
+
+                    conv.AgentLastMessageAt = sentAtNic;
+
+                    // Enviar el texto por WhatsApp
                     await _whatsAppService.SendTextAsync(
                         msg.ConversationId,
                         msg.SenderUserId!.Value,
                         msg.Content,
                         ct);
                 }
+                else
+                {
+                    // Si el remitente es cliente, actualizar ClientLastMessageAt
+                    conv.ClientLastMessageAt = sentAtNic;
+                }
 
-                var reloaded = await _uow.Messages.GetByIdAsync(msg.MessageId, ct);
+                _uow.Conversations.Update(conv);
+                await _uow.SaveChangesAsync(ct);
 
+                // Recargar el mensaje y emitir por SignalR
+                var reloaded = await _uow.Messages.GetByIdAsync(msg.MessageId);
                 var dto = reloaded.Adapt<MessageDto>();
 
                 await _hub.Clients

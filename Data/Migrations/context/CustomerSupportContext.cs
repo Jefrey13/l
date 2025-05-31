@@ -36,12 +36,6 @@ public partial class CustomerSupportContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
-
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-91LKTJV\\SQLEXPRESS;Database=CustomerSupportDB; TrustServerCertificate=true; Trusted_Connection=True;");
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppRole>(entity =>
@@ -194,63 +188,74 @@ public partial class CustomerSupportContext : DbContext
             entity.ToTable("Conversations", "chat");
             entity.HasKey(e => e.ConversationId);
 
-            entity.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasMaxLength(20)
-                .HasDefaultValue(ConversationStatus.New);
-
             entity.Property(e => e.Priority)
-            .HasConversion<int>()                   
-            .HasDefaultValue(PriorityLevel.Normal);
+                  .HasConversion<int>()
+                  .HasDefaultValue(PriorityLevel.Normal);
+
+            entity.Property(e => e.Status)
+                  .HasConversion<string>()
+                  .HasMaxLength(20)
+                  .HasDefaultValue(ConversationStatus.New);
 
             entity.Property(e => e.Initialized)
-            .HasDefaultValue(false);
+                  .HasDefaultValue(false);
 
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-            entity.Property(e => e.Status)
-            .HasConversion<string>()
-            .HasDefaultValue(ConversationStatus.Bot);
-
-            entity.Property(e => e.AssignedAt)
-                .HasDefaultValueSql("SYSUTCDATETIME()");
+                  .HasColumnType("datetime2")
+                  .HasDefaultValueSql("SYSUTCDATETIME()");
 
             entity.Property(e => e.FirstResponseAt)
-                .IsRequired(false);
+                  .HasColumnType("datetime2")
+                  .IsRequired(false);
+
+            entity.Property(e => e.AssignedAt)
+                  .HasColumnType("datetime2")
+                  .IsRequired(false);
 
             entity.Property(e => e.UpdatedAt)
-                .IsRequired(false);
+                  .HasColumnType("datetime2")
+                  .IsRequired(false);
 
+            // <<-- Ya tenías ClosedAt configurado: >>
             entity.Property(e => e.ClosedAt)
-                .IsRequired(false);
+                  .HasColumnType("datetime2")
+                  .IsRequired(false);
+
+            // <<-- AGREGAR EL MAPEADO DE WarningSentAt justo aquí: >> 
+            entity.Property(e => e.WarningSentAt)
+                  .HasColumnType("datetime2")
+                  .IsRequired(false);
 
             entity.Property(e => e.IsArchived)
-                .HasDefaultValue(false);
+                  .HasDefaultValue(false);
 
             entity.Property(e => e.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+                  .IsRowVersion()
+                  .IsConcurrencyToken();
 
+            entity.Property(e => e.Tags)
+                  .HasColumnType("nvarchar(max)");
+
+            // Relaciones con FK:
             entity.HasOne(e => e.ClientContact)
-                .WithMany(cl => cl.ConversationClient)
-                .HasForeignKey(e => e.ClientContactId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Conversations_ClientContact");
+                  .WithMany(cl => cl.ConversationClient)
+                  .HasForeignKey(e => e.ClientContactId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_Conversations_ClientContact");
 
             entity.HasOne(e => e.AssignedAgent)
-                .WithMany(u => u.ConversationAssignedAgentNavigations)
-                .HasForeignKey(e => e.AssignedAgentId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Conversations_AssignedAgent");
+                  .WithMany(u => u.ConversationAssignedAgentNavigations)
+                  .HasForeignKey(e => e.AssignedAgentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_Conversations_AssignedAgent");
 
             entity.HasOne(e => e.AssignedByUser)
-                .WithMany(u => u.ConversationAssignedByNavigations)
-                .HasForeignKey(e => e.AssignedByUserId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Conversations_AssignedByUser");
-
+                  .WithMany(u => u.ConversationAssignedByNavigations)
+                  .HasForeignKey(e => e.AssignedByUserId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_Conversations_AssignedByUser");
         });
+
 
 
         modelBuilder.Entity<Message>(entity =>

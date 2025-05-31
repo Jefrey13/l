@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Data.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250531053534_AddConversationControlFields")]
+    partial class AddConversationControlFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,12 +266,6 @@ namespace CustomerService.API.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
 
-                    b.Property<DateTime?>("AgentFirstMessageAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("AgentLastMessageAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
@@ -280,9 +277,6 @@ namespace CustomerService.API.Data.Migrations
 
                     b.Property<int>("ClientContactId")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("ClientLastMessageAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
@@ -310,9 +304,6 @@ namespace CustomerService.API.Data.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<DateTime?>("RequestedAgentAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -334,9 +325,6 @@ namespace CustomerService.API.Data.Migrations
 
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("WarningSentAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("ConversationId");
 

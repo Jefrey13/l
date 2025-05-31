@@ -26,15 +26,15 @@ namespace CustomerService.API.Utils
                 .Map(d => d.CreatedAt, _ => DateTime.UtcNow)
                 .Map(d => d.Tags, s => s.Tags);
 
-            // Conversación: actualización parcial
             config.NewConfig<UpdateConversationRequest, Conversation>()
-                .IgnoreNullValues(true)
-                .Map(d => d.Priority, s => s.Priority)
-                .Map(d => d.Status, s => s.Status)
-                .Map(d => d.AssignedAgentId, s => s.AssignedAgentId)
-                .Map(d => d.IsArchived, s => s.IsArchived)
-                .Map(d => d.UpdatedAt, _ => DateTime.UtcNow)
-                .Map(d => d.Tags, s => s.Tags);
+             .IgnoreNullValues(true)
+             .Map(d => d.Priority, s => s.Priority)
+             .Map(d => d.Status, s => s.Status)
+             .Map(d => d.AssignedAgentId, s => s.AssignedAgentId)
+             .Map(d => d.RequestedAgentAt, s => s.RequestedAgentAt)
+             .Map(d => d.IsArchived, s => s.IsArchived)
+             .Map(d => d.UpdatedAt, _ => DateTime.UtcNow)
+             .Map(d => d.Tags, s => s.Tags);
 
             // Conversación: entidad a DTO
             config.NewConfig<Conversation, ConversationDto>()
@@ -92,7 +92,21 @@ namespace CustomerService.API.Utils
             // Contactos
             config.NewConfig<CreateContactLogRequestDto, ContactLog>();
             config.NewConfig<UpdateContactLogRequestDto, ContactLog>();
-            config.NewConfig<ContactLog, ContactLogResponseDto>();
+
+
+            config.NewConfig<ContactLog, ContactLogResponseDto>()
+                .Map(d => d.Id, s => s.Id)
+                .Map(d => d.WaName, s => s.WaName)
+                .Map(d => d.WaId, s => s.WaId)
+                .Map(d => d.WaUserId, s => s.WaUserId)
+                .Map(d => d.Phone, s => s.Phone)
+                .Map(d => d.FullName, s => s.FullName)
+                .Map(d => d.IdCard, s => s.IdCard)
+                .Map(d => d.CompanyId, s => s.CompanyId)
+                .Map(d => d.Status, s => s.Status) 
+                .Map(d => d.CreatedAt, s => s.CreatedAt)
+                .Map(d => d.UpdatedAt, s => s.UpdatedAt)
+                .Map(d => d.Company, s => s.Company);
 
             // Empresa
             config.NewConfig<Company, CompanyDto>();
