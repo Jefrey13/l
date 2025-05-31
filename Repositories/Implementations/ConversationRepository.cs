@@ -56,7 +56,6 @@ namespace CustomerService.API.Repositories.Implementations
 
         public override IQueryable<Conversation> GetAll()
             => _dbSet
-                .AsNoTracking()
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.Messages)
@@ -65,7 +64,6 @@ namespace CustomerService.API.Repositories.Implementations
         public override async Task<Conversation?> GetByIdAsync(int id, CancellationToken ct = default)
         {
             var conversation = await _dbSet
-                .AsNoTracking()
                 .Where(c => c.ConversationId == id)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedByUser)

@@ -53,10 +53,16 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
         }
 
-        public Task<DateTime?> GetLastOnlineAsync(int userId, CancellationToken cancellation = default)
+        public async Task<DateTime?> GetLastOnlineAsync(int userId, CancellationToken cancellation = default)
         {
-            _lastOnline.TryGetValue(userId, out var dt);
-            return Task.FromResult<DateTime?>(dt);
+            // 1. Primero intenta obtenerlo desde memoria
+            if (_lastOnline.TryGetValue(userId, out var dt))
+                return dt;
+
+            // 2. Si no está en memoria, consulta la base de datos
+            var user = await _uow.Users.GetByIdAsync(userId, cancellation);
+
+            return user?.LastOnline;
         }
 
         public Task<IDictionary<int, DateTime?>> GetLastOnlineAsync(IEnumerable<int> userIds, CancellationToken cancellation = default)

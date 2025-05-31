@@ -105,6 +105,26 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
 
+
+            if (payload.Type == InteractiveType.Text)
+            {
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = convoDto.ConversationId,
+                    SenderId = contactDto.Id,
+                    Content = payload.TextBody,
+                    MessageType = MessageType.Text
+                }, isContact: true, ct);
+            }
+
+            var convEntity = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+            var convDto = convEntity.Adapt<ConversationDto>();
+
+            // 3) emítelo por SignalR
+            await _hubContext.Clients
+               .All
+               .SendAsync("ConversationUpdated", convDto, ct);
             // ───────────────────────────────────────────────────────────────────
             //   PEDIR “FullName” si Status == New o AwaitingFullName
             // ───────────────────────────────────────────────────────────────────
@@ -135,7 +155,16 @@ namespace CustomerService.API.Pipelines.Implementations
                         Status = ContactStatus.AwaitingFullName
                     }, ct);
 
-                    return;
+                        var convEntity1 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                        var convDto1 = convEntity1.Adapt<ConversationDto>();
+
+                        // 3) emítelo por SignalR
+                        await _hubContext.Clients
+                           .All
+                           .SendAsync("ConversationUpdated", convDto1, ct);
+
+                        return;
                 }
 
                 // Si ya estaba en AwaitingFullName → recibimos el nombre en payload.TextBody
@@ -160,7 +189,16 @@ namespace CustomerService.API.Pipelines.Implementations
                     isContact: false,
                     ct);
 
-                return;
+                    var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                    var convDto3 = convEntity3.Adapt<ConversationDto>();
+
+                    // 3) emítelo por SignalR
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", convDto, ct);
+
+                    return;
             }
 
 
@@ -185,7 +223,16 @@ namespace CustomerService.API.Pipelines.Implementations
                         isContact: false,
                         ct);
 
-                    return;
+                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                        var convDto4 = convEntity4.Adapt<ConversationDto>();
+
+                        // 3) emítelo por SignalR
+                        await _hubContext.Clients
+                           .All
+                           .SendAsync("ConversationUpdated", convDto, ct);
+
+                        return;
                 }
 
                 // Si cédula válida, guardamos IdCard y cambiamos a Completed
@@ -207,8 +254,17 @@ namespace CustomerService.API.Pipelines.Implementations
                     isContact: false,
                     ct);
 
-                // A partir de aquí, el pipeline continúa con el flujo normal
-            }
+                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                    var convDto5 = convEntity.Adapt<ConversationDto>();
+
+                    // 3) emítelo por SignalR
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", convDto5, ct);
+
+                    // A partir de aquí, el pipeline continúa con el flujo normal
+                }
 
             }
             catch (Exception ex)
@@ -359,26 +415,6 @@ namespace CustomerService.API.Pipelines.Implementations
 
                 return;
             }
-
-            if (payload.Type == InteractiveType.Text)
-            {
-                await _messageService.SendMessageAsync(new SendMessageRequest
-                {
-                    ConversationId = convoDto.ConversationId,
-                    SenderId = contactDto.Id,
-                    Content = payload.TextBody,
-                    MessageType = MessageType.Text
-                }, isContact: true, ct);
-            }
-
-            var convEntity = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
-
-            var convDto = convEntity.Adapt<ConversationDto>();
-
-            // 3) emítelo por SignalR
-            await _hubContext.Clients
-               .All
-               .SendAsync("ConversationUpdated", convDto, ct);
 
             var buttons = new[]
                 {

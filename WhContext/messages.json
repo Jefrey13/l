@@ -1,6 +1,6 @@
 ﻿{
   "Prompts": {
-    "WelcomeBot": "¡🙌 Bienvenido a PC GROUP S.A.! Soy *Milena*, tu asistente virtual de atención al cliente 🤖. Estoy aquí para brindarte información útil y optimizar tu tiempo. ¿En qué puedo ayudarte hoy?",
+    "WelcomeBot": "¡Soy *Milena*, tu asistente virtual de atención al cliente 🤖. Estoy aquí para brindarte información útil y optimizar tu tiempo. ¿En qué puedo ayudarte hoy?",
     "AskFullName": "¡Hola 👋 Bienvenido a PC GROUP S.A.! Para comenzar, por favor indícanos tu *nombre completo* (al proporcionarlo, nos das tu permiso para registrar y usar tu información de manera segura).",
     "AskIdCard": "Gracias, {0}. Ahora envíanos tu *número de cédula* (formato: 001-120203-1062W o 0011202031062W).",
     "InvalidIdFormat": "😕 Formato inválido. Debe ser 13 caracteres (3 dígitos + 6 dígitos + 4 dígitos + letra), con o sin guiones (ej: 001-120203-1062W o 0011202031062W).",
