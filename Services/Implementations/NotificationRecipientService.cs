@@ -25,7 +25,7 @@ namespace CustomerService.API.Services.Implementations
             _uow = uow;
         }
 
-        public async Task<PagedResponse<NotificationDto>> GetByUserAsync(
+        public async Task<PagedResponse<NotificationResponseDto>> GetByUserAsync(
             PaginationParams @params,
             int userId,
             CancellationToken cancellation = default)
@@ -41,11 +41,11 @@ namespace CustomerService.API.Services.Implementations
                 @params.PageSize,
                 cancellation);
 
-            var dtos = paged.Select(nr => nr.Adapt<NotificationDto>()).ToList();
-            return new PagedResponse<NotificationDto>(dtos, paged.MetaData);
+            var dtos = paged.Select(nr => nr.Adapt<NotificationResponseDto>()).ToList();
+            return new PagedResponse<NotificationResponseDto>(dtos, paged.MetaData);
         }
 
-        public async Task<PagedResponse<NotificationDto>> GetUnreadByUserAsync(
+        public async Task<PagedResponse<NotificationResponseDto>> GetUnreadByUserAsync(
             PaginationParams @params,
             int userId,
             CancellationToken cancellation = default)
@@ -61,8 +61,8 @@ namespace CustomerService.API.Services.Implementations
                 @params.PageSize,
                 cancellation);
 
-            var dtos = paged.Select(nr => nr.Adapt<NotificationDto>()).ToList();
-            return new PagedResponse<NotificationDto>(dtos, paged.MetaData);
+            var dtos = paged.Select(nr => nr.Adapt<NotificationResponseDto>()).ToList();
+            return new PagedResponse<NotificationResponseDto>(dtos, paged.MetaData);
         }
 
         public Task<int> GetUnreadCountAsync(int userId, CancellationToken cancellation = default)

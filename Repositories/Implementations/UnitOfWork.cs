@@ -23,7 +23,8 @@ namespace CustomerService.API.Repositories.Implementations
             IMenuRepository menuRepository,
             IContactLogRepository contactLogRepository,
             INotificationRepository notificationRepository,
-            INotificationRecipientRepository notificationRecipientRepository)
+            INotificationRecipientRepository notificationRecipientRepository,
+            ISystemParamRepository systemParamRepository)
         {
             _context = context;
             Users = userRepository;
@@ -40,6 +41,7 @@ namespace CustomerService.API.Repositories.Implementations
 
             Notifications = notificationRepository;
             NotificationRecipients = notificationRecipientRepository;
+            SystemParamRepository = systemParamRepository ?? throw new ArgumentNullException(nameof(systemParamRepository));
         }
 
         public IUserRepository Users { get; }
@@ -55,6 +57,8 @@ namespace CustomerService.API.Repositories.Implementations
         public IContactLogRepository ContactLogs { get; }
         public INotificationRepository Notifications { get; }
         public INotificationRecipientRepository NotificationRecipients { get; }
+
+        public ISystemParamRepository SystemParamRepository { get; set; }
 
         public void ClearChangeTracker()
         => _context.ChangeTracker.Clear();

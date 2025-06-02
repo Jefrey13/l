@@ -119,7 +119,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var convEntity = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-            var convDto = convEntity.Adapt<ConversationDto>();
+            var convDto = convEntity.Adapt<ConversationResponseDto>();
 
             // 3) emítelo por SignalR
             await _hubContext.Clients
@@ -157,7 +157,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
                         var convEntity1 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-                        var convDto1 = convEntity1.Adapt<ConversationDto>();
+                        var convDto1 = convEntity1.Adapt<ConversationResponseDto>();
 
                         // 3) emítelo por SignalR
                         await _hubContext.Clients
@@ -191,7 +191,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
                     var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-                    var convDto3 = convEntity3.Adapt<ConversationDto>();
+                    var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
 
                     // 3) emítelo por SignalR
                     await _hubContext.Clients
@@ -225,7 +225,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
                         var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-                        var convDto4 = convEntity4.Adapt<ConversationDto>();
+                        var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
 
                         // 3) emítelo por SignalR
                         await _hubContext.Clients
@@ -256,7 +256,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
                     var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-                    var convDto5 = convEntity.Adapt<ConversationDto>();
+                    var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
                     // 3) emítelo por SignalR
                     await _hubContext.Clients
@@ -598,7 +598,7 @@ namespace CustomerService.API.Pipelines.Implementations
         }
 
         private async Task HandleBotReplyAsync(
-            ConversationDto convoDto,
+            ConversationResponseDto convoDto,
             string? userText,
             CancellationToken ct = default)
         {
@@ -636,7 +636,7 @@ namespace CustomerService.API.Pipelines.Implementations
             .Include(c => c.ClientContact)
             .SingleAsync(ct);
 
-            var convDto = convEntity.Adapt<ConversationDto>();
+            var convDto = convEntity.Adapt<ConversationResponseDto>();
 
             await _hubContext.Clients
                 .All

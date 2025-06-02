@@ -11,7 +11,7 @@ namespace CustomerService.API.Services.Interfaces
         Task NotifySupportRequestedAsync(SupportRequestedDto dto, CancellationToken cancellation = default);
         Task NotifyConversationAssignedAsync(ConversationAssignedDto dto, CancellationToken cancellation = default);
 
-        Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationDto dto, CancellationToken cancellation = default);
+        Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationResponseDto dto, CancellationToken cancellation = default);
 
         Task NotifyUserAsync(int userId, string method, object payload, CancellationToken cancellation = default);
     }

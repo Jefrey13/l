@@ -25,34 +25,34 @@ namespace CustomerService.API.Controllers
 
         [HttpGet(Name = "GetAllRoles")]
         [SwaggerOperation(Summary = "Retrieve paged list of roles")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResponse<RoleDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<RoleResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] PaginationParams @params, CancellationToken ct = default)
         {
             var paged = await _roles.GetAllAsync(@params, ct);
-            return Ok(new ApiResponse<PagedResponse<RoleDto>>(paged, "Roles retrieved."));
+            return Ok(new ApiResponse<PagedResponse<RoleResponseDto>>(paged, "Roles retrieved."));
         }
 
         [HttpGet("{id}", Name = "GetRoleById")]
         [SwaggerOperation(Summary = "Retrieve a role by ID")]
-        [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<RoleResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct = default)
         {
             var dto = await _roles.GetByIdAsync(id, ct);
             if (dto is null)
                 return NotFound(new ApiResponse<object>(null, "Role not found."));
-            return Ok(new ApiResponse<RoleDto>(dto, "Role retrieved."));
+            return Ok(new ApiResponse<RoleResponseDto>(dto, "Role retrieved."));
         }
 
         [HttpPost(Name = "CreateRole")]
         [SwaggerOperation(Summary = "Create a new role")]
-        [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<RoleResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateRoleRequest req, CancellationToken ct = default)
         {
             var dto = await _roles.CreateAsync(req, ct);
             return CreatedAtRoute("GetRoleById", new { id = dto.RoleId },
-                new ApiResponse<RoleDto>(dto, "Role created."));
+                new ApiResponse<RoleResponseDto>(dto, "Role created."));
         }
 
         [HttpPut("{id}", Name = "UpdateRole")]

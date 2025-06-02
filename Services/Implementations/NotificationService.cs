@@ -58,7 +58,7 @@ namespace CustomerService.API.Services.Implementations
 
                 await _uow.SaveChangesAsync(ct);
 
-                await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationDto>());
+                await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationResponseDto>());
             }
             catch (Exception ex)
             {

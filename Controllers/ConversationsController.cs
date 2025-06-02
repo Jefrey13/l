@@ -25,37 +25,37 @@ namespace CustomerService.API.Controllers
 
         [HttpGet(Name = "GetAllConversations")]
         [SwaggerOperation(Summary = "List all conversations")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(CancellationToken ct = default)
         {
             var list = await _conversations.GetAllAsync(ct);
-            return Ok(new ApiResponse<IEnumerable<ConversationDto>>(list, "All conversations retrieved."));
+            return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list, "All conversations retrieved."));
         }
 
         [HttpGet("pending", Name = "GetPendingConversations")]
         [SwaggerOperation(Summary = "List all conversations waiting for human agent")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPending(CancellationToken ct = default)
         {
             var list = await _conversations.GetPendingAsync(ct);
-            return Ok(new ApiResponse<IEnumerable<ConversationDto>>(list, "Pending conversations retrieved."));
+            return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list, "Pending conversations retrieved."));
         }
 
         [HttpGet("{id}", Name = "GetConversationById")]
         [SwaggerOperation(Summary = "Get conversation details by ID")]
-        [ProducesResponseType(typeof(ApiResponse<ConversationDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<ConversationResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct = default)
         {
             var dto = await _conversations.GetByIdAsync(id, ct);
             if (dto == null)
                 return NotFound(new ApiResponse<object>(null, "Conversation not found."));
-            return Ok(new ApiResponse<ConversationDto>(dto, "Conversation retrieved."));
+            return Ok(new ApiResponse<ConversationResponseDto>(dto, "Conversation retrieved."));
         }
 
         [HttpPost(Name = "StartConversation")]
         [SwaggerOperation(Summary = "Start a new conversation")]
-        [ProducesResponseType(typeof(ApiResponse<ConversationDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<ConversationResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Start(
             [FromBody] StartConversationRequest req,
@@ -65,7 +65,7 @@ namespace CustomerService.API.Controllers
             return CreatedAtRoute(
                 "GetConversationById",
                 new { id = dto.ConversationId },
-                new ApiResponse<ConversationDto>(dto, "Conversation started.")
+                new ApiResponse<ConversationResponseDto>(dto, "Conversation started.")
             );
         }
 
@@ -121,7 +121,7 @@ namespace CustomerService.API.Controllers
 
         [HttpGet("getByRole", Name = "GetByUserRole")]
         [SwaggerOperation(Summary = "Get conversation details by UserRole")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetByUserRole(CancellationToken ct = default)
         {
             var jwtToken = HttpContext.Request
@@ -130,7 +130,7 @@ namespace CustomerService.API.Controllers
                              .Split(' ')[1];
 
             var list = await _conversations.GetConversationByRole(jwtToken, ct);
-            return Ok(new ApiResponse<IEnumerable<ConversationDto>>(list,
+            return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list,
                        "Conversations retrieved by user role."));
         }
 

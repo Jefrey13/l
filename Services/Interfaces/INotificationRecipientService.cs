@@ -10,7 +10,7 @@ namespace CustomerService.API.Services.Interfaces
         /// <summary>
         /// Devuelve todas las notificaciones (leídas y no leídas) paginadas para un usuario.
         /// </summary>
-        Task<PagedResponse<NotificationDto>> GetByUserAsync(
+        Task<PagedResponse<NotificationResponseDto>> GetByUserAsync(
             PaginationParams @params,
             int userId,
             CancellationToken cancellation = default);
@@ -18,7 +18,7 @@ namespace CustomerService.API.Services.Interfaces
         /// <summary>
         /// Devuelve solo las notificaciones no leídas paginadas para un usuario.
         /// </summary>
-        Task<PagedResponse<NotificationDto>> GetUnreadByUserAsync(
+        Task<PagedResponse<NotificationResponseDto>> GetUnreadByUserAsync(
             PaginationParams @params,
             int userId,
             CancellationToken cancellation = default);

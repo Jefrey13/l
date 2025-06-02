@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class ConversationDto
+    public class ConversationResponseDto
     {
         public int ConversationId { get; set; }
         public int? CompanyId { get; set; }
@@ -30,7 +30,7 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public TimeSpan? TimeToFirstResponse { get; set; }
         public bool IsClosed { get; set; }
 
-        public List<MessageDto> Messages { get; set; } = new();
+        public List<MessageResponseDto> Messages { get; set; } = new();
 
         public List<string> Tags { get; set; } = new();
     }

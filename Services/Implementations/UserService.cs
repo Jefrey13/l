@@ -47,7 +47,7 @@ namespace CustomerService.API.Services.Implementations
             _nicDatetime = nicDatetime;
         }
 
-        public async Task<PagedResponse<UserDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
+        public async Task<PagedResponse<UserResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
         {
             var query = _uow.Users.GetAll();
             var paged = await PagedList<User>.CreateAsync(query, @params.PageNumber, @params.PageSize, cancellation);
@@ -73,7 +73,7 @@ namespace CustomerService.API.Services.Implementations
                 .GroupBy(ur => ur.UserId)
                 .ToDictionary(
                     g => g.Key,
-                    g => g.Select(ur => new RoleDto
+                    g => g.Select(ur => new RoleResponseDto
                     {
                         RoleId = ur.RoleId,
                         RoleName = ur.Role.RoleName,
@@ -85,7 +85,7 @@ namespace CustomerService.API.Services.Implementations
             {
                 lastOnlines.TryGetValue(u.UserId, out var last);
                 var count = conversationCounts.GetValueOrDefault(u.UserId, 0);
-                return new UserDto
+                return new UserResponseDto
                 {
                     UserId = u.UserId,
                     FullName = u.FullName,
@@ -100,14 +100,14 @@ namespace CustomerService.API.Services.Implementations
                     LastOnline = last,
                     IsOnline = last.HasValue && (DateTime.UtcNow - last.Value).TotalMinutes < 5,
                     ClientType = count switch { 0 => "New", > 0 and <= 5 => "Frequent", _ => "VIP" },
-                    Roles = rolesByUser.GetValueOrDefault(u.UserId, new List<RoleDto>())
+                    Roles = rolesByUser.GetValueOrDefault(u.UserId, new List<RoleResponseDto>())
                 };
             }).ToList();
 
-            return new PagedResponse<UserDto>(dtos, paged.MetaData);
+            return new PagedResponse<UserResponseDto>(dtos, paged.MetaData);
         }
 
-        public async Task<UserDto> GetByIdAsync(int id, CancellationToken cancellation = default)
+        public async Task<UserResponseDto> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             if (id <= 0) throw new ArgumentException("Invalid user ID.", nameof(id));
 
@@ -122,14 +122,14 @@ namespace CustomerService.API.Services.Implementations
                 .CountAsync(c => c.AssignedAgentId == id, cancellation);
 
             var roles = await _uow.UserRoles.GetRolesByUserIdAsync(id, cancellation);
-            var rolesDto = roles.Select(ur => new RoleDto
+            var rolesDto = roles.Select(ur => new RoleResponseDto
             {
                 RoleId = ur.RoleId,
                 RoleName = ur.Role.RoleName,
                 Description = ur.Role.Description
             });
 
-            return new UserDto
+            return new UserResponseDto
             {
                 UserId = user.UserId,
                 FullName = user.FullName,
@@ -148,7 +148,7 @@ namespace CustomerService.API.Services.Implementations
             };
         }
 
-        public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken cancellation = default)
+        public async Task<UserResponseDto> CreateAsync(CreateUserRequest request, CancellationToken cancellation = default)
         {
             if (string.IsNullOrWhiteSpace(request.Email)) throw new ArgumentException("Email is required.", nameof(request.Email));
             if (string.IsNullOrWhiteSpace(request.Password)) throw new ArgumentException("Password is required.", nameof(request.Password));
@@ -180,7 +180,7 @@ namespace CustomerService.API.Services.Implementations
                 Console.WriteLine("Error", e.Message);
             }
 
-            var currentRoles = new List<RoleDto>();
+            var currentRoles = new List<RoleResponseDto>();
             if (request.RoleIds.Any())
             {
                 var validRoleIds = request.RoleIds.Distinct();
@@ -197,7 +197,7 @@ namespace CustomerService.API.Services.Implementations
                     }, cancellation);
 
                     var role = await _uow.Roles.GetByIdAsync(roleId, cancellation);
-                    currentRoles.Add(new RoleDto
+                    currentRoles.Add(new RoleResponseDto
                     {
                         RoleId = role.RoleId,
                         RoleName = role.RoleName,
@@ -224,7 +224,7 @@ namespace CustomerService.API.Services.Implementations
             var emailBody = $@"<div><p>Welcome <strong>{user.FullName}</strong>,</p><p>Please verify your account <a href='{verificationLink}'>here</a>.</p></div>";
             await _email.SendAsync(user.Email, "Verify your account", emailBody);
 
-            return new UserDto
+            return new UserResponseDto
             {
                 UserId = user.UserId,
                 FullName = user.FullName,

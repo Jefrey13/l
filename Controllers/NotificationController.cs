@@ -26,7 +26,7 @@ namespace CustomerService.API.Controllers
 
         [HttpGet(Name = "GetUserNotifications")]
         [SwaggerOperation(Summary = "Retrieve paged list of your notifications")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResponse<NotificationDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<NotificationResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Get(
             [FromQuery] PaginationParams @params,
             [FromQuery] bool unreadOnly = false,
@@ -36,13 +36,13 @@ namespace CustomerService.API.Controllers
             {
                 var pagedUnread = await _recipientService
                     .GetUnreadByUserAsync(@params, CurrentUserId, ct);
-                return Ok(new ApiResponse<PagedResponse<NotificationDto>>(pagedUnread, "Unread notifications retrieved."));
+                return Ok(new ApiResponse<PagedResponse<NotificationResponseDto>>(pagedUnread, "Unread notifications retrieved."));
             }
             else
             {
                 var pagedAll = await _recipientService
                     .GetByUserAsync(@params, CurrentUserId, ct);
-                return Ok(new ApiResponse<PagedResponse<NotificationDto>>(pagedAll, "All notifications retrieved."));
+                return Ok(new ApiResponse<PagedResponse<NotificationResponseDto>>(pagedAll, "All notifications retrieved."));
             }
         }
 

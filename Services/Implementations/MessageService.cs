@@ -48,7 +48,7 @@ namespace CustomerService.API.Services.Implementations
             _ctx = ctx;
         }
 
-        public async Task<MessageDto> SendMessageAsync(
+        public async Task<MessageResponseDto> SendMessageAsync(
             SendMessageRequest request,
             bool isContact = false,
             CancellationToken ct = default)
@@ -118,7 +118,7 @@ namespace CustomerService.API.Services.Implementations
 
                 // Recargar el mensaje y emitir por SignalR
                 var reloaded = await _uow.Messages.GetByIdAsync(msg.MessageId);
-                var dto = reloaded.Adapt<MessageDto>();
+                var dto = reloaded.Adapt<MessageResponseDto>();
 
                 await _hub.Clients
                    .Group(reloaded.ConversationId.ToString())
@@ -129,18 +129,18 @@ namespace CustomerService.API.Services.Implementations
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new MessageDto();
+                return new MessageResponseDto();
             }
         }
 
-        public async Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default)
+        public async Task<IEnumerable<MessageResponseDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default)
         {
             if (conversationId <= 0)
                 throw new ArgumentException("ConversationId must be greater than zero.", nameof(conversationId));
 
             var messages = await _uow.Messages.GetByConversationAsync(conversationId, cancellation);
 
-            return messages.Adapt<IEnumerable<MessageDto>>();
+            return messages.Adapt<IEnumerable<MessageResponseDto>>();
         }
 
         public async Task UpdateDeliveryStatusAsync(int messageId, DateTimeOffset deliveredAt, CancellationToken cancellation = default)
@@ -173,7 +173,7 @@ namespace CustomerService.API.Services.Implementations
                 .SendAsync("MessageRead", new { msg.MessageId, readAt }, cancellation);
         }
 
-        public async Task<MessageDto> SendMediaAsync(
+        public async Task<MessageResponseDto> SendMediaAsync(
      SendMediaRequest req,
      string jwtToken,
      CancellationToken ct = default
@@ -265,7 +265,7 @@ namespace CustomerService.API.Services.Implementations
                 // 4) Crear DTO y notificar por SignalR
                 var reloadedMsg = await _uow.Messages.GetByIdAsync(msg.MessageId, CancellationToken.None);
 
-                var dto = reloadedMsg.Adapt<MessageDto>();
+                var dto = reloadedMsg.Adapt<MessageResponseDto>();
                 await _hub.Clients
                     .Group(req.ConversationId.ToString())
                     .SendAsync("ReceiveMessage", dto, ct);
@@ -275,7 +275,7 @@ namespace CustomerService.API.Services.Implementations
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new MessageDto();
+                return new MessageResponseDto();
             }
         }
     }

@@ -46,7 +46,7 @@ namespace CustomerService.API.Services.Implementations
                        .User(userId.ToString())
                        .SendAsync(method, payload, cancellation);
         }
-        public Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationDto dto, CancellationToken ct = default)
+        public Task SendNotificationToUsersAsync(IEnumerable<int> userIds, NotificationResponseDto dto, CancellationToken ct = default)
         {
             var tasks = userIds.Select(id =>
               _hub.Clients.Group(id.ToString())

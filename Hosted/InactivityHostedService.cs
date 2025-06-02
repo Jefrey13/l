@@ -118,7 +118,7 @@ namespace CustomerService.API.Hosted
                             await dbContext.SaveChangesAsync(stoppingToken);
 
                             // Mapear a DTO para notificar por SignalR
-                            var convDto = conv.Adapt<ConversationDto>();
+                            var convDto = conv.Adapt<ConversationResponseDto>();
 
                             // Notificar a administradores que hubo un cambio
                             await _hubContext.Clients
@@ -150,7 +150,7 @@ namespace CustomerService.API.Hosted
                             /* isFromBot: */ false,
                             /* cancellationToken: */ stoppingToken);
 
-                            var convDto = conv.Adapt<ConversationDto>();
+                            var convDto = conv.Adapt<ConversationResponseDto>();
 
                             await _hubContext.Clients
                                 .Group("Admin")

@@ -20,15 +20,15 @@ namespace CustomerService.API.Services.Implementations
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
         }
 
-        public async Task<IEnumerable<CompanyDto>> GetAllAsync(CancellationToken cancellation = default)
+        public async Task<IEnumerable<CompanyResponseDto>> GetAllAsync(CancellationToken cancellation = default)
         {
             var companies = await _uow.Companies.GetAll()
                                 .ToListAsync(cancellation);
 
-            var dtos = new List<CompanyDto>(companies.Count);
+            var dtos = new List<CompanyResponseDto>(companies.Count);
             foreach (var c in companies)
             {
-                dtos.Add(new CompanyDto
+                dtos.Add(new CompanyResponseDto
                 {
                     CompanyId = c.CompanyId,
                     Name = c.Name,
@@ -39,14 +39,14 @@ namespace CustomerService.API.Services.Implementations
             return dtos;
         }
 
-        public async Task<CompanyDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
+        public async Task<CompanyResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             if (id <= 0) throw new ArgumentException("Invalid company ID.", nameof(id));
 
             var c = await _uow.Companies.GetByIdAsync(id, cancellation);
             if (c == null) return null;
 
-            return new CompanyDto
+            return new CompanyResponseDto
             {
                 CompanyId = c.CompanyId,
                 Name = c.Name,
@@ -55,7 +55,7 @@ namespace CustomerService.API.Services.Implementations
             };
         }
 
-        public async Task<CompanyDto> CreateAsync(CreateCompanyRequest request, CancellationToken cancellation = default)
+        public async Task<CompanyResponseDto> CreateAsync(CreateCompanyRequest request, CancellationToken cancellation = default)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
                 throw new ArgumentException("Name is required.", nameof(request.Name));
@@ -72,7 +72,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.Companies.AddAsync(entity, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            return new CompanyDto
+            return new CompanyResponseDto
             {
                 CompanyId = entity.CompanyId,
                 Name = entity.Name,

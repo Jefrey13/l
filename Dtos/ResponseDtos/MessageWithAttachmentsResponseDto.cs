@@ -2,7 +2,7 @@
 
 namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class MessageWithAttachmentsDto
+    public class MessageWithAttachmentsResponseDto
     {
         public int MessageId { get; set; }
         public int? SenderUserId { get; set; }

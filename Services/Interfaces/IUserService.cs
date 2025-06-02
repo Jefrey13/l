@@ -5,9 +5,9 @@ namespace CustomerService.API.Services.Interfaces
 {
     public interface IUserService
     {
-        Task<PagedResponse<UserDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default);
-        Task<UserDto> GetByIdAsync(int id, CancellationToken cancellation = default);
-        Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken cancellation = default);
+        Task<PagedResponse<UserResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default);
+        Task<UserResponseDto> GetByIdAsync(int id, CancellationToken cancellation = default);
+        Task<UserResponseDto> CreateAsync(CreateUserRequest request, CancellationToken cancellation = default);
         Task UpdateAsync(UpdateUserRequest request, CancellationToken cancellation = default);
         Task ActivationAsync(int id, CancellationToken cancellation = default);
         Task<IEnumerable<AgentDto>> GetByRoleAsync(string roleName, CancellationToken cancellation = default);

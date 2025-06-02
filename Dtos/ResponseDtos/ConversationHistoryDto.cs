@@ -7,6 +7,6 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public int ConversationId { get; set; }
         public DateTime CreatedAt { get; set; }
         public ConversationStatus Status { get; set; }
-        public IEnumerable<MessageWithAttachmentsDto> Messages { get; set; }
+        public IEnumerable<MessageWithAttachmentsResponseDto> Messages { get; set; }
     }
 }

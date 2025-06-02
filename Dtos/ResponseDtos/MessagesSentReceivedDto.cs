@@ -2,7 +2,7 @@
 {
     public class MessagesSentReceivedDto
     {
-        public IEnumerable<TemporalCountDto> Sent { get; set; }
-        public IEnumerable<TemporalCountDto> Received { get; set; }
+        public IEnumerable<TemporalCountResponseDto> Sent { get; set; }
+        public IEnumerable<TemporalCountResponseDto> Received { get; set; }
     }
 }

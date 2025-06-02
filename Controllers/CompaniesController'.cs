@@ -27,35 +27,35 @@ namespace CustomerService.API.Controllers
         [HttpGet(Name = "GetAllCompanies")]
         [AllowAnonymous]
         [SwaggerOperation(Summary = "Retrieve list of companies")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<CompanyDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<CompanyResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll(CancellationToken ct = default)
         {
             var list = await _companies.GetAllAsync(ct);
-            return Ok(new ApiResponse<IEnumerable<CompanyDto>>(list, "Companies retrieved."));
+            return Ok(new ApiResponse<IEnumerable<CompanyResponseDto>>(list, "Companies retrieved."));
         }
 
         [HttpGet("{id}", Name = "GetCompanyById")]
         [AllowAnonymous]
         [SwaggerOperation(Summary = "Retrieve a single company by ID")]
-        [ProducesResponseType(typeof(ApiResponse<CompanyDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<CompanyResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct = default)
         {
             var dto = await _companies.GetByIdAsync(id, ct);
             if (dto is null)
                 return NotFound(new ApiResponse<object>(null, "Company not found."));
-            return Ok(new ApiResponse<CompanyDto>(dto, "Company retrieved."));
+            return Ok(new ApiResponse<CompanyResponseDto>(dto, "Company retrieved."));
         }
 
         [HttpPost(Name = "CreateCompany")]
         [SwaggerOperation(Summary = "Create a new company")]
-        [ProducesResponseType(typeof(ApiResponse<CompanyDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<CompanyResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateCompanyRequest req, CancellationToken ct = default)
         {
             var dto = await _companies.CreateAsync(req, ct);
             return CreatedAtRoute("GetCompanyById", new { id = dto.CompanyId },
-                new ApiResponse<CompanyDto>(dto, "Company created."));
+                new ApiResponse<CompanyResponseDto>(dto, "Company created."));
         }
 
         [HttpPut("{id}", Name = "UpdateCompany")]

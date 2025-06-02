@@ -15,7 +15,7 @@ namespace CustomerService.API.Utils
         {
             // Usuarios
             config.NewConfig<CreateUserRequest, User>();
-            config.NewConfig<User, UserDto>();
+            config.NewConfig<User, UserResponseDto>();
 
             // Conversación: creación
             config.NewConfig<CreateConversationRequest, Conversation>()
@@ -37,7 +37,7 @@ namespace CustomerService.API.Utils
              .Map(d => d.Tags, s => s.Tags);
 
             // Conversación: entidad a DTO
-            config.NewConfig<Conversation, ConversationDto>()
+            config.NewConfig<Conversation, ConversationResponseDto>()
                 .Map(d => d.ConversationId, s => s.ConversationId)
                 //.Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.ClientContactId, s => s.ClientContactId)
@@ -61,7 +61,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.Duration, s => (s.ClosedAt ?? DateTime.UtcNow) - s.CreatedAt)
                 .Map(d => d.TimeToFirstResponse, s => s.FirstResponseAt.HasValue ? s.FirstResponseAt.Value - s.CreatedAt : (TimeSpan?)null)
                 .Map(d => d.IsClosed, s => s.Status == ConversationStatus.Closed)
-                .Map(d => d.Messages, s => s.Messages.Adapt<List<MessageDto>>())
+                .Map(d => d.Messages, s => s.Messages.Adapt<List<MessageResponseDto>>())
                 .Map(d => d.Tags, s => s.Tags);
 
             // Mensajes
@@ -72,7 +72,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.SenderUserId, s => s.SenderId)
                 .Map(d => d.SentAt, _ => DateTimeOffset.UtcNow);
 
-            config.NewConfig<Message, MessageDto>()
+            config.NewConfig<Message, MessageResponseDto>()
                 .Map(d => d.MessageId, s => s.MessageId)
                 .Map(d => d.ConversationId, s => s.ConversationId)
                 .Map(d => d.SenderUserId, s => s.SenderUserId)
@@ -109,10 +109,10 @@ namespace CustomerService.API.Utils
                 .Map(d => d.Company, s => s.Company);
 
             // Empresa
-            config.NewConfig<Company, CompanyDto>();
+            config.NewConfig<Company, CompanyResponseDto>();
 
             // Notificaciones
-            config.NewConfig<NotificationRecipient, NotificationDto>()
+            config.NewConfig<NotificationRecipient, NotificationResponseDto>()
                .Map(d => d.NotificationRecipientId, s => s.NotificationRecipientId)
                .Map(d => d.NotificationId, s => s.NotificationId)
                .Map(d => d.Type, s => s.Notification.Type)
@@ -129,7 +129,7 @@ namespace CustomerService.API.Utils
                 .IgnoreNullValues(true)
                 .Map(d => d.Tags, s => s.Tags);
 
-            config.NewConfig<Notification, NotificationDto>()
+            config.NewConfig<Notification, NotificationResponseDto>()
                 .Map(d => d.NotificationId, s => s.NotificationId)
                 .Map(d => d.Type, s => s.Type)
                 .Map(d => d.Payload, s => s.Payload)
@@ -139,6 +139,9 @@ namespace CustomerService.API.Utils
             config.NewConfig<NewContactCreatedDto, NewContactCreatedDto>();
             config.NewConfig<SupportRequestedDto, SupportRequestedDto>();
             config.NewConfig<ConversationAssignedDto, ConversationAssignedDto>();
+
+            config.NewConfig<SystemParamRequestDto, SystemParam>();
+            config.NewConfig<SystemParam, SystemParamResponseDto>();
         }
     }
 }

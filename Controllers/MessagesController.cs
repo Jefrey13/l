@@ -27,13 +27,13 @@ namespace CustomerService.API.Controllers
         /// </summary>
         [HttpGet(Name = "GetMessagesByConversation")]
         [SwaggerOperation(Summary = "Retrieve all messages for a conversation")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<MessageDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<MessageResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetByConversation(
             [FromRoute] int conversationId,
             CancellationToken ct = default)
         {
             var list = await _messages.GetByConversationAsync(conversationId, ct);
-            return Ok(new ApiResponse<IEnumerable<MessageDto>>(list, "Messages retrieved."));
+            return Ok(new ApiResponse<IEnumerable<MessageResponseDto>>(list, "Messages retrieved."));
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace CustomerService.API.Controllers
         /// </summary>
         [HttpPost(Name = "SendMessage")]
         [SwaggerOperation(Summary = "Send a message in a conversation")]
-        [ProducesResponseType(typeof(ApiResponse<MessageDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<MessageResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Send(
             [FromRoute] int conversationId,
@@ -55,7 +55,7 @@ namespace CustomerService.API.Controllers
             return CreatedAtRoute(
                 routeName: "GetMessagesByConversation",
                 routeValues: new { conversationId },
-                value: new ApiResponse<MessageDto>(dto, "Message sent.")
+                value: new ApiResponse<MessageResponseDto>(dto, "Message sent.")
             );
         }
     }

@@ -25,7 +25,7 @@ namespace CustomerService.API.Services.Implementations
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
         }
 
-        public async Task<PagedResponse<RoleDto>> GetAllAsync(
+        public async Task<PagedResponse<RoleResponseDto>> GetAllAsync(
             PaginationParams @params,
             CancellationToken cancellation = default)
         {
@@ -41,26 +41,26 @@ namespace CustomerService.API.Services.Implementations
 
             // Mapeamos a DTOs
             var dtos = paged
-                .Select(r => r.Adapt<RoleDto>())
+                .Select(r => r.Adapt<RoleResponseDto>())
                 .ToList();
 
             // Envolvemos en PagedResponse
-            return new PagedResponse<RoleDto>(
+            return new PagedResponse<RoleResponseDto>(
                 dtos,
                 paged.MetaData
             );
         }
 
-        public async Task<RoleDto> GetByIdAsync(
+        public async Task<RoleResponseDto> GetByIdAsync(
             int id,
             CancellationToken cancellation = default)
         {
             var entity = await _uow.Roles.GetByIdAsync(id, cancellation)
                          ?? throw new KeyNotFoundException($"Role {id} not found.");
-            return entity.Adapt<RoleDto>();
+            return entity.Adapt<RoleResponseDto>();
         }
 
-        public async Task<RoleDto> CreateAsync(
+        public async Task<RoleResponseDto> CreateAsync(
             CreateRoleRequest request,
             CancellationToken cancellation = default)
         {
@@ -71,7 +71,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.Roles.AddAsync(entity, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            return entity.Adapt<RoleDto>();
+            return entity.Adapt<RoleResponseDto>();
         }
 
         public async Task UpdateAsync(

@@ -10,12 +10,12 @@ namespace CustomerService.API.Services.Interfaces
 {
     public interface IMessageService
     {
-        Task<MessageDto> SendMessageAsync(SendMessageRequest request, bool isContact = false, CancellationToken cancellation = default);
-        Task<IEnumerable<MessageDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default);
+        Task<MessageResponseDto> SendMessageAsync(SendMessageRequest request, bool isContact = false, CancellationToken cancellation = default);
+        Task<IEnumerable<MessageResponseDto>> GetByConversationAsync(int conversationId, CancellationToken cancellation = default);
         Task UpdateDeliveryStatusAsync(int messageId, DateTimeOffset deliveredAt, CancellationToken cancellation = default);
         Task MarkAsReadAsync(int messageId, DateTimeOffset readAt, CancellationToken cancellation = default);
 
-        Task<MessageDto> SendMediaAsync(
+        Task<MessageResponseDto> SendMediaAsync(
            SendMediaRequest request,
            string jwtToken,
            CancellationToken cancellation = default

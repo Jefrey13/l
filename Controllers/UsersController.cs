@@ -27,34 +27,34 @@ namespace CustomerService.API.Controllers
 
         [HttpGet(Name = "GetAllUsers")]
         [SwaggerOperation(Summary = "Retrieve paged list of users")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResponse<UserDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<UserResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] PaginationParams @params, CancellationToken ct = default)
         {
             var paged = await _users.GetAllAsync(@params, ct);
-            return Ok(new ApiResponse<PagedResponse<UserDto>>(paged, "Users retrieved."));
+            return Ok(new ApiResponse<PagedResponse<UserResponseDto>>(paged, "Users retrieved."));
         }
 
         [HttpGet("{id}", Name = "GetUserById")]
         [SwaggerOperation(Summary = "Retrieve a user by ID")]
-        [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct = default)
         {
             var dto = await _users.GetByIdAsync(id, ct);
             if (dto is null)
                 return NotFound(new ApiResponse<object>(null, "User not found."));
-            return Ok(new ApiResponse<UserDto>(dto, "User retrieved."));
+            return Ok(new ApiResponse<UserResponseDto>(dto, "User retrieved."));
         }
 
         [HttpPost(Name = "CreateUser")]
         [SwaggerOperation(Summary = "Create a new user (incluyendo sus roles)")]
-        [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse<UserResponseDto>), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateUserRequest req, CancellationToken ct = default)
         {
             var dto = await _users.CreateAsync(req, ct);
             return CreatedAtRoute("GetUserById", new { id = dto.UserId },
-                new ApiResponse<UserDto>(dto, "User created."));
+                new ApiResponse<UserResponseDto>(dto, "User created."));
         }
 
         [HttpPut("{id}", Name = "UpdateUser")]
@@ -93,7 +93,7 @@ namespace CustomerService.API.Controllers
 
         [HttpGet("{id}/status", Name = "GetStatus")]
         [SwaggerOperation(Summary = "Estado de conexión del usuario")]
-        [ProducesResponseType(typeof(ApiResponse<PresenceDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<PresenceResponseDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatus(int id)
         {
             var last = await _presence.GetLastOnlineAsync(id);
@@ -103,13 +103,13 @@ namespace CustomerService.API.Controllers
             var isOnline = last.HasValue
                 && (nowManagua - last.Value).TotalMinutes < 1;
 
-            var dto = new PresenceDto
+            var dto = new PresenceResponseDto
             {
                 LastOnline = last,
                 IsOnline = isOnline
             };
 
-            return Ok(new ApiResponse<PresenceDto>(dto, "Status retrieved."));
+            return Ok(new ApiResponse<PresenceResponseDto>(dto, "Status retrieved."));
         }
     }
 }

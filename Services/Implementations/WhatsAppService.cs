@@ -174,7 +174,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.Messages.AddAsync(incoming, cancellation);
             await _uow.SaveChangesAsync(cancellation);
 
-            var dto = incoming.Adapt<MessageDto>();
+            var dto = incoming.Adapt<MessageResponseDto>();
             await _hubContext
                 .Clients
                 .Group(conversationId.ToString())

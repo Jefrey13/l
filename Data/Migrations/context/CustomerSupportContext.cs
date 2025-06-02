@@ -36,6 +36,7 @@ public partial class CustomerSupportContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
+    public SystemParam SystemParams { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppRole>(entity =>
@@ -455,6 +456,27 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(nr => nr.IsRead).HasDefaultValue(false);
         });
 
+        modelBuilder.Entity<SystemParam>(entity => {
+            entity.ToTable("SystemParams", "auth");
+            entity.HasKey(sp => sp.Id);
+            entity.Property(sp => sp.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+            entity.Property(sp => sp.Description)
+                .HasMaxLength(255)
+                .IsRequired(false);
+            entity.Property(sp => sp.CreateAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(sp => sp.UpdateAt)
+                .IsRequired(false);
+            entity.Property(sp => sp.CreateBy)
+                .IsRequired();
+            entity.Property(sp => sp.UpdateBy)
+                .IsRequired();
+            entity.Property(sp => sp.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

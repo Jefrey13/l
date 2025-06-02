@@ -6,9 +6,9 @@ namespace CustomerService.API.Services.Interfaces
 {
     public interface IRoleService
     {
-        Task<PagedResponse<RoleDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default);
-        Task<RoleDto> GetByIdAsync(int id, CancellationToken cancellation = default);
-        Task<RoleDto> CreateAsync(CreateRoleRequest request, CancellationToken cancellation = default);
+        Task<PagedResponse<RoleResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default);
+        Task<RoleResponseDto> GetByIdAsync(int id, CancellationToken cancellation = default);
+        Task<RoleResponseDto> CreateAsync(CreateRoleRequest request, CancellationToken cancellation = default);
         Task UpdateAsync(UpdateRoleRequest request, CancellationToken cancellation = default);
         Task DeleteAsync(int id, CancellationToken cancellation = default);
     }

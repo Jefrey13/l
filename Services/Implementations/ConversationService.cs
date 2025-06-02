@@ -48,7 +48,7 @@ namespace CustomerService.API.Services.Implementations
             _geminiClient = geminiClient;
         }
 
-        public async Task<IEnumerable<ConversationDto>> GetAllAsync(CancellationToken cancellation = default)
+        public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
         {
             var convs = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
@@ -58,14 +58,14 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.AssignedByUser)
                 .ToListAsync(cancellation);
 
-            var dto = convs.Adapt<ConversationDto>();
+            var dto = convs.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            return convs.Select(c => c.Adapt<ConversationDto>());
+            return convs.Select(c => c.Adapt<ConversationResponseDto>());
         }
 
-        public async Task<IEnumerable<ConversationDto>> GetPendingAsync(CancellationToken cancellation = default)
+        public async Task<IEnumerable<ConversationResponseDto>> GetPendingAsync(CancellationToken cancellation = default)
         {
             var convs = await _uow.Conversations.GetAll()
                 .Where(c => c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Bot)
@@ -75,13 +75,13 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.AssignedByUser)
                 .ToListAsync(cancellation);
 
-            var dto = convs.Adapt<ConversationDto>();
+            var dto = convs.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            return convs.Select(c => c.Adapt<ConversationDto>());
+            return convs.Select(c => c.Adapt<ConversationResponseDto>());
         }
-        public async Task<ConversationDto> StartAsync(StartConversationRequest request, CancellationToken cancellation = default)
+        public async Task<ConversationResponseDto> StartAsync(StartConversationRequest request, CancellationToken cancellation = default)
         {
             if (request.CompanyId <= 0)
                 throw new ArgumentException("CompanyId must be greater than zero.", nameof(request.CompanyId));
@@ -104,7 +104,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(cancellation);
 
 
-            var dto = conv.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -150,7 +150,7 @@ namespace CustomerService.API.Services.Implementations
             conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
-            var dto = conv.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -170,7 +170,7 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
-        public async Task<ConversationDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
+        public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             try
             {
@@ -178,12 +178,12 @@ namespace CustomerService.API.Services.Implementations
 
                 var conv = await _uow.Conversations.GetByIdAsync(id, CancellationToken.None);
 
-                return conv == null ? null : conv.Adapt<ConversationDto>();
+                return conv == null ? null : conv.Adapt<ConversationResponseDto>();
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new ConversationDto();
+                return new ConversationResponseDto();
             }
         }
 
@@ -200,7 +200,7 @@ namespace CustomerService.API.Services.Implementations
 
             var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
 
-            var dto = updatedConv.Adapt<ConversationDto>();
+            var dto = updatedConv.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -210,7 +210,7 @@ namespace CustomerService.API.Services.Implementations
             .SendAsync("ConversationUpdated", dto, ct);
         }
 
-        public async Task<ConversationDto> GetOrCreateAsync(
+        public async Task<ConversationResponseDto> GetOrCreateAsync(
             int clientContactId,
             CancellationToken cancellation = default)
         {
@@ -225,7 +225,7 @@ namespace CustomerService.API.Services.Implementations
                 .SingleOrDefaultAsync(cancellation);
 
             if (conv != null)
-                return conv.Adapt<ConversationDto>();
+                return conv.Adapt<ConversationResponseDto>();
 
             var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
                           ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
@@ -247,7 +247,7 @@ namespace CustomerService.API.Services.Implementations
             //    .Include(c => c.Messages)m
             //    .SingleAsync(cancellation);
 
-            var dto = conv.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -297,7 +297,7 @@ namespace CustomerService.API.Services.Implementations
 
                 await _uow.SaveChangesAsync(ct);
 
-                var dto = conv.Adapt<ConversationDto>();
+                var dto = conv.Adapt<ConversationResponseDto>();
 
                 dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -320,7 +320,7 @@ namespace CustomerService.API.Services.Implementations
 
         }
 
-        public async Task<IEnumerable<ConversationDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)
+        public async Task<IEnumerable<ConversationResponseDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)
         {
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -332,7 +332,7 @@ namespace CustomerService.API.Services.Implementations
 
             var convs = await _uow.Conversations.GetByAgentAsync(userId, cancellation);
 
-            return convs.Select(c => c.Adapt<ConversationDto>());
+            return convs.Select(c => c.Adapt<ConversationResponseDto>());
         }
 
         public async Task UpdateTags(int id, List<string> request, CancellationToken ct = default)
@@ -348,7 +348,7 @@ namespace CustomerService.API.Services.Implementations
 
             await _uow.SaveChangesAsync();
 
-            var dto = conv.Adapt<ConversationDto>();
+            var dto = conv.Adapt<ConversationResponseDto>();
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
             await _hubContext
@@ -384,7 +384,7 @@ namespace CustomerService.API.Services.Implementations
                     Status = c.Status!.Value,
                     Messages = c.Messages
                                          .OrderBy(m => m.SentAt)
-                                         .Select(m => new MessageWithAttachmentsDto
+                                         .Select(m => new MessageWithAttachmentsResponseDto
                                          {
                                              MessageId = m.MessageId,
                                              SenderUserId = m.SenderUserId,

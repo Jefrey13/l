@@ -2,7 +2,7 @@
 
 namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class PresenceDto
+    public class PresenceResponseDto
     {
         public DateTime? LastOnline { get; set; }
         public bool IsOnline { get; set; }

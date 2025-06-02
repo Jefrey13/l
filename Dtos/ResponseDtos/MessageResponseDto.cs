@@ -4,7 +4,7 @@ using CustomerService.API.Utils.Enums;
 
 namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class MessageDto
+    public class MessageResponseDto
     {
         public int MessageId { get; set; }
         public int ConversationId { get; set; }

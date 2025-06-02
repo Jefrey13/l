@@ -1,6 +1,6 @@
 ﻿namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class CompanyDto
+    public class CompanyResponseDto
     {
         public int CompanyId { get; init; }
         public string Name { get; init; } = "";

@@ -2,7 +2,7 @@
 
 namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class NotificationDto
+    public class NotificationResponseDto
     {
         public int NotificationRecipientId { get; set; }
         public int NotificationId { get; set; }

@@ -20,6 +20,7 @@ namespace CustomerService.API.Repositories.Interfaces
         INotificationRepository Notifications { get; }
         INotificationRecipientRepository NotificationRecipients { get; }
 
+        ISystemParamRepository SystemParamRepository { get; }
         void ClearChangeTracker();
 
         Task<int> SaveChangesAsync(CancellationToken cancellation = default);
