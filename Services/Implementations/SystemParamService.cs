@@ -37,7 +37,7 @@ namespace CustomerService.API.Services.Implementations
 
             systemParam.Id = 0; // Ensure ID is set to 0 for new creation
 
-            systemParam.CreatedAt = await _nicDatetime.GetNicDatetime();
+            //systemParam.CreatedAt = await _nicDatetime.GetNicDatetime();
             var createdEntity = systemParam.Adapt<SystemParam>();
 
             await _uow.SystemParamRepository.AddAsync(createdEntity);

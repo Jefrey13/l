@@ -48,8 +48,8 @@ builder.Host.UseSerilog();
 builder.Services.AddDbContext<CustomerSupportContext>(opts =>
 {
     opts.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-    opts.EnableSensitiveDataLogging();
-    opts.LogTo(Console.WriteLine, LogLevel.Information);
+    //opts.EnableSensitiveDataLogging();
+    //opts.LogTo(Console.WriteLine, LogLevel.Information);
 
 });
 
@@ -113,6 +113,7 @@ builder.Services.AddScoped<IRoleMenuRepository, RoleMenuRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRespository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
+builder.Services.AddScoped<ISystemParamRepository, SystemParamRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -134,6 +135,7 @@ builder.Services.AddScoped<IContactLogService, ContactLogService>();
 builder.Services.AddScoped<INicDatetime, NicDatetime>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
+builder.Services.AddScoped<ISystemParamService, SystemParamService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHostedService<InactivityHostedService>();

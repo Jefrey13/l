@@ -8,8 +8,8 @@
         public string? Description { get; set; }
         public DateTime CreateAt { get; set; }
         public DateTime UpdateAt { get; set; }
-        public int CreateBy { get; set; }
-        public int UpdateBy { get; set; }
+        public int? CreateBy { get; set; }
+        public int? UpdateBy { get; set; }
         public bool IsActive { get; set; } = true;
 
         public byte[] RowVersion { get; set; } = null!;
