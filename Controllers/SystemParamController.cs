@@ -8,7 +8,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace CustomerService.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [ApiController]
     public class SystemParamController : ControllerBase
     {
@@ -100,7 +100,8 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<SystemParamResponseDto>(updatedParam, "Parametro actualizado con éxito.", true, null));
         }
 
-        [HttpGet("/", Name = "GetAllSystemParams")]
+        //[HttpGet("/", Name = "GetAllSystemParams")]
+        [HttpGet(Name = "GetAllSystemParams")]
         [SwaggerOperation(summary:"Get all async system params")]
         [ProducesResponseType(typeof(IEnumerable<SystemParamResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]

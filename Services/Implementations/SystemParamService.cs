@@ -122,7 +122,7 @@ namespace CustomerService.API.Services.Implementations
                    ?? throw new KeyNotFoundException($"System parameter with ID {id} not found.");
         }
 
-        public Task<SystemParamResponseDto> GetByNameAsync(string name)
+        public async Task<SystemParamResponseDto> GetByNameAsync(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -141,9 +141,17 @@ namespace CustomerService.API.Services.Implementations
                 _logger.LogInformation("Fetching system parameter with name: {Name}", name);
             }
 
-            return _uow.SystemParamRepository.GetByNameAsync(name)
-                .ContinueWith(task => task.Result?.Adapt<SystemParamResponseDto>()
-                    ?? throw new KeyNotFoundException($"System parameter with name {name} not found."));
+            var data = await _uow.SystemParamRepository.GetByNameAsync(name)
+                //.ContinueWith(task => task.Result?.Adapt<SystemParamResponseDto>()
+                    ?? throw new KeyNotFoundException($"System parameter with name {name} not found.");
+
+            if(data == null)
+            {
+                _logger.LogWarning("System parameter with name {Name} not found.", name);
+                throw new KeyNotFoundException($"System parameter with name {name} not found.");
+            }
+
+            return data.Adapt<SystemParamResponseDto>();
         }
 
         public Task<SystemParamResponseDto> UpdateAsync(SystemParamRequestDto systemParam)
