@@ -43,6 +43,7 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly MessagePrompts _prompts;
         private readonly MessageKeywords _keywords;
+        private readonly ISystemParamService _systemParamService;
 
         private const int BotUserId = 1;
 
@@ -62,7 +63,8 @@ namespace CustomerService.API.Pipelines.Implementations
             IAttachmentService attachmentService,
             IHttpContextAccessor httpContextAccessor,
             IOptions<MessagePrompts> promptOpts,
-            IOptions<MessageKeywords> keywordOpts)
+            IOptions<MessageKeywords> keywordOpts,
+            ISystemParamService systemParamService)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -80,6 +82,7 @@ namespace CustomerService.API.Pipelines.Implementations
             _httpContextAccessor = httpContextAccessor;
             _prompts = promptOpts.Value;
             _keywords = keywordOpts.Value;
+            _systemParamService = systemParamService;
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -105,7 +108,6 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var convoDto = await _conversationService.GetOrCreateAsync(contactDto.Id, ct);
 
-
             if (payload.Type == InteractiveType.Text)
             {
                 await _messageService.SendMessageAsync(new SendMessageRequest
@@ -129,6 +131,7 @@ namespace CustomerService.API.Pipelines.Implementations
             //   PEDIR “FullName” si Status == New o AwaitingFullName
             // ───────────────────────────────────────────────────────────────────
 
+            var systemParam = await _systemParamService.GetAllAsync();
             try
             {
 
@@ -143,7 +146,8 @@ namespace CustomerService.API.Pipelines.Implementations
                         {
                             ConversationId = convoDto.ConversationId,
                             SenderId = BotUserId,
-                            Content = _prompts.AskFullName,    // “¿Cuál es tu nombre completo?”
+                            //Content = _prompts.AskFullName,    // “¿Cuál es tu nombre completo?”
+                            Content = systemParam.FirstOrDefault(p => p.Name == "AskFullName")?.Value ?? "¿Cuál es tu nombre completo?",
                             MessageType = MessageType.Text
                         },
                         isContact: false,
@@ -177,8 +181,9 @@ namespace CustomerService.API.Pipelines.Implementations
                     Status = ContactStatus.AwaitingIdCard
                 }, ct);
 
-                var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
-                await _messageService.SendMessageAsync(
+                    //var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
+                    var textoParaCedula = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "AskIdCard")?.Value ?? "¿Cual es su numero de cedula?", nombre);
+                    await _messageService.SendMessageAsync(
                     new SendMessageRequest
                     {
                         ConversationId = convoDto.ConversationId,
@@ -217,7 +222,8 @@ namespace CustomerService.API.Pipelines.Implementations
                         {
                             ConversationId = convoDto.ConversationId,
                             SenderId = BotUserId,
-                            Content = _prompts.InvalidIdFormat, // “Formato inválido. Debe ser 10 dígitos.”
+                            //Content = _prompts.InvalidIdFormat, // “Formato inválido. Debe ser 10 dígitos.”
+                            Content = systemParam.FirstOrDefault(p => p.Name == "InvalidIdFormat")?.Value ?? "Formato inválido. Debe ser formato valido.",
                             MessageType = MessageType.Text
                         },
                         isContact: false,
@@ -248,7 +254,8 @@ namespace CustomerService.API.Pipelines.Implementations
                     {
                         ConversationId = convoDto.ConversationId,
                         SenderId = BotUserId,
-                        Content = _prompts.DataComplete,
+                        //Content = _prompts.DataComplete,
+                        Content = systemParam.FirstOrDefault(p => p.Name == "DataComplete")?.Value ?? "Datos completos. ¿En qué puedo ayudarte?",
                         MessageType = MessageType.Text
                     },
                     isContact: false,
@@ -279,8 +286,11 @@ namespace CustomerService.API.Pipelines.Implementations
                 var textoMinuscula = payload.TextBody.Trim().ToLowerInvariant();
 
                 // Revisar si alguna de las palabras clave está contenida
-                bool quiereSoporte = _keywords.Keywords
-                    .Any(kw => textoMinuscula.Contains(kw.ToLowerInvariant()));
+                
+                //bool quiereSoporte = _keywords.Keywords
+                //    .Any(kw => textoMinuscula.Contains(kw.ToLowerInvariant()));
+
+                bool quiereSoporte = systemParam.Any(p => p.Name == "SupportKeywords" && p.Value.Split(',').Any(kw => textoMinuscula.Contains(kw.Trim().ToLowerInvariant())));
 
                 if (quiereSoporte
                     && convoDto.Status.ToString() == ConversationStatus.Bot.ToString())
@@ -290,7 +300,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     {
                             new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
                             new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
-                        };
+                    };
 
                     // Enviar el mensaje interactivo con lista de opciones
                     await _whatsAppService.SendInteractiveButtonsAsync(
@@ -505,7 +515,8 @@ namespace CustomerService.API.Pipelines.Implementations
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = _prompts.WelcomeBot,
+                                //Content = _prompts.WelcomeBot,
+                                Content = systemParam.FirstOrDefault(p => p.Name == "WelcomeBot")?.Value ?? "Perfecto, continuemos. ¿En qué más puedo ayudarte?",
                                 MessageType = MessageType.Text
                             }, false, ct);
 
@@ -548,7 +559,8 @@ namespace CustomerService.API.Pipelines.Implementations
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = _prompts.SupportRequestReceived,
+                                //Content = _prompts.SupportRequestReceived,
+                                Content = systemParam.FirstOrDefault(p => p.Name == "SupportRequestReceived")?.Value ?? "Solicitud de soporte recibida. Un agente se pondrá en contacto contigo pronto.",
                                 MessageType = MessageType.Text
                             }, false, ct);
 

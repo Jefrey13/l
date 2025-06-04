@@ -270,10 +270,10 @@ var app = builder.Build();
 // --------------------- Middleware Pipeline ---------------------
 app.UseSerilogRequestLogging();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseDeveloperExceptionPage();
+//}
 
 app.UseHttpsRedirection();
 

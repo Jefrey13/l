@@ -467,6 +467,9 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(sp => sp.Description)
                 .HasMaxLength(255)
                 .IsRequired(false);
+            entity.Property(sp => sp.Type)
+                .HasColumnType("nvarchar(max)")
+                .IsRequired();
             entity.Property(sp => sp.CreateAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(sp => sp.UpdateAt)

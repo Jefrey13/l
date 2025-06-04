@@ -33,5 +33,9 @@
       "hablar con servicio al cliente",
       "necesito ayuda de un agente"
     ]
+  },
+  "Temp": {
+    "AwaitCloseTime": "2",
+    "WaitWarningCloseTime": "4"
   }
 }

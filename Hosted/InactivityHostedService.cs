@@ -27,9 +27,9 @@ namespace CustomerService.API.Hosted
         private readonly MessagePrompts _prompts;
         private readonly ILogger<InactivityHostedService> _logger;
 
-        // Umbrales fijos
-        private readonly TimeSpan _warningThreshold = TimeSpan.FromMinutes(1);
-        private readonly TimeSpan _closeThreshold = TimeSpan.FromMinutes(2);
+        //// Umbrales fijos
+        //private readonly TimeSpan _warningThreshold = TimeSpan.FromMinutes(1);
+        //private readonly TimeSpan _closeThreshold = TimeSpan.FromMinutes(2);
 
         public InactivityHostedService(
             IServiceScopeFactory scopeFactory,
@@ -78,6 +78,17 @@ namespace CustomerService.API.Hosted
                     // 5) Obtener el service para enviar mensajes
                     var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
 
+                    //Obtene las systemParams
+                    var sysmParamService = scope.ServiceProvider.GetRequiredService<ISystemParamService>();
+                    var systemParams = await sysmParamService.GetAllAsync();
+
+                    var _warningThreshold = systemParams
+                        .FirstOrDefault(p => p.Name == "InactivityWarningThreshold")?.Value is string warningThresholdStr &&
+                        TimeSpan.TryParse(warningThresholdStr, out var parsedWarningThreshold)
+                        ? parsedWarningThreshold
+                        : TimeSpan.FromMinutes(1); // Valor por defecto si no se encuentra o no es válido
+
+
                     // 6) Cargar las conversaciones pendientes (estado Bot, no cerradas y no archivadas),
                     //    **sin** AsNoTracking para que EF las rastree.
                     var pendientes = await dbContext.Conversations
@@ -98,7 +109,10 @@ namespace CustomerService.API.Hosted
                         // === 1) Enviar advertencia a los 2 minutos si aún no se envió ===
                         if (diff >= _warningThreshold && conv.WarningSentAt == null)
                         {
-                            string warningText = _prompts.InactivityWarning;
+                            //string warningText = _prompts.InactivityWarning;
+                            string warningText = systemParams
+                                .FirstOrDefault(p => p.Name == "InactivityWarning")?.Value ??
+                                "Advertencia: No hemos recibido mensajes recientes. Responderemos pronto.";
 
                             // Llamada posicional: (SendMessageRequest, bool isFromBot, CancellationToken)
                             await messageService.SendMessageAsync(new SendMessageRequest
@@ -129,6 +143,12 @@ namespace CustomerService.API.Hosted
                             continue;
                         }
 
+                        var _closeThreshold = systemParams
+                            .FirstOrDefault(p => p.Name == "InactivityCloseThreshold")?.Value is string closeThresholdStr &&
+                            TimeSpan.TryParse(closeThresholdStr, out var parsedCloseThreshold)
+                            ? parsedCloseThreshold
+                            : TimeSpan.FromMinutes(4); // Valor por defecto si no se encuentra o no es válido
+
                         // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
                         if (diff >= _closeThreshold && conv.WarningSentAt != null)
                         {
@@ -139,7 +159,11 @@ namespace CustomerService.API.Hosted
                             // Guardar cambios de estado y ClosedAt
                             await dbContext.SaveChangesAsync(stoppingToken);
 
-                            string closeText = _prompts.InactivityClosed;
+                            //string closeText = _prompts.InactivityClosed;
+                            string closeText = systemParams
+                                .FirstOrDefault(p => p.Name == "InactivityClosed")?.Value ??
+                                "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
+
                             await messageService.SendMessageAsync(new SendMessageRequest
                             {
                                 ConversationId = conv.ConversationId,

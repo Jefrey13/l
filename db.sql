@@ -258,4 +258,24 @@ SELECT * FROM  crm.Companies;
 
 UPDATE chat.Conversations SET Status = 'Closed'
 
-UPDATE chat.Conversations SET Status  = 'Closed'  where ConversationId = 12
+UPDATE chat.Conversations SET Status  = 'Closed'  where ConversationId = 12;
+
+USE CustomerSupportDB;
+
+
+SELECT * from auth.SystemParams;
+
+GO
+INSERT INTO auth.SystemParams([Name], [Value], [Description], [Type], CreateAt, CreateBy, IsActive)  
+VALUES('WelcomeBot', '¡Soy *Milena*, tu asistente virtual de atención al cliente 🤖. Estoy aquí para brindarte información útil y optimizar tu tiempo. ¿En qué puedo ayudarte hoy?', 'Mensaje de saludo del bot', 'Prompts', GETDATE(), 2, 1),
+('AskFullName', '¡Hola 👋 Bienvenido a PC GROUP S.A.! Para comenzar, por favor indícanos tu *nombre completo* (al proporcionarlo, nos das tu permiso para registrar y usar tu información de manera segura).', 'Mensaje solicitud nombre completo',  'Prompts', GETDATE(), 2, 1),
+('AskIdCard', 'Gracias, {0}. Ahora envíanos tu *número de cédula* (formato: 001-120203-1062W o 0011202031062W).', 'Mensaje solicitud numero de cedula',  'Prompts', GETDATE(), 2, 1),
+('InvalidIdFormat', '😕 Formato inválido. Debe ser 13 caracteres (3 dígitos + 6 dígitos + 4 dígitos + letra), con o sin guiones (ej: 001-120203-1062W o 0011202031062W).', 'Mensaje Formato invalido',  'Prompts', GETDATE(), 2, 1),
+('DataComplete', '🎉 ¡Excelente! Has quedado registrado exitosamente y ¡bienvenido a nuestra agenda de clientes! A continuación continuamos con tu consulta.', 'Mensaje datos completos',  'Prompts', GETDATE(), 2, 1),
+('InactivityWarning', '⚠️ No hemos recibido respuesta en un tiempo. Tu conversación se cerrará pronto por inactividad. Si deseas continuar, envía cualquier mensaje.', 'Mensaje alerta tiempo inactivo',  'Prompts', GETDATE(), 2, 1),
+('InactivityClosed', '🔒 Tu conversación se cierra por inactividad. Seguimos aquí para cuando nos necesites. ¡Que tengas un buen día!', 'Mensaje alerta cierre conversación',  'Prompts', GETDATE(), 2, 1),
+('SupportRequestReceived', '✅ ¡Gracias! Hemos recibido tu solicitud de atención por un agente humano. Un miembro de nuestro equipo te atenderá en breve.', 'Mensaje confirmacion atencion agente de soporte', 'Prompts', GETDATE(), 2, 1),
+('Keywords', '[agente, humano, operador]', 'Validar intencion de atención de agente', 'Keywords', GETDATE(), 2, 1),
+('InactivityWarningThreshold', 2, 'Mensaje alerte de tiempo inactividad de la conversación', 'Temp' , GETDATE(), 2, 1),
+('WaitWarningCloseTime', 4, 'Mensaje alterta de cierre de conversacio por inactividad', 'Temp' , GETDATE(), 2, 1);
+GO
