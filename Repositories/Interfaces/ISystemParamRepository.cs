@@ -1,9 +1,9 @@
-﻿using CustomerService.API.Models;
+﻿    using CustomerService.API.Models;
 
-namespace CustomerService.API.Repositories.Interfaces
-{
-    public interface ISystemParamRepository: IGenericRepository<SystemParam>
+    namespace CustomerService.API.Repositories.Interfaces
     {
-       Task<SystemParam?> GetByNameAsync(string name, CancellationToken cancellation = default);
+        public interface ISystemParamRepository: IGenericRepository<SystemParam>
+        {
+           Task<SystemParam?> GetByNameAsync(string name, CancellationToken cancellation = default);
+        }
     }
-}

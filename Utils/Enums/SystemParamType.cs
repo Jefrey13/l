@@ -2,7 +2,8 @@
 {
     public enum SystemParamType
     {
-        Keyboard,
         Prompts,
+        Keywords,
+        Temp
     }
 }

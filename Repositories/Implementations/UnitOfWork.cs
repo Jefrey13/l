@@ -58,7 +58,7 @@ namespace CustomerService.API.Repositories.Implementations
         public INotificationRepository Notifications { get; }
         public INotificationRecipientRepository NotificationRecipients { get; }
 
-        public ISystemParamRepository SystemParamRepository { get; set; }
+        public ISystemParamRepository SystemParamRepository { get;}
 
         public void ClearChangeTracker()
         => _context.ChangeTracker.Clear();

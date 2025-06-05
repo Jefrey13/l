@@ -1,10 +1,16 @@
-﻿using CustomerService.API.Dtos.RequestDtos;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using Mapster;
+using Microsoft.Extensions.Logging;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -14,112 +20,129 @@ namespace CustomerService.API.Services.Implementations
         private readonly ILogger<SystemParamService> _logger;
         private readonly IUnitOfWork _uow;
         private readonly INicDatetime _nicDatetime;
-        public SystemParamService(ISystemParamRepository systemParamRepository,
+
+        public SystemParamService(
+            ISystemParamRepository systemParamRepository,
             ILogger<SystemParamService> logger,
             IUnitOfWork uow,
             INicDatetime nicDatetime)
         {
-            _systemParamRepository = systemParamRepository ?? throw new ArgumentNullException(nameof(systemParamRepository));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _uow = uow ?? throw new ArgumentNullException(nameof(uow));
-            nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
+            _systemParamRepository = systemParamRepository
+                ?? throw new ArgumentNullException(nameof(systemParamRepository));
+            _logger = logger
+                ?? throw new ArgumentNullException(nameof(logger));
+            _uow = uow
+                ?? throw new ArgumentNullException(nameof(uow));
+            _nicDatetime = nicDatetime
+                ?? throw new ArgumentNullException(nameof(nicDatetime));
         }
 
         public async Task<SystemParamResponseDto> CreateAsync(SystemParamRequestDto systemParam)
         {
-            //systemParam = systemParam ?? throw new ArgumentNullException(nameof(systemParam), "System parameter cannot be null.");
             if (systemParam == null)
             {
                 _logger.LogError("System parameter request DTO is null.");
                 throw new ArgumentNullException(nameof(systemParam), "System parameter cannot be null.");
-                return new SystemParamResponseDto(); // This line is unreachable but added to satisfy the compiler
             }
 
-            systemParam.Id = 0; // Ensure ID is set to 0 for new creation
+            if (string.IsNullOrWhiteSpace(systemParam.Name))
+            {
+                _logger.LogError("System parameter Name is null or empty.");
+                throw new ArgumentException("Name cannot be null or empty.", nameof(systemParam.Name));
+            }
 
-            //systemParam.CreatedAt = await _nicDatetime.GetNicDatetime();
-            var createdEntity = systemParam.Adapt<SystemParam>();
+            if (string.IsNullOrWhiteSpace(systemParam.Value))
+            {
+                _logger.LogError("System parameter Value is null or empty.");
+                throw new ArgumentException("Value cannot be null or empty.", nameof(systemParam.Value));
+            }
 
-            await _uow.SystemParamRepository.AddAsync(createdEntity);
+            // Reset Id to 0 to force insert
+            systemParam.Id = 0;
+
+            // Map RequestDto → Entity
+            var entity = systemParam.Adapt<SystemParam>();
+            // Initialize creation timestamps
+            entity.CreatedAt = await _nicDatetime.GetNicDatetime();
+            entity.UpdatedAt = entity.CreatedAt;
+            entity.IsActive = true;
+
+            await _uow.SystemParamRepository.AddAsync(entity);
             await _uow.SaveChangesAsync();
 
-            _logger.LogInformation("Created system parameter with ID: {Id}", createdEntity.Id);
+            _logger.LogInformation("Created SystemParam with ID: {Id}", entity.Id);
 
-            var dto = createdEntity.Adapt<SystemParamResponseDto>();
-
-            var responseDto = dto ?? throw new InvalidOperationException("Failed to map created entity to DTO.");
+            // Map Entity → ResponseDto
+            var responseDto = entity.Adapt<SystemParamResponseDto>();
             return responseDto;
         }
 
         public async Task DeleteAsync(int id)
         {
+            if (id <= 0)
+                throw new ArgumentException("ID must be greater than zero.", nameof(id));
 
-            id = id <= 0 ? throw new ArgumentException("ID must be greater than zero.", nameof(id)) : id;
-            //id = _uow.SystemParamRepository.ExistsAsync(id).Result ? id : throw new KeyNotFoundException($"System parameter with ID {id} not found.");
+            bool exists = await _uow.SystemParamRepository.ExistsAsync(sp => sp.Id == id);
+            if (!exists)
+                throw new KeyNotFoundException($"System parameter with ID {id} not found.");
 
-            id = _uow.SystemParamRepository.ExistsAsync(sp => sp.Id == id).Result 
-                ? id 
-                : throw new KeyNotFoundException($"System parameter with ID {id} not found.");
+            var entity = await _uow.SystemParamRepository.GetByIdAsync(id);
+            if (entity == null)
+                throw new KeyNotFoundException($"System parameter with ID {id} not found.");
 
-            var systemParam = _uow.SystemParamRepository.GetByIdAsync(id).Result;
+            // Toggle IsActive (soft delete)
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-            systemParam = systemParam ?? throw new KeyNotFoundException($"System parameter with ID {id} not found.");
-
-            systemParam.IsActive = !systemParam.IsActive; // Toggle IsActive status
-            systemParam.UpdateAt = await _nicDatetime.GetNicDatetime();
-
-            _uow.SystemParamRepository.Update(systemParam);
+            _uow.SystemParamRepository.Update(entity);
             await _uow.SaveChangesAsync();
 
-            var dto = systemParam.Adapt<SystemParamResponseDto>();
-            if (dto == null)
-            {
-                _logger.LogWarning("System parameter with ID {Id} not found.", id);
-                throw new KeyNotFoundException($"System parameter with ID {id} not found.");
-            }
-            _logger.LogInformation("Deleted system parameter with ID: {Id}", id);
+            _logger.LogInformation("Toggled IsActive for SystemParam with ID: {Id}", id);
         }
 
-        public Task<bool> ExistsAsync(int id)
+        public async Task<bool> ExistsAsync(int id)
         {
-            throw new NotImplementedException();
+            if (id <= 0)
+                return false;
+
+            return await _uow.SystemParamRepository.ExistsAsync(sp => sp.Id == id);
         }
 
-        public Task<IEnumerable<SystemParamResponseDto>> GetAllAsync()
+        public async Task<IEnumerable<SystemParamResponseDto>> GetAllAsync()
         {
-            var allParams = _uow.SystemParamRepository.GetAll();
-
-            if (allParams == null || !allParams.Any())
+            var allEntities = _uow.SystemParamRepository.GetAll().ToList();
+            if (!allEntities.Any())
             {
                 _logger.LogWarning("No system parameters found.");
-                return Task.FromResult<IEnumerable<SystemParamResponseDto>>(new List<SystemParamResponseDto>());
+                return Enumerable.Empty<SystemParamResponseDto>();
             }
 
-            _logger.LogInformation("Retrieved {Count} system parameters.", allParams.Count());
+            _logger.LogInformation("Retrieved {Count} system parameters.", allEntities.Count);
 
-            var dto = allParams
+            var dtoList = allEntities
                 .Select(sp => sp.Adapt<SystemParamResponseDto>())
                 .ToList();
-            return Task.FromResult<IEnumerable<SystemParamResponseDto>>(dto);
+
+            return await Task.FromResult(dtoList);
         }
 
         public async Task<SystemParamResponseDto> GetByIdAsync(int id)
         {
-            if(id <= 0)
+            if (id <= 0)
             {
                 _logger.LogError("Invalid ID: {Id}", id);
                 throw new ArgumentException("ID must be greater than zero.", nameof(id));
             }
-            //if (!await _uow.SystemParamRepository.ExistsAsync(id))
-            //{
-            //    _logger.LogWarning("System parameter with ID {Id} does not exist.", id);
-            //    throw new KeyNotFoundException($"System parameter with ID {id} not found.");
-            //}
-            _logger.LogInformation("Fetching system parameter with ID: {Id}", id);
-            var systemParam = await _uow.SystemParamRepository.GetByIdAsync(id);
 
-            return systemParam?.Adapt<SystemParamResponseDto>() 
-                   ?? throw new KeyNotFoundException($"System parameter with ID {id} not found.");
+            _logger.LogInformation("Fetching SystemParam with ID: {Id}", id);
+            var entity = await _uow.SystemParamRepository.GetByIdAsync(id);
+            if (entity == null)
+            {
+                _logger.LogWarning("SystemParam with ID {Id} not found.", id);
+                throw new KeyNotFoundException($"System parameter with ID {id} not found.");
+            }
+
+            return entity.Adapt<SystemParamResponseDto>();
         }
 
         public async Task<SystemParamResponseDto> GetByNameAsync(string name)
@@ -130,31 +153,18 @@ namespace CustomerService.API.Services.Implementations
                 throw new ArgumentException("Name cannot be null or empty.", nameof(name));
             }
 
-            ////if ( _uow.SystemParamRepository.ExistsAsync(name))
-            ////{
-            ////    _logger.LogWarning("System parameter with name {Name} does not exist.", name);
-            ////    throw new KeyNotFoundException($"System parameter with name {name} not found.");
-            ////}
-
-            if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Fetching SystemParam with name: {Name}", name);
+            var entity = await _uow.SystemParamRepository.GetByNameAsync(name);
+            if (entity == null)
             {
-                _logger.LogInformation("Fetching system parameter with name: {Name}", name);
-            }
-
-            var data = await _uow.SystemParamRepository.GetByNameAsync(name)
-                //.ContinueWith(task => task.Result?.Adapt<SystemParamResponseDto>()
-                    ?? throw new KeyNotFoundException($"System parameter with name {name} not found.");
-
-            if(data == null)
-            {
-                _logger.LogWarning("System parameter with name {Name} not found.", name);
+                _logger.LogWarning("SystemParam with name {Name} not found.", name);
                 throw new KeyNotFoundException($"System parameter with name {name} not found.");
             }
 
-            return data.Adapt<SystemParamResponseDto>();
+            return entity.Adapt<SystemParamResponseDto>();
         }
 
-        public Task<SystemParamResponseDto> UpdateAsync(SystemParamRequestDto systemParam)
+        public async Task<SystemParamResponseDto> UpdateAsync(SystemParamRequestDto systemParam)
         {
             if (systemParam == null)
             {
@@ -168,16 +178,27 @@ namespace CustomerService.API.Services.Implementations
                 throw new ArgumentException("ID must be greater than zero.", nameof(systemParam.Id));
             }
 
-           var updatedEntity = systemParam.Adapt<SystemParam>();
-            //if (!_uow.SystemParamRepository.ExistsAsync(updatedEntity.Id).Result)
-            //{
-            //    _logger.LogWarning("System parameter with ID {Id} does not exist.", updatedEntity.Id);
-            //    throw new KeyNotFoundException($"System parameter with ID {updatedEntity.Id} not found.");
-            //}
-            _uow.SystemParamRepository.Update(updatedEntity);
-            _uow.SaveChangesAsync().Wait();
-            _logger.LogInformation("Updated system parameter with ID: {Id}", updatedEntity.Id);
-            return Task.FromResult(updatedEntity.Adapt<SystemParamResponseDto>());
+            bool exists = await _uow.SystemParamRepository.ExistsAsync(sp => sp.Id == systemParam.Id);
+            if (!exists)
+                throw new KeyNotFoundException($"System parameter with ID {systemParam.Id} not found.");
+
+            // Retrieve existing entity (to preserve fields like CreatedAt, RowVersion)
+            var existingEntity = await _uow.SystemParamRepository.GetByIdAsync(systemParam.Id);
+            if (existingEntity == null)
+                throw new KeyNotFoundException($"System parameter with ID {systemParam.Id} not found.");
+
+            // Map RequestDto → existing entity
+            existingEntity.Name = systemParam.Name;
+            existingEntity.Value = systemParam.Value;
+            existingEntity.Description = systemParam.Description;
+            existingEntity.Type = systemParam.Type;
+            existingEntity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+
+            _uow.SystemParamRepository.Update(existingEntity);
+            await _uow.SaveChangesAsync();
+
+            _logger.LogInformation("Updated SystemParam with ID: {Id}", existingEntity.Id);
+            return existingEntity.Adapt<SystemParamResponseDto>();
         }
     }
 }
