@@ -31,6 +31,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly ITokenService _tokenService;
         private readonly IGeminiClient _geminiClient;
+        private readonly IWhatsAppService _whatsAppService;
 
         public ConversationService(
             IUnitOfWork uow,
@@ -38,7 +39,8 @@ namespace CustomerService.API.Services.Implementations
             INotificationService notification,
             IHubContext<ChatHub> hubContext,
             ITokenService tokenService,
-            IGeminiClient geminiClient)
+            IGeminiClient geminiClient,
+            IWhatsAppService whatsAppService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
@@ -46,6 +48,7 @@ namespace CustomerService.API.Services.Implementations
             _hubContext = hubContext;
             _tokenService = tokenService;
             _geminiClient = geminiClient;
+            _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
         }
 
         public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -162,6 +165,13 @@ namespace CustomerService.API.Services.Implementations
             await _hubContext.Clients
                 .User(agentUserId.ToString())
                 .SendAsync("ConversationUpdated", dto, ct);
+
+                await _whatsAppService.SendTextAsync(
+                    conv.ConversationId,
+                    1,
+                    $"Se te asigno un nuevo agente: {conv.AssignedAgent.FullName}. Ahora puedes comunicarte con el.",
+                    ct
+                );
 
             }
             catch (Exception ex)

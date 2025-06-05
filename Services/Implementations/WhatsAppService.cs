@@ -32,7 +32,6 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         //private readonly IMessageService _messageService;
         private readonly IContactLogService _contactService;
-        private readonly IConversationService _conversationService;
         private readonly ISignalRNotifyService _signalR;
         private readonly string _token;
         private readonly string _phoneNumberId;
@@ -45,7 +44,6 @@ namespace CustomerService.API.Services.Implementations
             IUnitOfWork uow,
             //IMessageService messageService,
             IContactLogService contactService,
-            IConversationService conversationService,
             ISignalRNotifyService signalR,
             IConfiguration config,
             IHubContext<ChatHub> hubContext,
@@ -55,7 +53,6 @@ namespace CustomerService.API.Services.Implementations
             _uow = uow;
             //_messageService = messageService;
             _contactService = contactService;
-            _conversationService = conversationService;
             _signalR = signalR;
             _token = config["WhatsApp:Token"]!;
             _phoneNumberId = config["WhatsApp:PhoneNumberId"]!;
