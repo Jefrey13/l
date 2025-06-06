@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Hubs;
 using CustomerService.API.Models;
@@ -18,6 +11,14 @@ using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using WhatsappBusiness.CloudApi.Webhook;
 using Conversation = CustomerService.API.Models.Conversation;
 
@@ -117,7 +118,6 @@ namespace CustomerService.API.Services.Implementations
                 .SendAsync("ConversationCreated", dto, cancellation);
 
             return dto;
-
         }
 
         public async Task AssignAgentAsync(int conversationId, int agentUserId, string status, string jwtToken, CancellationToken ct = default)
@@ -134,9 +134,11 @@ namespace CustomerService.API.Services.Implementations
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+                var localDate = await _nicDatetime.GetNicDatetime();
             conv.AssignedAgentId = agentUserId;
             conv.AssignedByUserId = userId;
-            conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+            conv.AssignedAt = localDate;
+                conv.UpdatedAt = localDate;
 
             conv.Status = ConversationStatus.Human;
             _uow.Conversations.Update(conv);
@@ -157,9 +159,9 @@ namespace CustomerService.API.Services.Implementations
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext.Clients
-             .Group("Admin")
-             .SendAsync("ConversationUpdated", dto, ct);
+            //await _hubContext.Clients
+            // .Group("Admin")
+            // .SendAsync("ConversationUpdated", dto, ct);
 
             // al usuario de Support al que se le asigno la conversación
             await _hubContext.Clients
@@ -240,12 +242,12 @@ namespace CustomerService.API.Services.Implementations
             var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
                           ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
 
-            var now = await _nicDatetime.GetNicDatetime();
+            var localDate = await _nicDatetime.GetNicDatetime();
             conv = new Conversation
             {
                 ClientContactId = clientContactId,
                 Status = ConversationStatus.Bot,
-                CreatedAt = now,
+                CreatedAt = localDate,
                 Initialized = false
             };
 
@@ -300,8 +302,11 @@ namespace CustomerService.API.Services.Implementations
             if (request.Tags != null)
                 conv.Tags = request.Tags;
 
-                conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
+            var localTime = await _nicDatetime.GetNicDatetime();
 
+                conv.UpdatedAt = localTime;
+
+                if (request.Status == ConversationStatus.Waiting) conv.AgentRequestAt = localTime;
 
                 _uow.Conversations.Update(conv, ct);
 
@@ -321,6 +326,45 @@ namespace CustomerService.API.Services.Implementations
             {
                 Console.WriteLine(ex.Message);
             }
+        }
+
+        public async Task<ConversationResponseDto> UpdateConversationAssignmentStateAsync(UpdateConversationRequestDto updateConversationRequestDto, CancellationToken cancellation = default)
+        {
+            if (updateConversationRequestDto.ConversationId <= 0)
+                throw new ArgumentException("Invalid conversation ID.", nameof(updateConversationRequestDto.ConversationId));
+
+            var conv = await _uow.Conversations.GetByIdAsync(updateConversationRequestDto.ConversationId, cancellation)
+
+                ?? throw new KeyNotFoundException($"Conversation {updateConversationRequestDto.ConversationId} not found.");
+
+            // Actualizar el estado de asignación
+            conv.AssignmentState = updateConversationRequestDto.Status ?? conv.AssignmentState;
+            conv.Justification = updateConversationRequestDto.Justification ?? conv.Justification;
+            conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
+
+            //Su el usuario rechaza la asignación, se limpia de asignació pendiente que habia.
+            if(updateConversationRequestDto.Status == AssignmentState.Rejected)
+            {
+                conv.AssignedAgent = null;
+                conv.AssignedAgentId = null;
+                conv.AssignedAt = null;
+                conv.AssignedByUser = null;
+                conv.AssignedByUserId = null;
+            }
+
+            _uow.Conversations.Update(conv, cancellation);
+            await _uow.SaveChangesAsync(cancellation);
+
+            var updatedConv = _uow.Conversations.GetByIdAsync(updateConversationRequestDto.ConversationId, cancellation)
+                ?? throw new KeyNotFoundException($"Conversation {updateConversationRequestDto.ConversationId} not found.");
+
+            var dto = updatedConv.Adapt<ConversationResponseDto>();
+
+            //Notificar via sinalR a todos los clientes
+            await _hubContext.Clients.Group("Admin")
+                .SendAsync("Conversationassigned", dto, cancellation);
+
+            return dto;
         }
 
 

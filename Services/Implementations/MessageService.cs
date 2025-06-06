@@ -93,7 +93,7 @@ namespace CustomerService.API.Services.Implementations
                 conv.UpdatedAt = sentAtNic;
 
                 // Si el remitente es un agente (no es contacto), actualizar sus marcas
-                if (!isContact)
+                if (!isContact &&conv.AssignedByUserId != 1)
                 {
                     if (conv.AgentFirstMessageAt == null)
                         conv.AgentFirstMessageAt = sentAtNic;

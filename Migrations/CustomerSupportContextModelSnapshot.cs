@@ -4,19 +4,16 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CustomerService.API.Data.Migrations
+namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    [Migration("20250604203423_AddTypeColum")]
-    partial class AddTypeColum
+    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -281,6 +278,13 @@ namespace CustomerService.API.Data.Migrations
                     b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Unassigned");
+
                     b.Property<int>("ClientContactId")
                         .HasColumnType("int");
 
@@ -307,6 +311,10 @@ namespace CustomerService.API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<string>("Justification")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int?>("Priority")
                         .ValueGeneratedOnAdd()
@@ -578,13 +586,13 @@ namespace CustomerService.API.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreateAt")
+                    b.Property<int?>("CreateBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .HasMaxLength(255)
@@ -608,15 +616,16 @@ namespace CustomerService.API.Data.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdateAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("UpdateBy")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
 
                     b.Property<string>("Value")
                         .IsRequired()

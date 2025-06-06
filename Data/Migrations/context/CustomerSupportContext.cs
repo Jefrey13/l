@@ -198,6 +198,15 @@ public partial class CustomerSupportContext : DbContext
                   .HasMaxLength(20)
                   .HasDefaultValue(ConversationStatus.New);
 
+            entity.Property(e => e.AssignmentState)
+                  .HasConversion<string>()
+                  .HasMaxLength(20)
+                  .HasDefaultValue(AssignmentState.Unassigned);
+
+            entity.Property(e => e.Justification)
+                    .HasMaxLength(500)
+                    .IsRequired(false);
+
             entity.Property(e => e.Initialized)
                   .HasDefaultValue(false);
 
@@ -211,6 +220,9 @@ public partial class CustomerSupportContext : DbContext
 
             entity.Property(e => e.AssignedAt)
                   .HasColumnType("datetime2")
+                  .IsRequired(false);
+            entity.Property(e => e.AgentRequestAt)
+            .HasColumnType("datetime2")
                   .IsRequired(false);
 
             entity.Property(e => e.UpdatedAt)

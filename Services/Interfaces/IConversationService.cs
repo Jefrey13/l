@@ -1,5 +1,6 @@
-﻿using CustomerService.API.Dtos.ResponseDtos;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
+using CustomerService.API.Dtos.ResponseDtos;
 
 namespace CustomerService.API.Services.Interfaces
 {
@@ -32,5 +33,7 @@ namespace CustomerService.API.Services.Interfaces
         /// Obtiene el resumen de todas las conversaciones de un cliente.
         /// </summary>
         Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default);
+
+        Task<ConversationResponseDto> UpdateConversationAssignmentStateAsync(UpdateConversationRequestDto updateConversationRequestDto, CancellationToken cancellation = default);
     }
 }
