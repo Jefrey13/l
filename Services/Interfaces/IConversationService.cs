@@ -32,5 +32,8 @@ namespace CustomerService.API.Services.Interfaces
         /// Obtiene el resumen de todas las conversaciones de un cliente.
         /// </summary>
         Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default);
+
+        Task RespondAssignmentAsync(int conversationId, bool accepted, string? comment, CancellationToken ct);
+        Task ForceAssignAsync(int conversationId, int targetAgentId, string comment, CancellationToken ct);
     }
 }
