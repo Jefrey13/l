@@ -20,18 +20,20 @@ namespace CustomerService.API.Models
 
         public int? AssignedAgentId { get; set; }
         public int? AssignedByUserId { get; set; }
-        public DateTime? AssignedAt { get; set; }
-
         public ConversationStatus? Status { get; set; } = ConversationStatus.New;
         public bool Initialized { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? AssignedAt { get; set; }
         public DateTime? FirstResponseAt { get; set; }
         public DateTime? ClientLastMessageAt { get; set; }
+        public DateTime? AgentRequestAt { get; set; }
         public DateTime? AgentFirstMessageAt { get; set; }
         public DateTime? AgentLastMessageAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+        public AssignmentState AssignmentState { get; set; }
+        public string? Justification { get; set; } = null;
 
         public DateTime? WarningSentAt { get; set; }
 

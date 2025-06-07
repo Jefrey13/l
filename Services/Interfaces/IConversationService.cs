@@ -1,5 +1,6 @@
-﻿using CustomerService.API.Dtos.ResponseDtos;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
+using CustomerService.API.Dtos.ResponseDtos;
 
 namespace CustomerService.API.Services.Interfaces
 {

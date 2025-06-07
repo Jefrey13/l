@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Services.Implementations;
@@ -10,6 +7,9 @@ using CustomerService.API.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CustomerService.API.Controllers
 {
@@ -18,7 +18,6 @@ namespace CustomerService.API.Controllers
     public class ConversationsController : ControllerBase
     {
         private readonly IConversationService _conversations;
-
         public ConversationsController(IConversationService conversations)
         {
             _conversations = conversations;
@@ -151,50 +150,6 @@ namespace CustomerService.API.Controllers
         {
             var summary = await _conversations.SummarizeAllByContactAsync(contactId, ct);
             return Ok(new ApiResponse<string>(summary, "Resumen generado."));
-        }
-
-        /// <summary>
-        /// Solicita la asignación (admin → support). Dispara “AssignmentRequested”.
-        /// </summary>
-        [HttpPut("{id}/assign", Name = "RequestAssignment")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> RequestAssignment(
-            [FromRoute] int id,
-            [FromQuery] int agentUserId,
-            [FromQuery] string status,      // e.g. "Waiting" o el enum que uses
-            CancellationToken ct = default)
-        {
-            var jwt = HttpContext.Request.Headers["Authorization"].ToString().Split(' ')[1];
-            await _conversations.AssignAgentAsync(id, agentUserId, status, jwt, ct);
-            return NoContent();
-        }
-
-        /// <summary>
-        /// El support responde a la solicitud: acepta o rechaza.
-        /// </summary>
-        [HttpPost("{id}/assignment-response", Name = "RespondAssignment")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> RespondAssignment(
-            [FromRoute] int id,
-            [FromBody] AssignmentResponseRequest req,
-            CancellationToken ct = default)
-        {
-            await _conversations.RespondAssignmentAsync(id, req.Accepted, req.Comment, ct);
-            return NoContent();
-        }
-
-        /// <summary>
-        /// El admin fuerza la asignación a un agente (aunque hubiera rechazo).
-        /// </summary>
-        [HttpPost("{id}/force-assign", Name = "ForceAssign")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> ForceAssign(
-            [FromRoute] int id,
-            [FromBody] ForceAssignRequest req,
-            CancellationToken ct = default)
-        {
-            await _conversations.ForceAssignAsync(id, req.TargetAgentId, req.Comment, ct);
-            return NoContent();
         }
     }
 }

@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace CustomerService.API.Data.Migrations
+namespace CustomerService.API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class AgregarCamposAceptacion : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -91,6 +91,29 @@ namespace CustomerService.API.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Notifications", x => x.NotificationId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SystemParams",
+                schema: "auth",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
+                    CreateBy = table.Column<int>(type: "int", nullable: true),
+                    UpdateBy = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SystemParams", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -321,13 +344,20 @@ namespace CustomerService.API.Data.Migrations
                     Priority = table.Column<int>(type: "int", nullable: true, defaultValue: 1),
                     AssignedAgentId = table.Column<int>(type: "int", nullable: true),
                     AssignedByUserId = table.Column<int>(type: "int", nullable: true),
-                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "SYSUTCDATETIME()"),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true, defaultValue: "Bot"),
+                    AssignedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true, defaultValue: "New"),
                     Initialized = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "SYSUTCDATETIME()"),
                     FirstResponseAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ClientLastMessageAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AgentFirstMessageAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AgentLastMessageAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RequestedAgentAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ClosedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AssignmentState = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Unassigned"),
+                    Justification = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    WarningSentAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsArchived = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     Tags = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -655,6 +685,10 @@ namespace CustomerService.API.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "RoleMenus",
+                schema: "auth");
+
+            migrationBuilder.DropTable(
+                name: "SystemParams",
                 schema: "auth");
 
             migrationBuilder.DropTable(

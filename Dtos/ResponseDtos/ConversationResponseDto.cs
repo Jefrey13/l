@@ -16,11 +16,16 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? AssignedAgentName { get; set; }
         public int? AssignedByUserId { get; set; }
         public string? AssignedByUserName { get; set; }
-        public DateTime? AssignedAt { get; set; }
         public string Status { get; set; } = null!;
         public bool Initialized { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? AssignedAt { get; set; }
         public DateTime? FirstResponseAt { get; set; }
+        public DateTime? ClientLastMessageAt { get; set; }
+        public DateTime? AgentFirstMessageAt { get; set; }
+        public DateTime? AgentLastMessageAt { get; set; }
+        public DateTime? RequestedAgentAt { get; set; }
+        public DateTime? AgentRequestAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
         public bool IsArchived { get; set; }

@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CustomerService.API.Data.Migrations
+namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    [Migration("20250529160324_UpdateNotificationid")]
-    partial class UpdateNotificationid
+    [Migration("20250606210238_AgregarCamposAceptacion")]
+    partial class AgregarCamposAceptacion
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -266,19 +266,33 @@ namespace CustomerService.API.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
 
+                    b.Property<DateTime?>("AgentFirstMessageAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AgentLastMessageAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("AssignedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("SYSUTCDATETIME()");
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Unassigned");
+
                     b.Property<int>("ClientContactId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClientLastMessageAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
@@ -301,10 +315,17 @@ namespace CustomerService.API.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("Justification")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int?>("Priority")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<DateTime?>("RequestedAgentAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -316,7 +337,7 @@ namespace CustomerService.API.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Bot");
+                        .HasDefaultValue("New");
 
                     b.Property<string>("Tags")
                         .IsRequired()
@@ -327,6 +348,9 @@ namespace CustomerService.API.Data.Migrations
 
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("WarningSentAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("ConversationId");
 
@@ -555,6 +579,64 @@ namespace CustomerService.API.Data.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("RoleMenus", "auth");
+                });
+
+            modelBuilder.Entity("CustomerService.API.Models.SystemParam", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreateBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemParams", "auth");
                 });
 
             modelBuilder.Entity("CustomerService.API.Models.User", b =>

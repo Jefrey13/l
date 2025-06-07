@@ -370,9 +370,16 @@ namespace CustomerService.API.Pipelines.Implementations
                 // inferir extensión a partir del mimeType o del filename original
                 var ext = mimeType switch
                 {
-                    "image/jpeg" => ".jpg",
+                    "image/jpeg" => ".jpeg",
+                    "image/jpg" => ".jpg",
                     "image/png" => ".png",
                     "image/webp" => ".webp",
+                    "image/gif" => ".gif",
+                    "image/tiff" => ".tiff",
+                    "image/heif" => ".heif",
+                    "image/raw" => ".raw",
+                    "image/bmp" => ".bmp",
+                    "image/ico" => ".ico",
                     "video/mp4" => ".mp4",
                     "audio/ogg" or "audio/opus" => ".ogg",
                     "application/pdf" => ".pdf",
