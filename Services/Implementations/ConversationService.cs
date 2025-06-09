@@ -137,22 +137,32 @@ namespace CustomerService.API.Services.Implementations
                 var localDate = await _nicDatetime.GetNicDatetime();
             conv.AssignedAgentId = agentUserId;
             conv.AssignedByUserId = userId;
-            conv.AssignedAt = localDate;
-                conv.UpdatedAt = localDate;
+            conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+                conv.AssignmentState = AssignmentState.Pending;
+                conv.RequestedAgentAt = await _nicDatetime.GetNicDatetime();
+                conv.Status = ConversationStatus.Human;
 
-            conv.Status = ConversationStatus.Human;
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
 
-            
-            
-            await _notification.CreateAsync(
-                NotificationType.ConversationAssigned,
-                "Se te ha asignado la conversación",
-                new[] { agentUserId },   // aquí va solo el id del agente
-                ct);
 
-            conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+
+                //await _notification.CreateAsync(
+                //    NotificationType.ConversationAssigned,
+                //    "Se te ha asignado la conversación",
+                //    new[] { agentUserId },   // aquí va solo el id del agente
+                //    ct);
+
+                            await _hubContext.Clients
+                 .User(agentUserId.ToString())
+                 .SendAsync("AssignmentRequested", new
+                 {
+                     ConversationId = conv.ConversationId,
+                     RequestedAt = conv.RequestedAgentAt
+                 }, ct);
+
+
+                conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
             var dto = conv.Adapt<ConversationResponseDto>();
@@ -188,6 +198,79 @@ namespace CustomerService.API.Services.Implementations
             {
                 Console.WriteLine(ex);
             }
+        }
+
+        public async Task RespondAssignmentAsync(int conversationId, bool accepted, string? comment, CancellationToken ct)
+        {
+            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+                       ?? throw new KeyNotFoundException("Conversación no encontrada");
+
+            conv.AssignmentResponseAt = await _nicDatetime.GetNicDatetime();
+            conv.AssignmentComment = comment;
+            conv.AssignmentState = accepted
+                                        ? AssignmentState.Accepted
+                                        : AssignmentState.Rejected;
+
+            if (accepted)
+            {
+                conv.AssignedAt = conv.AssignmentResponseAt;
+                conv.Status = ConversationStatus.Human;
+            }
+            else
+            {
+                // limpiar campos si rechazó
+                conv.AssignedAgentId = null;
+                conv.AssignedByUserId = null;
+                conv.Status = ConversationStatus.Waiting;
+            }
+
+            _uow.Conversations.Update(conv, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            // Notificar al admin
+            await _hubContext.Clients
+                 .Group("Admins")
+                 .SendAsync("AssignmentResponse", new
+                 {
+                     conv.ConversationId,
+                     accepted,
+                     comment
+                 }, ct);
+        }
+
+        public async Task ForceAssignAsync(int conversationId, int targetAgentId, string comment, CancellationToken ct)
+        {
+            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+                       ?? throw new KeyNotFoundException("Conversación no encontrada");
+
+            conv.AssignedAgentId = targetAgentId;
+            conv.AssignedByUserId = 1;
+            conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+            conv.AssignmentResponseAt = conv.AssignedAt;
+            conv.AssignmentComment = comment;
+            conv.AssignmentState = AssignmentState.Forced;
+            conv.Status = ConversationStatus.Human;
+
+            _uow.Conversations.Update(conv, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            // Notificar tanto al agente forzado como a los admins
+            await _hubContext.Clients
+                .User(targetAgentId.ToString())
+                .SendAsync("AssignmentForced", new
+                {
+                    conv.ConversationId,
+                    comment
+                }, ct);
+
+            await _hubContext.Clients
+                .Group("Admins")
+                .SendAsync("AssignmentForcedAdmin", new
+                {
+                    conv.ConversationId,
+                    targetAgentId,
+                    comment
+                }, ct);
         }
 
         public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)

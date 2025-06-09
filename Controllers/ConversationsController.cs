@@ -151,24 +151,5 @@ namespace CustomerService.API.Controllers
             var summary = await _conversations.SummarizeAllByContactAsync(contactId, ct);
             return Ok(new ApiResponse<string>(summary, "Resumen generado."));
         }
-
-        [HttpPatch("assignment", Name = "UpdateAssigmentConversation")]
-        [SwaggerOperation(Summary = "Update conversation assignment details")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdateAssignment(
-            [FromBody] UpdateConversationRequestDto request,
-            CancellationToken ct = default)
-        {
-            if(request == null || request.ConversationId <= 0)
-            {
-                return BadRequest(new ApiResponse<object>(null, "Invalid request data."));
-            }
-
-            var updatedConv = await _conversations.UpdateConversationAssignmentStateAsync(request, ct);
-            
-            return Ok( new ApiResponse<ConversationResponseDto>(updatedConv, "La conversación ha sido creado con éxito.", true, null));
-        }
-
     }
 }

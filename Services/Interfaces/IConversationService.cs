@@ -34,6 +34,7 @@ namespace CustomerService.API.Services.Interfaces
         /// </summary>
         Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default);
 
-        Task<ConversationResponseDto> UpdateConversationAssignmentStateAsync(UpdateConversationRequestDto updateConversationRequestDto, CancellationToken cancellation = default);
+        Task RespondAssignmentAsync(int conversationId, bool accepted, string? comment, CancellationToken ct);
+        Task ForceAssignAsync(int conversationId, int targetAgentId, string comment, CancellationToken ct);
     }
 }

@@ -30,13 +30,26 @@ namespace CustomerService.API.Models
         public DateTime? AgentRequestAt { get; set; }
         public DateTime? AgentFirstMessageAt { get; set; }
         public DateTime? AgentLastMessageAt { get; set; }
-        public DateTime? RequestedAgentAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
-        public AssignmentState AssignmentState { get; set; }
         public string? Justification { get; set; } = null;
 
         public DateTime? WarningSentAt { get; set; }
+
+        // Nuevo enum para saber en qué fase está la asignación
+        public AssignmentState AssignmentState { get; set; } = AssignmentState.None;
+
+        // Fecha en que el admin solicitó la asignación
+
+        public DateTime? RequestedAgentAt { get; set; }
+
+        // Fecha en que el support respondió (aceptó/rechazó)
+        public DateTime? AssignmentResponseAt { get; set; }
+
+        // Motivo de rechazo o de fuerza
+        [Column(TypeName = "nvarchar(250)")]
+        public string? AssignmentComment { get; set; }
+
         public bool IsArchived { get; set; } = false;
 
         [Timestamp]
