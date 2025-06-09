@@ -159,14 +159,22 @@ namespace CustomerService.API.Services.Implementations
 
             dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            //await _hubContext.Clients
-            // .Group("Admin")
-            // .SendAsync("ConversationUpdated", dto, ct);
+                //await _hubContext.Clients
+                // .Group("Admin")
+                // .SendAsync("ConversationUpdated", dto, ct);
 
-            // al usuario de Support al que se le asigno la conversación
-            await _hubContext.Clients
+                // al usuario de Support al que se le asigno la conversación
+                await _hubContext.Clients
+                    .User(agentUserId.ToString())
+                    .SendAsync("ConversationUpdated", dto, ct);
+
+                await _hubContext.Clients
                 .User(agentUserId.ToString())
-                .SendAsync("ConversationUpdated", dto, ct);
+                .SendAsync("AssignmentRequested", dto, ct);
+
+                await _hubContext.Clients
+                   .User("Admin")
+                   .SendAsync("AssignmentRequested", dto, ct);
 
                 await _whatsAppService.SendTextAsync(
                     conv.ConversationId,
@@ -267,8 +275,8 @@ namespace CustomerService.API.Services.Implementations
             //    .Clients
             //    .All
             //    .SendAsync("ConversationCreated", dto, cancellation);
-            await _hubContext.Clients.Group("Admin")
-                .SendAsync("ConversationCreated", dto, cancellation);
+            //await _hubContext.Clients.Group("Admin")
+            //    .SendAsync("ConversationCreated", dto, cancellation);
 
 
             return dto;

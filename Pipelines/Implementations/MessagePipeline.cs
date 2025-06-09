@@ -1,10 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Text.Json;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Hubs;
 using CustomerService.API.Models;
@@ -21,6 +15,13 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
+using Newtonsoft.Json;
+using System;
+using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using WhatsappBusiness.CloudApi.Messages.Requests;
 
 namespace CustomerService.API.Pipelines.Implementations
@@ -283,16 +284,22 @@ namespace CustomerService.API.Pipelines.Implementations
             if (payload.Type == InteractiveType.Text && !string.IsNullOrWhiteSpace(payload.TextBody))
             {
                 // Convertimos a minusculas para comparación
-                var textoMinuscula = payload.TextBody.Trim().ToLowerInvariant();
+                var textoMinuscula = payload.TextBody.Trim().ToLower();
 
                 // Revisar si alguna de las palabras clave está contenida
-                
+
                 //bool quiereSoporte = _keywords.Keywords
                 //    .Any(kw => textoMinuscula.Contains(kw.ToLowerInvariant()));
 
-                bool quiereSoporte = systemParam.Any(p => p.Name == "SupportKeywords" && p.Value.Split(',').Any(kw => textoMinuscula.Contains(kw.Trim().ToLowerInvariant())));
+                // bool quiereSoporte = systemParam.Any(p => p.Name == "Keywords" && p.Value.Split(',').Any(kw => textoMinuscula.Contains(kw.Trim().ToLowerInvariant())));
 
-                if (quiereSoporte
+                //Estraer y comparar desde el json almacenado en la db.
+                bool requestSupport = systemParam
+                      .Where(p => p.Name == "Keywords" && p.IsActive)
+                      .SelectMany(p => JsonConvert.DeserializeObject<List<string>>(p.Value))
+                      .Any(kw => textoMinuscula.Contains(kw.ToLower()));
+                
+                if (requestSupport
                     && convoDto.Status.ToString() == ConversationStatus.Bot.ToString())
                 {
                     // Definir los botones que ya tenías:
@@ -320,7 +327,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     // Terminar aquí el procesamiento (no pasar a flujo de bot/texto normal)
                     return;
                 }
-                else if (quiereSoporte
+                else if (requestSupport
                     && convoDto.Status.ToString() != ConversationStatus.Bot.ToString())
                 {
                     await _messageService.SendMessageAsync(new SendMessageRequest
