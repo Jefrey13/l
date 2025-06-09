@@ -236,7 +236,7 @@ namespace CustomerService.API.Services.Implementations
                        ?? throw new KeyNotFoundException("Conversación no encontrada");
 
             conv.AssignedAgentId = targetAgentId;
-            conv.AssignedByUserId = /* admin userId */;
+            conv.AssignedByUserId = 1;
             conv.AssignedAt = await _nicDatetime.GetNicDatetime();
             conv.AssignmentResponseAt = conv.AssignedAt;
             conv.AssignmentComment = comment;

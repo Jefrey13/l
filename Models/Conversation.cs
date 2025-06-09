@@ -32,7 +32,6 @@ namespace CustomerService.API.Models
         public DateTime? AgentLastMessageAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
-        public AssignmentState AssignmentState { get; set; }
         public string? Justification { get; set; } = null;
 
         public DateTime? WarningSentAt { get; set; }
