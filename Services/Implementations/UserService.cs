@@ -109,6 +109,9 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task<UserResponseDto> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
+            try
+            {
+
             if (id <= 0) throw new ArgumentException("Invalid user ID.", nameof(id));
 
             var user = await _uow.Users.GetByIdAsync(id, cancellation)
@@ -146,6 +149,11 @@ namespace CustomerService.API.Services.Implementations
                 ClientType = conversationCount switch { 0 => "New", > 0 and <= 5 => "Frequent", _ => "VIP" },
                 Roles = rolesDto
             };
+            }catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new UserResponseDto();
+            }
         }
 
         public async Task<UserResponseDto> CreateAsync(CreateUserRequest request, CancellationToken cancellation = default)
@@ -154,6 +162,9 @@ namespace CustomerService.API.Services.Implementations
             if (string.IsNullOrWhiteSpace(request.Password)) throw new ArgumentException("Password is required.", nameof(request.Password));
             if (await _uow.Users.ExistsAsync(u => u.Email == request.Email, cancellation))
                 throw new InvalidOperationException("Email already in use.");
+
+            try
+            {
 
             var hash = _hasher.Hash(request.Password);
             var user = new User
@@ -241,24 +252,33 @@ namespace CustomerService.API.Services.Implementations
                 ClientType = "New",
                 Roles = currentRoles
             };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return new UserResponseDto();
+            }
         }
 
         public async Task UpdateAsync(UpdateUserRequest request, CancellationToken cancellation = default)
         {
-            if (request.UserId <= 0) throw new ArgumentException("Invalid user ID.", nameof(request.UserId));
+            try
+            {
+            if (request is null) throw new ArgumentException("Error. No se ha envidado datos del usuario");
 
             var user = await _uow.Users.GetByIdAsync(request.UserId, cancellation)
                        ?? throw new KeyNotFoundException("User not found.");
 
+            var localTime = await _nicDatetime.GetNicDatetime();
             user.FullName = request.FullName;
             user.IsActive = request.IsActive;
             user.CompanyId = request.CompanyId;
             user.Phone = request.Phone;
             user.Identifier = request.Identifier;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = localTime;
 
-            if (!string.IsNullOrWhiteSpace(request.NewPassword))
-                user.PasswordHash = Encoding.UTF8.GetBytes(_hasher.Hash(request.NewPassword));
+            //if (!string.IsNullOrWhiteSpace(request.NewPassword))
+            //    user.PasswordHash = Encoding.UTF8.GetBytes(_hasher.Hash(request.NewPassword));
 
             var existingRoleIds = (await _uow.UserRoles.GetRolesByUserIdAsync(user.UserId, cancellation))
                 .Select(ur => ur.RoleId).ToList();
@@ -278,6 +298,12 @@ namespace CustomerService.API.Services.Implementations
 
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync(cancellation);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Local: ", ex);
+            }
         }
 
         public async Task ActivationAsync(int userId, CancellationToken cancellation = default)

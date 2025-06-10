@@ -207,6 +207,10 @@ public partial class CustomerSupportContext : DbContext
                     .HasMaxLength(500)
                     .IsRequired(false);
 
+            entity.Property(e => e.AssignmentComment)
+            .HasMaxLength(500)
+            .IsRequired(false);
+
             entity.Property(e => e.Initialized)
                   .HasDefaultValue(false);
 
@@ -238,6 +242,10 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(e => e.WarningSentAt)
                   .HasColumnType("datetime2")
                   .IsRequired(false);
+
+            entity.Property(e => e.AssignmentResponseAt)
+            .HasColumnType("datetime2")
+            .IsRequired(false);
 
             entity.Property(e => e.IsArchived)
                   .HasDefaultValue(false);

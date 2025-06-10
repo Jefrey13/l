@@ -145,15 +145,17 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
 
+                var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
 
 
-                //await _notification.CreateAsync(
-                //    NotificationType.ConversationAssigned,
-                //    "Se te ha asignado la conversación",
-                //    new[] { agentUserId },   // aquí va solo el id del agente
-                //    ct);
 
-                            await _hubContext.Clients
+                await _notification.CreateAsync(
+                    NotificationType.ConversationAssigned,
+                    $"Nueva conversación asiganda a: {updatedConv?.AssignedAgent?.FullName}",
+                    new[] { agentUserId },   // aquí va solo el id del agente
+                    ct);
+
+                await _hubContext.Clients
                  .User(agentUserId.ToString())
                  .SendAsync("AssignmentRequested", new
                  {
@@ -165,33 +167,37 @@ namespace CustomerService.API.Services.Implementations
                 conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
-            var dto = conv.Adapt<ConversationResponseDto>();
+                var dto = conv.Adapt<ConversationResponseDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+                dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-                //await _hubContext.Clients
-                // .Group("Admin")
-                // .SendAsync("ConversationUpdated", dto, ct);
+                    //await _hubContext.Clients
+                    // .Group("Admin")
+                    // .SendAsync("ConversationUpdated", dto, ct);
 
-                // al usuario de Support al que se le asigno la conversación
-                await _hubContext.Clients
+                    // al usuario de Support al que se le asigno la conversación
+                    await _hubContext.Clients
+                        .User(agentUserId.ToString())
+                        .SendAsync("ConversationUpdated", dto, ct);
+
+                    await _hubContext.Clients
                     .User(agentUserId.ToString())
-                    .SendAsync("ConversationUpdated", dto, ct);
+                    .SendAsync("AssignmentRequested", dto, ct);
+
+                    await _hubContext.Clients
+                       .User("Admin")
+                       .SendAsync("AssignmentRequested", dto, ct);
+
+                    await _whatsAppService.SendTextAsync(
+                        conv.ConversationId,
+                        1,
+                        $"Se te asigno un nuevo agente: {conv.AssignedAgent.FullName}. Ahora puedes comunicarte con el.",
+                        ct
+                    );
 
                 await _hubContext.Clients
-                .User(agentUserId.ToString())
-                .SendAsync("AssignmentRequested", dto, ct);
-
-                await _hubContext.Clients
-                   .User("Admin")
-                   .SendAsync("AssignmentRequested", dto, ct);
-
-                await _whatsAppService.SendTextAsync(
-                    conv.ConversationId,
-                    1,
-                    $"Se te asigno un nuevo agente: {conv.AssignedAgent.FullName}. Ahora puedes comunicarte con el.",
-                    ct
-                );
+                   .User(agentUserId.ToString())
+                   .SendAsync("ConversationUpdated", dto, ct);
 
             }
             catch (Exception ex)
@@ -317,52 +323,61 @@ namespace CustomerService.API.Services.Implementations
             int clientContactId,
             CancellationToken cancellation = default)
         {
-            if (clientContactId <= 0)
-                throw new ArgumentException("Invalid contact ID.", nameof(clientContactId));
-
-
-            var conv = await _uow.Conversations.GetAll()
-                .Where(c => c.ClientContactId == clientContactId
-                         && c.Status != ConversationStatus.Closed)
-                .Include(c => c.Messages)
-                .SingleOrDefaultAsync(cancellation);
-
-            if (conv != null)
-                return conv.Adapt<ConversationResponseDto>();
-
-            var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
-                          ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
-
-            var localDate = await _nicDatetime.GetNicDatetime();
-            conv = new Conversation
+            try
             {
-                ClientContactId = clientContactId,
-                Status = ConversationStatus.Bot,
-                CreatedAt = localDate,
-                Initialized = false
-            };
 
-            await _uow.Conversations.AddAsync(conv, cancellation);
-            await _uow.SaveChangesAsync(cancellation);
-
-            //var full = await _uow.Conversations.GetAll()
-            //    .Where(c => c.ConversationId == conv.ConversationId)
-            //    .Include(c => c.Messages)m
-            //    .SingleAsync(cancellation);
-
-            var dto = conv.Adapt<ConversationResponseDto>();
-
-            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
-
-            //await _hubContext
-            //    .Clients
-            //    .All
-            //    .SendAsync("ConversationCreated", dto, cancellation);
-            //await _hubContext.Clients.Group("Admin")
-            //    .SendAsync("ConversationCreated", dto, cancellation);
+                if (clientContactId <= 0)
+                    throw new ArgumentException("Invalid contact ID.", nameof(clientContactId));
 
 
-            return dto;
+                var conv = await _uow.Conversations.GetAll()
+                    .Where(c => c.ClientContactId == clientContactId
+                             && c.Status != ConversationStatus.Closed)
+                    .Include(c => c.Messages)
+                    .SingleOrDefaultAsync(cancellation);
+
+                if (conv != null)
+                    return conv.Adapt<ConversationResponseDto>();
+
+                var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
+                              ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
+
+                var localDate = await _nicDatetime.GetNicDatetime();
+                conv = new Conversation
+                {
+                    ClientContactId = clientContactId,
+                    Status = ConversationStatus.Bot,
+                    CreatedAt = localDate,
+                    Initialized = false
+                };
+
+                await _uow.Conversations.AddAsync(conv, cancellation);
+                await _uow.SaveChangesAsync(cancellation);
+
+                //var full = await _uow.Conversations.GetAll()
+                //    .Where(c => c.ConversationId == conv.ConversationId)
+                //    .Include(c => c.Messages)m
+                //    .SingleAsync(cancellation);
+
+                var dto = conv.Adapt<ConversationResponseDto>();
+
+                dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+
+                //await _hubContext
+                //    .Clients
+                //    .All
+                //    .SendAsync("ConversationCreated", dto, cancellation);
+                //await _hubContext.Clients.Group("Admin")
+                //    .SendAsync("ConversationCreated", dto, cancellation);
+
+
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new ConversationResponseDto();
+            }
         }
 
         public async Task UpdateAsync(UpdateConversationRequest request, CancellationToken ct = default)

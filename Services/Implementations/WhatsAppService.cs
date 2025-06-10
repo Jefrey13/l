@@ -63,10 +63,13 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default)
         {
+            try
+            {
+
             var convo = await _uow.Conversations.GetAll()
                 .Where(c => c.ConversationId == conversationId)
                 .Select(c => new { c.ConversationId, Phone = c.ClientContact.Phone })
-                .SingleOrDefaultAsync(cancellation)
+                .SingleOrDefaultAsync()
                 ?? throw new KeyNotFoundException("Conversation not found");
 
             var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
@@ -82,8 +85,15 @@ namespace CustomerService.API.Services.Implementations
                 Content = JsonContent.Create(payload)
             };
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-            var res = await _http.SendAsync(req, cancellation);
+            var res = await _http.SendAsync(req);
+
             res.EnsureSuccessStatusCode();
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         private class MediaUploadResponse

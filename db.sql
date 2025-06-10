@@ -206,10 +206,10 @@ BEGIN TRY
 	BEGIN
 	  INSERT INTO auth.RoleMenus (MenuId, RoleId)
 	  VALUES
-		(1, @AdminRoleId),
+		--(1, @AdminRoleId),
 		(2, @AdminRoleId),
 		(3, @AdminRoleId),
-		(4, @AdminRoleId),
+		--(4, @AdminRoleId),
 		(5, @AdminRoleId),
 		(6, @AdminRoleId),
 		(7, @AdminRoleId);
@@ -223,9 +223,9 @@ BEGIN TRY
 	BEGIN
 	  INSERT INTO auth.RoleMenus (MenuId, RoleId)
 	  VALUES
-		(1, @SupportRoleId),
+		--(1, @SupportRoleId),
 		(2, @SupportRoleId),
-		(4, @SupportRoleId),
+		--(4, @SupportRoleId),
 		(5, @SupportRoleId),
 		(7, @SupportRoleId);
 	END

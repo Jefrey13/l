@@ -47,7 +47,6 @@ namespace CustomerService.API.Models
         public DateTime? AssignmentResponseAt { get; set; }
 
         // Motivo de rechazo o de fuerza
-        [Column(TypeName = "nvarchar(250)")]
         public string? AssignmentComment { get; set; }
 
         public bool IsArchived { get; set; } = false;

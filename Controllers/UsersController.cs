@@ -53,6 +53,7 @@ namespace CustomerService.API.Controllers
         public async Task<IActionResult> Create([FromBody] CreateUserRequest req, CancellationToken ct = default)
         {
             var dto = await _users.CreateAsync(req, ct);
+
             return CreatedAtRoute("GetUserById", new { id = dto.UserId },
                 new ApiResponse<UserResponseDto>(dto, "User created."));
         }
@@ -64,8 +65,10 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] UpdateUserRequest req, CancellationToken ct = default)
         {
-            if (id != req.UserId)
+            if (id == null)
                 return BadRequest(new ApiResponse<object>(null, "Mismatched user ID."));
+
+            req.UserId = id;
             await _users.UpdateAsync(req, ct);
             return NoContent();
         }

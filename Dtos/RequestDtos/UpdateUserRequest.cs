@@ -24,10 +24,8 @@ namespace CustomerService.API.Dtos.RequestDtos
 
         public string? Identifier { get; set; }
 
-        public string? NewPassword { get; set; }
-
         public string? ImageUrl { get; set; }
 
-        public List<int> RoleIds { get; set; } = new() { 1 };
+        public List<int>? RoleIds { get; set; }
     }
 }

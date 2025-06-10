@@ -15,7 +15,19 @@ namespace CustomerService.API.Utils
         {
             // Usuarios
             config.NewConfig<CreateUserRequest, User>();
-            config.NewConfig<User, UserResponseDto>();
+            config.NewConfig<User, UserResponseDto>()
+                .Map(d => d.UserId, s => s.UserId)
+                .Map(d => d.FullName, s => s.FullName)
+                .Map(d => d.Identifier, s => s.Identifier)
+                .Map(d => d.Phone, s => s.Phone)
+                .Map(d => d.IsActive, s => s.IsActive)
+                .Map(d => d.ImageUrl, s => s.ImageUrl)
+                .Map(d => d.UpdatedAt, s => s.UpdatedAt)
+                .Map(d => d.IsOnline, s => s.IsOnline)
+                .Map(d => d.ClientType, s => s.ClientType)
+                .Map(d => d.CreatedAt, s => s.CreatedAt)
+                .Map(d => d.CompanyId, s => s.CompanyId)
+                .Map(d => d.Email, s => s.Email);
 
             // Conversación: creación
             config.NewConfig<CreateConversationRequest, Conversation>()
@@ -58,6 +70,8 @@ namespace CustomerService.API.Utils
                 //.Map(d => d.AgentLastMessageAt, s => s.AgentLastMessageAt)
                 //.Map(d => d.ClosedAt, s => s.ClosedAt)
                 .Map(d => d.UpdatedAt, s => s.UpdatedAt)
+                .Map(d => d.AssignmentResponseAt, s => s.AssignmentResponseAt)
+                .Map(d => d.AssignmentComment, s => s.AssignmentComment)
                 //.Map(d => d.ClosedAt, s => s.ClosedAt)
                 .Map(d => d.IsArchived, s => s.IsArchived)
                 .Map(d => d.TotalMessages, s => s.Messages.Count)

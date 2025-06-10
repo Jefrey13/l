@@ -128,6 +128,7 @@ namespace CustomerService.API.Pipelines.Implementations
             await _hubContext.Clients
                .All
                .SendAsync("ConversationUpdated", convDto, ct);
+            
             // ───────────────────────────────────────────────────────────────────
             //   PEDIR “FullName” si Status == New o AwaitingFullName
             // ───────────────────────────────────────────────────────────────────
