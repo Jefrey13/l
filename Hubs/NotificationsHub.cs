@@ -35,5 +35,18 @@ namespace CustomerService.API.Hubs
 
             await base.OnDisconnectedAsync(exception);
         }
+
+        /// <summary>
+        /// Envia a todos los Admins una notificación de que un cliente solicitó un agente.
+        /// </summary>
+        public Task BroadcastSupportRequested(object payload) =>
+            Clients.Group("Admins").SendAsync("SupportRequested", payload);
+
+        /// <summary>
+        /// Envía al agente la notificación de conversación asignada.
+        /// </summary>
+        public Task BroadcastConversationAssigned(int agentUserId, object payload) =>
+            Clients.Group(agentUserId.ToString())
+                   .SendAsync("ConversationAssigned", payload);
     }
 }

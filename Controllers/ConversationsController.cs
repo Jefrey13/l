@@ -151,5 +151,29 @@ namespace CustomerService.API.Controllers
             var summary = await _conversations.SummarizeAllByContactAsync(contactId, ct);
             return Ok(new ApiResponse<string>(summary, "Resumen generado."));
         }
+
+        [HttpPost("{id}/respond", Name = "RespondAssignment")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Respond(
+        [FromRoute] int id,
+        [FromBody] RespondAssignmentRequest req,   // crea este DTO con { bool Accepted; string? Comment; }
+        CancellationToken ct = default)
+        {
+            await _conversations.RespondAssignmentAsync(id, req.Accepted, req.Comment, ct);
+            return NoContent();
+        }
+
+        [HttpPost("{id}/force", Name = "ForceAssignment")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Force(
+            [FromRoute] int id,
+            CancellationToken ct = default)
+        {
+            await _conversations.ForceAssignAsync(id, ct);
+            return NoContent();
+        }
     }
 }

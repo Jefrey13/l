@@ -30,6 +30,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly INicDatetime _nicDatetime;
         private readonly INotificationService _notification;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IHubContext<NotificationsHub> _hubNotification;
         private readonly ITokenService _tokenService;
         private readonly IGeminiClient _geminiClient;
         private readonly IWhatsAppService _whatsAppService;
@@ -125,25 +126,25 @@ namespace CustomerService.API.Services.Implementations
             try
             {
 
-            if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
+                if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
             
-            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
-                ?? throw new KeyNotFoundException("Conversation not found.");
+                var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+                    ?? throw new KeyNotFoundException("Conversation not found.");
 
 
-            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
-            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+                var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
                 var localDate = await _nicDatetime.GetNicDatetime();
-            conv.AssignedAgentId = agentUserId;
-            conv.AssignedByUserId = userId;
-            conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+                conv.AssignedAgentId = agentUserId;
+                conv.AssignedByUserId = userId;
+                //conv.AssignedAt = await _nicDatetime.GetNicDatetime();
                 conv.AssignmentState = AssignmentState.Pending;
                 conv.RequestedAgentAt = await _nicDatetime.GetNicDatetime();
                 conv.Status = ConversationStatus.Human;
 
-            _uow.Conversations.Update(conv);
-            await _uow.SaveChangesAsync(ct);
+                _uow.Conversations.Update(conv);
+                await _uow.SaveChangesAsync(ct);
 
 
 
@@ -151,30 +152,28 @@ namespace CustomerService.API.Services.Implementations
                 //    NotificationType.ConversationAssigned,
                 //    "Se te ha asignado la conversación",
                 //    new[] { agentUserId },   // aquí va solo el id del agente
-                //    ct);
-
-                            await _hubContext.Clients
-                 .User(agentUserId.ToString())
-                 .SendAsync("AssignmentRequested", new
-                 {
-                     ConversationId = conv.ConversationId,
-                     RequestedAt = conv.RequestedAgentAt
-                 }, ct);
+                //    ct);                           
 
 
                 conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                ?? throw new KeyNotFoundException("Conversation not found.");
 
-            var dto = conv.Adapt<ConversationResponseDto>();
+                var dto = conv.Adapt<ConversationResponseDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            //await _hubContext.Clients
-            // .Group("Admin")
-            // .SendAsync("ConversationUpdated", dto, ct);
+                await _hubNotification
+                      .Clients
+                      .Group(agentUserId.ToString())   // o .User(agentUserId.ToString())
+                      .SendAsync("ConversationAssigned", dto, ct);
 
-            // al usuario de Support al que se le asigno la conversación
-            await _hubContext.Clients
+                dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+
+                //await _hubContext.Clients
+                // .Group("Admin")
+                // .SendAsync("ConversationUpdated", dto, ct);
+
+                // al usuario de Support al que se le asigno la conversación
+                await _hubContext.Clients
                 .User(agentUserId.ToString())
                 .SendAsync("ConversationUpdated", dto, ct);
 
@@ -220,7 +219,7 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(ct);
 
             // Notificar al admin
-            await _hubContext.Clients
+            await _hubNotification.Clients
                  .Group("Admins")
                  .SendAsync("AssignmentResponse", new
                  {
@@ -230,16 +229,16 @@ namespace CustomerService.API.Services.Implementations
                  }, ct);
         }
 
-        public async Task ForceAssignAsync(int conversationId, int targetAgentId, string comment, CancellationToken ct)
+        public async Task ForceAssignAsync(int conversationId, CancellationToken ct)
         {
             var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                        ?? throw new KeyNotFoundException("Conversación no encontrada");
 
-            conv.AssignedAgentId = targetAgentId;
-            conv.AssignedByUserId = 1;
+            //conv.AssignedAgentId = targetAgentId;
+            //conv.AssignedByUserId = 1;
             conv.AssignedAt = await _nicDatetime.GetNicDatetime();
-            conv.AssignmentResponseAt = conv.AssignedAt;
-            conv.AssignmentComment = comment;
+            //conv.AssignmentResponseAt = conv.AssignedAt;
+            //conv.AssignmentComment = comment;
             conv.AssignmentState = AssignmentState.Forced;
             conv.Status = ConversationStatus.Human;
 
@@ -248,20 +247,17 @@ namespace CustomerService.API.Services.Implementations
 
             // Notificar tanto al agente forzado como a los admins
             await _hubContext.Clients
-                .User(targetAgentId.ToString())
+                .User(conv.AssignedAgentId.ToString())
                 .SendAsync("AssignmentForced", new
                 {
-                    conv.ConversationId,
-                    comment
+                    conv.ConversationId
                 }, ct);
 
-            await _hubContext.Clients
+            await _hubNotification.Clients
                 .Group("Admins")
                 .SendAsync("AssignmentForcedAdmin", new
                 {
-                    conv.ConversationId,
-                    targetAgentId,
-                    comment
+                    conv.ConversationId
                 }, ct);
         }
 

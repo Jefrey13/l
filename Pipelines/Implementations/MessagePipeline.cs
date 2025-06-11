@@ -34,6 +34,7 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly INotificationService _notification;
         private readonly IUserService _userService;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IHubContext<NotificationsHub> _hubNotification;
         private readonly IGeminiClient _geminiClient;
         private readonly INicDatetime _nicDatetime;
         private readonly string _systemPrompt;
@@ -64,7 +65,8 @@ namespace CustomerService.API.Pipelines.Implementations
             IHttpContextAccessor httpContextAccessor,
             IOptions<MessagePrompts> promptOpts,
             IOptions<MessageKeywords> keywordOpts,
-            ISystemParamService systemParamService)
+            ISystemParamService systemParamService,
+            IHubContext<NotificationsHub> hubNotification)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -83,6 +85,7 @@ namespace CustomerService.API.Pipelines.Implementations
             _prompts = promptOpts.Value;
             _keywords = keywordOpts.Value;
             _systemParamService = systemParamService;
+            _hubNotification = hubNotification;
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -583,8 +586,19 @@ namespace CustomerService.API.Pipelines.Implementations
                              await _notification.CreateAsync(
                                 NotificationType.SupportRequested,
                                 $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
-                                agents, //Enviar a todos los usuarios admin
+                                agents,
                                 ct);
+
+                            var payloadHub = new
+                            {
+                                ConversationId = convDto.ConversationId,
+                                ClientName = contactDto.WaName,
+                                RequestedAt = nowNic
+                            };
+                            await _hubNotification
+                                 .Clients
+                                 .Group("Admins")             // coincide con tu OnConnectedAsync
+                                 .SendAsync("SupportRequested", payloadHub, ct);
 
                             await _hubContext.Clients
                                 .Group("Admin")
