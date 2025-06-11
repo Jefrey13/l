@@ -78,7 +78,6 @@ namespace CustomerService.API.Hosted
                     // 5) Obtener el service para enviar mensajes
                     var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
 
-                    //Obtene las systemParams
                     var sysmParamService = scope.ServiceProvider.GetRequiredService<ISystemParamService>();
                     var systemParams = await sysmParamService.GetAllAsync();
 
@@ -86,7 +85,7 @@ namespace CustomerService.API.Hosted
                         .FirstOrDefault(p => p.Name == "InactivityWarningThreshold")?.Value is string warningThresholdStr &&
                         TimeSpan.TryParse(warningThresholdStr, out var parsedWarningThreshold)
                         ? parsedWarningThreshold
-                        : TimeSpan.FromMinutes(1); // Valor por defecto si no se encuentra o no es válido
+                        : TimeSpan.FromMinutes(1);
 
 
                     // 6) Cargar las conversaciones pendientes (estado Bot, no cerradas y no archivadas),

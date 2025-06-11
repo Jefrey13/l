@@ -191,7 +191,8 @@ BEGIN TRY
 		('Usuarios',         'List of system users',                         'users',         3, 'Users'),
 		('Notificaciones ', 'Conversation assignment, new users, etc.',     'notifications', 4, 'BellRing'),
 		('Perfil',       'User profile details',                         'profile',       5, 'User'),
-		('Cerrar Sesión',        'Redirects to login',                           'login',        6, 'LogOut');
+		('Param CRM',     'CRM Dynamic Params',         'system-params',     6, 'TbDatabase '),
+		('Cerrar Sesión',        'Redirects to login', 'login',        7, 'LogOut');
 	END
 
 	-- =================================================================================
@@ -205,12 +206,13 @@ BEGIN TRY
 	BEGIN
 	  INSERT INTO auth.RoleMenus (MenuId, RoleId)
 	  VALUES
-		(1, @AdminRoleId),
+		--(1, @AdminRoleId),
 		(2, @AdminRoleId),
 		(3, @AdminRoleId),
-		(4, @AdminRoleId),
+		--(4, @AdminRoleId),
 		(5, @AdminRoleId),
-		(6, @AdminRoleId);
+		(6, @AdminRoleId),
+		(7, @AdminRoleId);
 	END
 
 	-- Support role menus
@@ -221,11 +223,11 @@ BEGIN TRY
 	BEGIN
 	  INSERT INTO auth.RoleMenus (MenuId, RoleId)
 	  VALUES
-		(1, @SupportRoleId),
+		--(1, @SupportRoleId),
 		(2, @SupportRoleId),
-		(4, @SupportRoleId),
+		--(4, @SupportRoleId),
 		(5, @SupportRoleId),
-		(6, @SupportRoleId);
+		(7, @SupportRoleId);
 	END
 
 	COMMIT TRANSACTION;
@@ -265,7 +267,7 @@ GO
 SELECT * FROM auth.SystemParams
 GO
 INSERT INTO auth.SystemParams
-    ([Name], [Value], [Description], [Type], [CreateAt], [CreateBy], [IsActive])
+    ([Name], [Value], [Description], [Type], [CreatedAt], [CreateBy], [IsActive])
 VALUES
     (
       'WelcomeBot',

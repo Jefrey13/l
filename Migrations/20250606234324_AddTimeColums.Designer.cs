@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250606234324_AddTimeColums")]
+    partial class AddTimeColums
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -280,13 +283,6 @@ namespace CustomerService.API.Migrations
 
                     b.Property<int?>("AssignedByUserId")
                         .HasColumnType("int");
-
-                    b.Property<string>("AssignmentComment")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("AssignmentResponseAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("AssignmentState")
                         .IsRequired()

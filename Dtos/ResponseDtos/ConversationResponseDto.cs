@@ -33,6 +33,12 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public DateTime LastActivity { get; set; }
         public TimeSpan Duration { get; set; }
         public TimeSpan? TimeToFirstResponse { get; set; }
+
+        // Fecha en que el support respondió (aceptó/rechazó)
+        public DateTime? AssignmentResponseAt { get; set; }
+
+        // Motivo de rechazo o de fuerza
+        public string? AssignmentComment { get; set; }
         public bool IsClosed { get; set; }
 
         public List<MessageResponseDto> Messages { get; set; } = new();

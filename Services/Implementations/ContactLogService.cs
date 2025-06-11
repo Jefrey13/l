@@ -189,6 +189,8 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)
         {
+            try
+            {
             var entity = await _uow.ContactLogs.GetByIdAsync(requestDto.Id, cancellation)
                          ?? throw new KeyNotFoundException($"ContactLog {requestDto.Id} not found");
 
@@ -202,6 +204,11 @@ namespace CustomerService.API.Services.Implementations
             entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
             await _uow.SaveChangesAsync(cancellation);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
     }
 }
