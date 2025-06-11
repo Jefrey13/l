@@ -35,6 +35,6 @@ namespace CustomerService.API.Services.Interfaces
         Task<string> SummarizeAllByContactAsync(int contactId, CancellationToken ct = default);
 
         Task RespondAssignmentAsync(int conversationId, bool accepted, string? comment, CancellationToken ct);
-        Task ForceAssignAsync(int conversationId, CancellationToken ct);
+        Task ForceAssignAsync(int conversationId, bool forced, CancellationToken ct);
     }
 }

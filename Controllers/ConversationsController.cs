@@ -166,14 +166,13 @@ namespace CustomerService.API.Controllers
         }
 
         [HttpPost("{id}/force", Name = "ForceAssignment")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Force(
-            [FromRoute] int id,
-            CancellationToken ct = default)
-        {
-            await _conversations.ForceAssignAsync(id, ct);
-            return NoContent();
-        }
+            public async Task<IActionResult> Force(
+        [FromRoute] int id,
+        [FromBody] ForceAssignmentRequest req,
+        CancellationToken ct = default)
+            {
+                await _conversations.ForceAssignAsync(id, req.Forced, ct);
+                return NoContent();
+            }
     }
 }

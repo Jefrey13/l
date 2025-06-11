@@ -32,6 +32,7 @@ namespace CustomerService.API.Repositories.Implementations
 
             return await _dbSet.AsNoTracking()
                 .Where(c => c.AssignedAgentId == agentId)
+                .Where(c => c.Status == ConversationStatus.Human)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)

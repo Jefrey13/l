@@ -128,15 +128,24 @@ namespace CustomerService.API.Pipelines.Implementations
             var convDto = convEntity.Adapt<ConversationResponseDto>();
 
             // 3) emítelo por SignalR
-            await _hubContext.Clients
-               .All
-               .SendAsync("ConversationUpdated", convDto, ct);
-            
-            // ───────────────────────────────────────────────────────────────────
-            //   PEDIR “FullName” si Status == New o AwaitingFullName
-            // ───────────────────────────────────────────────────────────────────
+           if(convDto.Status == ConversationStatus.Human.ToString())
+            {
+                await _hubContext.Clients
+              .All
+              .SendAsync("ConversationUpdated", convDto, ct);
+            }
+            else
+            {
+                            await _hubContext.Clients
+                .Group("Admin")
+                .SendAsync("ConversationUpdated", convDto, ct);
+            }
 
-            var systemParam = await _systemParamService.GetAllAsync();
+                // ───────────────────────────────────────────────────────────────────
+                //   PEDIR “FullName” si Status == New o AwaitingFullName
+                // ───────────────────────────────────────────────────────────────────
+
+                var systemParam = await _systemParamService.GetAllAsync();
             try
             {
 
@@ -608,6 +617,7 @@ namespace CustomerService.API.Pipelines.Implementations
                                  .Group("Admins")             // coincide con tu OnConnectedAsync
                                  .SendAsync("SupportRequested", payloadHub, ct);
 
+                            ///Validar que solo llegue a los admins
                             await _hubContext.Clients
                                 .Group("Admin")
                                 .SendAsync("ConversationUpdated", updatedConv, ct);
