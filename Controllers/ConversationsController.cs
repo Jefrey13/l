@@ -171,7 +171,7 @@ namespace CustomerService.API.Controllers
         [FromBody] ForceAssignmentRequest req,
         CancellationToken ct = default)
             {
-                await _conversations.ForceAssignAsync(id, req.Forced, ct);
+                await _conversations.ForceAssignAsync(id, req.Forced,req.AssignmentComment , ct);
                 return NoContent();
             }
     }

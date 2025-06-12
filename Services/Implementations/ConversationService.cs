@@ -36,6 +36,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly ITokenService _tokenService;
         private readonly IGeminiClient _geminiClient;
         private readonly IWhatsAppService _whatsAppService;
+        private readonly IMessageService _messageService;
 
         public ConversationService(
             IUnitOfWork uow,
@@ -45,7 +46,8 @@ namespace CustomerService.API.Services.Implementations
             IHubContext<NotificationsHub> hubNotification,
             ITokenService tokenService,
             IGeminiClient geminiClient,
-            IWhatsAppService whatsAppService)
+            IWhatsAppService whatsAppService,
+            IMessageService messageService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
@@ -54,7 +56,8 @@ namespace CustomerService.API.Services.Implementations
             _tokenService = tokenService;
             _geminiClient = geminiClient;
             _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
-            _hubNotification = hubNotification ?? throw new ArgumentException(nameof(hubContext));
+            _hubNotification = hubNotification ?? throw new ArgumentException(nameof(_hubNotification));
+            _messageService = messageService;
         }
 
         public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -153,11 +156,11 @@ namespace CustomerService.API.Services.Implementations
                 var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
 
 
-                await _notification.CreateAsync(
-                    NotificationType.ConversationAssigned,
-                    $"Nueva conversación asiganda a: {updatedConv?.AssignedAgent?.FullName}",
-                    new[] { agentUserId },   // aquí va solo el id del agente
-                    ct);
+                //await _notification.CreateAsync(
+                //    NotificationType.ConversationAssigned,
+                //    $"Nueva conversación asiganda a: {updatedConv?.AssignedAgent?.FullName}",
+                //    new[] { agentUserId },   // aquí va solo el id del agente
+                //    ct);
 
                 //await _hubContext.Clients
                 // .User(agentUserId.ToString())
@@ -182,10 +185,7 @@ namespace CustomerService.API.Services.Implementations
                 //       .All
                 //       .SendAsync("ConversationUpdated", updatedConv, ct);
 
-                await _hubNotification
-                      .Clients
-                      .Group(agentUserId.ToString())   // o .User(agentUserId.ToString())
-                      .SendAsync("ConversationAssigned", dto, ct);
+                
 
                 dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -198,24 +198,25 @@ namespace CustomerService.API.Services.Implementations
                     //.User(agentUserId.ToString())
                     //.SendAsync("ConversationUpdated", dto, ct);
 
-                    await _hubContext.Clients
-                    .User(agentUserId.ToString())
-                    .SendAsync("AssignmentRequested", dto, ct);
+                    //await _hubContext.Clients
+                    //.User(agentUserId.ToString())
+                    //.SendAsync("AssignmentRequested", dto, ct);
 
-                    await _hubContext.Clients
-                       .User("Admin")
-                       .SendAsync("AssignmentRequested", dto, ct);
+                    //await _hubContext.Clients
+                    //   .User("Admin")
+                    //   .SendAsync("AssignmentRequested", dto, ct);
 
-                    await _whatsAppService.SendTextAsync(
-                        dto.ConversationId,
-                        1,
-                        $"Su solicitud esta ciendo procesada, por favor espere un momento.",
-                        ct
-                    );
+                    await _messageService.SendMessageAsync(new SendMessageRequest
+                    {
+                        ConversationId = dto.ConversationId,
+                        SenderId = 1,
+                        Content = $"Su solicitud esta siendo procesada, por favor espere un momento.",
+                        MessageType = MessageType.Text
+                    }, false, ct);
 
-                await _hubContext.Clients
-                   .User(agentUserId.ToString())
-                   .SendAsync("ConversationUpdated", dto, ct);
+                //await _hubContext.Clients
+                //   .User(agentUserId.ToString())
+                //   .SendAsync("ConversationUpdated", dto, ct);
 
                 // 3) emítelo por SignalR
                 //if (dto.Status == ConversationStatus.Human.ToString())
@@ -233,6 +234,11 @@ namespace CustomerService.API.Services.Implementations
                 await _hubContext.Clients
                  .Group("Admin")
                  .SendAsync("ConversationUpdated", dto, ct);
+
+                await _hubNotification
+                      .Clients
+                      .Group(agentUserId.ToString())   // o .User(agentUserId.ToString())
+                      .SendAsync("ConversationAssigned", dto, ct);
 
             }
             catch (Exception ex)
@@ -259,26 +265,19 @@ namespace CustomerService.API.Services.Implementations
                     conv.AssignedAt = await _nicDatetime.GetNicDatetime();
                     conv.Status = ConversationStatus.Human;
                     conv.AssignmentState = AssignmentState.Accepted;
-                    await _whatsAppService.SendTextAsync(
-                        conv.ConversationId,
-                        1,
-                        $"Se te asigno un nuevo agente: {conv.AssignedAgent.FullName}. Ahora puedes comunicarte con el.",
-                        ct
-                    );
+                    
+                    await _messageService.SendMessageAsync(new SendMessageRequest
+                    {
+                        ConversationId = conv.ConversationId,
+                        SenderId = 1,
+                        Content = $"Se te asigno un nuevo agente: {conv.AssignedAgent?.FullName}. Ahora puedes comunicarte con el.",
+                        MessageType = MessageType.Text
+                    }, false, ct);
                 }
 
                     _uow.Conversations.Update(conv, ct);
-                await _uow.SaveChangesAsync(ct);
+                    await _uow.SaveChangesAsync(ct);
 
-                // Notificar al admin
-                await _hubNotification.Clients
-                     .Group("Admins")
-                     .SendAsync("AssignmentResponse", new
-                     {
-                         conv.ConversationId,
-                         accepted,
-                         comment
-                     }, ct);
 
                 var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
                 var dto = updatedConv.Adapt<ConversationResponseDto>();
@@ -296,10 +295,20 @@ namespace CustomerService.API.Services.Implementations
                                 .SendAsync("ConversationUpdated", updatedConv, ct);
 
                     await _hubContext
-                          .Clients
-                          .All
-                          .SendAsync("ConversationUpdated", updatedConv, ct);
+                         .Clients
+                         .All
+                         .SendAsync("ConversationUpdated", updatedConv, ct);
                 }
+                // Notificar al admin
+                await _hubNotification.Clients
+                     .Group("Admins")
+                     .SendAsync("AssignmentResponse", new
+                     {
+                         conv.ConversationId,
+                         accepted,
+                         comment,
+                         conv.Justification,
+                     }, ct);
             }
             catch (Exception ex)
             {
@@ -307,76 +316,81 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
-        public async Task ForceAssignAsync(int conversationId, bool forced, CancellationToken ct)
+        public async Task ForceAssignAsync(int conversationId, bool forced, string? assignmentComment, CancellationToken ct)
         {
             try
             {
 
-            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
-                       ?? throw new KeyNotFoundException("Conversación no encontrada");
+                var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+                           ?? throw new KeyNotFoundException("Conversación no encontrada");
 
-            if (forced)
-            {
-                //conv.AssignedAgentId = targetAgentId;
-                //conv.AssignedByUserId = 1;
-                conv.AssignedAt = await _nicDatetime.GetNicDatetime();
-                //conv.AssignmentResponseAt = conv.AssignedAt;
-                //conv.AssignmentComment = comment;
-                conv.AssignmentState = AssignmentState.Forced;
-                conv.Status = ConversationStatus.Human;
-
-                _uow.Conversations.Update(conv, ct);
-                await _uow.SaveChangesAsync(ct);
-
-                var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
-                var dto = updatedConv.Adapt<ConversationResponseDto>();
-
-                await _whatsAppService.SendTextAsync(
-                    conv.ConversationId,
-                    1,
-                    $"Se te asigno un nuevo agente: {dto.AssignedAgentName}. Ahora puedes comunicarte con el.",
-                    ct
-                );
-            }
-            else
+                if (forced)
                 {
-                    // limpiar campos si rechazó
-                    conv.AssignedAgentId = null;
-                    conv.AssignedByUserId = null;
-                    conv.AssignmentState = AssignmentState.Rejected;
-                    conv.Status = ConversationStatus.Waiting;
+                    //conv.AssignedAgentId = targetAgentId;
+                    //conv.AssignedByUserId = 1;
+                    conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+                    //conv.AssignmentResponseAt = conv.AssignedAt;
+                    conv.AssignmentComment = assignmentComment;
+                    conv.AssignmentState = AssignmentState.Forced;
+                    conv.Status = ConversationStatus.Human;
 
                     _uow.Conversations.Update(conv, ct);
                     await _uow.SaveChangesAsync(ct);
+
+                    var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+                    var dto = updatedConv.Adapt<ConversationResponseDto>();
+
+                    await _messageService.SendMessageAsync(new SendMessageRequest
+                    {
+                        ConversationId = dto.ConversationId,
+                        SenderId = 1,
+                        Content = $"Se te asigno un nuevo agente: {dto.AssignedAgentName}. Ahora puedes comunicarte con el.",
+                        MessageType = MessageType.Text
+                    }, false, ct);
                 }
+                else
+                    {
+                        // limpiar campos si rechazó
+                        conv.AssignedAgentId = null;
+                        conv.AssignedByUserId = null;
+                        conv.AssignmentState = AssignmentState.Rejected;
+                        conv.Status = ConversationStatus.Waiting;
+
+                        _uow.Conversations.Update(conv, ct);
+                        await _uow.SaveChangesAsync(ct);
+                    }
+
+                var updatedConv2 = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+                var dto2 = updatedConv2.Adapt<ConversationResponseDto>();
 
                 // Notificar tanto al agente forzado como a los admins
-                await _hubContext.Clients
-                    .User(conv.AssignedAgentId.ToString())
-                    .SendAsync("AssignmentForced", new
-                    {
-                        conv.ConversationId
-                    }, ct);
-
-            await _hubNotification.Clients
-                .Group("Admins")
-                .SendAsync("AssignmentForcedAdmin", new
+                if(dto2.Status == ConversationStatus.Human.ToString())
                 {
-                    conv.ConversationId
-                }, ct);
+                    await _hubNotification.Clients
+                        .User(conv.AssignedAgentId.ToString())
+                        .SendAsync("AssignmentForced", new
+                        {
+                            conv.ConversationId,
+                            conv.AssignmentComment
+                        }, ct);
+                }
 
-            var updatedConv2 = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
-            var dto2 = updatedConv2.Adapt<ConversationResponseDto>();
+                //await _hubNotification.Clients
+                //    .Group("Admins")
+                //    .SendAsync("AssignmentForcedAdmin", new
+                //    {
+                //        conv.ConversationId
+                //    }, ct);
 
-            await _hubContext
-                   .Clients
-                   .All
-                   .SendAsync("ConversationUpdated", updatedConv2, ct);
+                await _hubContext
+                       .Clients
+                       .All
+                       .SendAsync("ConversationUpdated", updatedConv2, ct);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
         }
 
         public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -398,25 +412,46 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task CloseAsync(int conversationId, CancellationToken ct = default)
         {
-            if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
-            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
-                ?? throw new KeyNotFoundException("Conversation not found.");
+            try
+            {
+                if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
+            
+                var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
+                    ?? throw new KeyNotFoundException("Conversation not found.");
 
-            conv.Status = ConversationStatus.Closed;
-            conv.ClosedAt = await _nicDatetime.GetNicDatetime();
-            _uow.Conversations.Update(conv);
-            await _uow.SaveChangesAsync(ct);
+                conv.Status = ConversationStatus.Closed;
+                conv.ClosedAt = await _nicDatetime.GetNicDatetime();
+                _uow.Conversations.Update(conv);
+                await _uow.SaveChangesAsync(ct);
 
-            var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+                var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
 
-            var dto = updatedConv.Adapt<ConversationResponseDto>();
+                var dto = updatedConv.Adapt<ConversationResponseDto>();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+                dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
-            await _hubContext
-            .Clients
-            .All
-            .SendAsync("ConversationUpdated", dto, ct);
+                bool isAgentAssign = dto.Status == ConversationStatus.Human.ToString() ? true : false;
+
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = dto.ConversationId,
+                    SenderId= 1,
+                    Content = $"Su conversación {(isAgentAssign
+                                    ? $"con el agente: {dto.AssignedAgentName} "
+                                    : string.Empty )}finalizó. Muchas gracias por su tiempo.",
+
+                    MessageType = MessageType.Text
+                }, false, ct);
+
+                await _hubContext
+                    .Clients
+                    .All
+                    .SendAsync("ConversationUpdated", dto, ct);
+
+            }catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         public async Task<ConversationResponseDto> GetOrCreateAsync(

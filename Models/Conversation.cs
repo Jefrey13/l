@@ -78,7 +78,7 @@ namespace CustomerService.API.Models
                 : CreatedAt;
 
         [NotMapped]
-        public TimeSpan Duration
+        public TimeSpan? Duration
         {
             get
             {
@@ -88,7 +88,9 @@ namespace CustomerService.API.Models
                     ? TimeZoneInfo.ConvertTimeFromUtc(ClosedAt.Value.ToUniversalTime(), nicaraguaTimeZone)
                     : nowNic;
                 var createdNic = TimeZoneInfo.ConvertTimeFromUtc(CreatedAt.ToUniversalTime(), nicaraguaTimeZone);
-                return reference - createdNic;
+
+                var time = ClosedAt.HasValue ? ClosedAt : reference;
+                return CreatedAt - time;
             }
         }
 

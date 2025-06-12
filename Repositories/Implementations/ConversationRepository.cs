@@ -31,8 +31,8 @@ namespace CustomerService.API.Repositories.Implementations
             if (agentId <= 0) throw new ArgumentException(nameof(agentId));
 
             return await _dbSet.AsNoTracking()
-                .Where(c => c.AssignedAgentId == agentId)
-                .Where(c => c.Status == ConversationStatus.Human)
+                .Where(c => c.AssignedAgentId == agentId && c.Status != ConversationStatus.Closed &&( c.AssignmentState == AssignmentState.Forced ||
+                c.AssignmentState == AssignmentState.Accepted) )
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -57,6 +57,7 @@ namespace CustomerService.API.Repositories.Implementations
 
         public override IQueryable<Conversation> GetAll()
             => _dbSet
+            //.Where(c=> c.Status != ConversationStatus.Closed)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.Messages)

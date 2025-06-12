@@ -57,7 +57,7 @@ namespace CustomerService.API.Services.Implementations
             {
                 if (request.ConversationId <= 0)
                     throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
-
+                var localTime = await _nicDatetime.GetNicDatetime();
                 // Crear el objeto Message con la hora nicaragüense
                 var msg = new Message
                 {
@@ -66,7 +66,7 @@ namespace CustomerService.API.Services.Implementations
                     SenderContactId = isContact ? request.SenderId : null,
                     Content = request.Content,
                     MessageType = request.MessageType,
-                    SentAt = await _nicDatetime.GetNicDatetime(),  // hora nica
+                    SentAt = localTime,  // hora nica
                     Status = MessageStatus.Sent,
                     ExternalId = Guid.NewGuid().ToString(),
                     InteractiveId = request.InteractiveId,
@@ -92,13 +92,19 @@ namespace CustomerService.API.Services.Implementations
                 // Siempre actualizamos UpdatedAt con hora nica
                 conv.UpdatedAt = sentAtNic;
 
-                // Si el remitente es un agente (no es contacto), actualizar sus marcas
-                if (!isContact &&conv.AssignedByUserId != 1)
+                // Si el remitente es un agente (no es contacto) y no es el bot, actualizar sus marcas
+                if (!isContact && conv.AssignedByUserId != 1)
                 {
-                    if (conv.AgentFirstMessageAt == null)
-                        conv.AgentFirstMessageAt = sentAtNic;
+                    //Garantizar que los mensajes sea del agente que tiene asignada la conversación.
+                    //bool isAdmin = conv.AssignedAgent.UserRoles.First().Role.RoleName != "Admin";
+                    var isAdmin = conv.AssignedAgentId == request.SenderId ? true : false;
 
-                    conv.AgentLastMessageAt = sentAtNic;
+                    if ((conv.AgentFirstMessageAt == null && request.SenderId != 1 ) && !isAdmin){
+                         conv.AgentFirstMessageAt = localTime;
+                    }else if(request.SenderId != 1 && !isAdmin)
+                    {
+                        conv.AgentLastMessageAt = localTime;
+                    }
 
                     // Enviar el texto por WhatsApp
                     await _whatsAppService.SendTextAsync(
@@ -110,7 +116,7 @@ namespace CustomerService.API.Services.Implementations
                 else
                 {
                     // Si el remitente es cliente, actualizar ClientLastMessageAt
-                    conv.ClientLastMessageAt = sentAtNic;
+                    conv.ClientLastMessageAt = localTime;
                 }
 
                 _uow.Conversations.Update(conv);

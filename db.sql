@@ -351,7 +351,7 @@ VALUES
       1
     ),
     (
-      'InactivityWarningThreshold',
+      'InactivityWarningThresholdTime',
       N'2',
       N'Mensaje alerta de tiempo inactividad de la conversación',
       N'Temp',
@@ -363,6 +363,24 @@ VALUES
       'WaitWarningCloseTime',
       N'4',
       N'Mensaje alerta de cierre de conversación por inactividad',
+      N'Temp',
+      GETDATE(),
+      2,
+      1
+    ),
+	    (
+     'InactivityWarningThresholdMesssage',
+      N'⚠️ Ha transcurrido un periodo de inactividad. Para continuar la conversación, escriba un mensaje.',
+      N'Mensaje de saludo del bot',
+      N'Temp',
+      GETDATE(),
+      2,
+      1
+    ),
+    (
+      'WaitWarningCloseMesssage',
+      N'⌛ El tiempo de espera ha concluido y la conversación se ha cerrado. Gracias por contactarnos.',
+      N'Mensaje solicitud nombre completo',
       N'Temp',
       GETDATE(),
       2,

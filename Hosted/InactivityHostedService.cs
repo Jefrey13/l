@@ -10,6 +10,7 @@ using CustomerService.API.Models;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils.Enums;
 using CustomerService.API.WhContext;
+using Humanizer;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -77,15 +78,12 @@ namespace CustomerService.API.Hosted
 
                     // 5) Obtener el service para enviar mensajes
                     var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
-
                     var sysmParamService = scope.ServiceProvider.GetRequiredService<ISystemParamService>();
+                    
                     var systemParams = await sysmParamService.GetAllAsync();
 
                     var _warningThreshold = systemParams
-                        .FirstOrDefault(p => p.Name == "InactivityWarningThreshold")?.Value is string warningThresholdStr &&
-                        TimeSpan.TryParse(warningThresholdStr, out var parsedWarningThreshold)
-                        ? parsedWarningThreshold
-                        : TimeSpan.FromMinutes(1);
+                        .FirstOrDefault(p => p.Name == "InactivityWarningThresholdTime");
 
 
                     // 6) Cargar las conversaciones pendientes (estado Bot, no cerradas y no archivadas),
@@ -96,21 +94,26 @@ namespace CustomerService.API.Hosted
                         .Include(c => c.Messages)  // si necesitas historial; si no, puedes omitirlo
                         .ToListAsync(stoppingToken);
 
+                    var data = 1;
                     // 7) Iterar sobre cada conversación pendiente
                     foreach (var conv in pendientes)
                     {
                         // A) Última vez que habló el cliente (o bien, fecha de creación si Cliente nunca habló)
                         DateTime lastClientDt = conv.ClientLastMessageAt ?? conv.CreatedAt;
 
+                        int diff = 0;
+                        if (lastClientDt.Minute > ahoraNic.Minute) diff = lastClientDt.Minute - ahoraNic.Minute;
+                        else diff = ahoraNic.Minute - lastClientDt.Minute;
+
                         // B) Calculamos la diferencia entre la hora de Nicaragua y el último mensaje del cliente
-                        var diff = ahoraNic - lastClientDt;
+                        int minuteParams = int.Parse(_warningThreshold.Value);
 
                         // === 1) Enviar advertencia a los 2 minutos si aún no se envió ===
-                        if (diff >= _warningThreshold && conv.WarningSentAt == null)
+                        if (diff >= minuteParams && conv.WarningSentAt == null)
                         {
                             //string warningText = _prompts.InactivityWarning;
                             string warningText = systemParams
-                                .FirstOrDefault(p => p.Name == "InactivityWarning")?.Value ??
+                                .FirstOrDefault(p => p.Name == "InactivityWarningThresholdMesssage")?.Value ??
                                 "Advertencia: No hemos recibido mensajes recientes. Responderemos pronto.";
 
                             // Llamada posicional: (SendMessageRequest, bool isFromBot, CancellationToken)
@@ -142,14 +145,18 @@ namespace CustomerService.API.Hosted
                             continue;
                         }
 
-                        var _closeThreshold = systemParams
-                            .FirstOrDefault(p => p.Name == "InactivityCloseThreshold")?.Value is string closeThresholdStr &&
-                            TimeSpan.TryParse(closeThresholdStr, out var parsedCloseThreshold)
-                            ? parsedCloseThreshold
-                            : TimeSpan.FromMinutes(4); // Valor por defecto si no se encuentra o no es válido
+                        //var _closeThreshold = systemParams
+                        //    .FirstOrDefault(p => p.Name == "InactivityCloseThreshold")?.Value is string closeThresholdStr &&
+                        //    TimeSpan.TryParse(closeThresholdStr, out var parsedCloseThreshold)
+                        //    ? parsedCloseThreshold
+                        //    : TimeSpan.FromMinutes(4); // Valor por defecto si no se encuentra o no es válido
 
+                        var _closeThreshold = systemParams
+                            .FirstOrDefault(p => p.Name == "WaitWarningCloseTime");
+
+                        var closedMinutes = int.Parse(_closeThreshold.Value);
                         // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
-                        if (diff >= _closeThreshold && conv.WarningSentAt != null)
+                        if (diff >= closedMinutes && conv.WarningSentAt != null)
                         {
                             // Cambiar estado a Closed y registrar fecha de cierre
                             conv.Status = ConversationStatus.Closed;
@@ -160,7 +167,7 @@ namespace CustomerService.API.Hosted
 
                             //string closeText = _prompts.InactivityClosed;
                             string closeText = systemParams
-                                .FirstOrDefault(p => p.Name == "InactivityClosed")?.Value ??
+                                .FirstOrDefault(p => p.Name == "WaitWarningCloseMesssage")?.Value ??
                                 "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
 
                             await messageService.SendMessageAsync(new SendMessageRequest

@@ -57,7 +57,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.AssignedAgentId, s => s.AssignedAgentId)
                 .Map(d => d.AssignedByUserId, s => s.AssignedByUserId)
                 .Map(d => d.AssignedAgentName, s => s.AssignedAgent != null ? s.AssignedAgent.FullName : null)
-                .Map(d => d.ClientContactName, s => s.ClientContact != null ? s.ClientContact.WaName : null)
+                .Map(d => d.ClientContactName, s => s.ClientContact.FullName == null ? s.ClientContact.WaName : s.ClientContact.FullName)
                 .Map(d => d.AssignedByUserName, s => s.AssignedByUser != null ? s.AssignedByUser.FullName : null)
                 .Map(d => d.ContactNumber, s => s.ClientContact != null ? s.ClientContact.Phone : null)
                 .Map(d => d.Status, s => s.Status.ToString())

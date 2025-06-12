@@ -501,7 +501,6 @@ namespace CustomerService.API.Pipelines.Implementations
                 var selected = buttons.FirstOrDefault(b => b.Id == payload.InteractiveId);
                 var title = selected?.Title ?? payload.InteractiveId;
 
-
                 //la opcion seleccionada por el cliente, por eso el true
                 await _messageService.SendMessageAsync(new SendMessageRequest
                 {
@@ -568,7 +567,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         return;
 
                     case "2":
-                        if (convDto.Status != ConversationStatus.Waiting.ToString())
+                        if (convDto.Status == ConversationStatus.Bot.ToString())
                         {
 
                             var nowNic = await _nicDatetime.GetNicDatetime();
@@ -600,11 +599,11 @@ namespace CustomerService.API.Pipelines.Implementations
                                 .Select(u => u.UserId)
                                 .ToArray();
 
-                             await _notification.CreateAsync(
-                                NotificationType.SupportRequested,
-                                $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
-                                agents,
-                                ct);
+                             //await _notification.CreateAsync(
+                             //   NotificationType.SupportRequested,
+                             //   $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
+                             //   agents,
+                             //   ct);
 
                             var payloadHub = new
                             {
@@ -612,6 +611,7 @@ namespace CustomerService.API.Pipelines.Implementations
                                 ClientName = contactDto.WaName,
                                 RequestedAt = nowNic
                             };
+
                             await _hubNotification
                                  .Clients
                                  .Group("Admins")             // coincide con tu OnConnectedAsync
