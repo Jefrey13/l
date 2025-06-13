@@ -315,6 +315,7 @@ app.MapHealthChecksUI();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationsHub>("/hubs/notifications");
 app.MapHub<PresenceHub>("/hubs/presence");
+app.MapHub<UserHub>("/hubs/users");
 
 app.MapControllers();
 

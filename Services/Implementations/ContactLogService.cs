@@ -1,18 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
+﻿using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -21,15 +24,18 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly INicDatetime _nicDatetime;
         private readonly INotificationService _notification;
+        private readonly IHubContext<NotificationsHub> _hubNotification;
 
         public ContactLogService(
             IUnitOfWork uow,
             INicDatetime nicDatetime,
-            INotificationService notification)
+            INotificationService notification,
+            IHubContext<NotificationsHub> hubNotification)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
             _notification = notification ?? throw new ArgumentNullException(nameof(notification));
+            _hubNotification = hubNotification ?? throw new ArgumentException(nameof(_hubNotification));
         }
 
         public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
@@ -128,6 +134,8 @@ namespace CustomerService.API.Services.Implementations
         string userId,
         CancellationToken cancellation = default)
             {
+            try
+            {
                 if (string.IsNullOrWhiteSpace(phone))
                     throw new ArgumentNullException(nameof(phone));
 
@@ -184,7 +192,17 @@ namespace CustomerService.API.Services.Implementations
                 await _uow.ContactLogs.AddAsync(contact, cancellation);
                 await _uow.SaveChangesAsync(cancellation);
 
-                return contact.Adapt<ContactLogResponseDto>();
+
+                var updatedContact = await _uow.ContactLogs.GetByPhone(phone);
+
+                var dto =updatedContact.Adapt<ContactLogResponseDto>();
+
+                return dto;
+            }catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                return new ContactLogResponseDto();
+            }
             }
 
         public async Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)

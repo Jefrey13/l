@@ -15,6 +15,9 @@ namespace CustomerService.API.Models
         public ContactStatus Status { get; set; } = ContactStatus.New;
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+
+        //Flag para verificar si los datos proporcionados por el usuario ha sido validado por el usuario.
+        public bool IsVerified { get; set; }
         public byte[] RowVersion { get; set; } = null!;
         public virtual Company? Company { get; set; }
         public virtual ICollection<Conversation> ConversationClient { get; set; } = new List<Conversation>();

@@ -121,6 +121,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.FullName, s => s.FullName)
                 .Map(d => d.IdCard, s => s.IdCard)
                 .Map(d => d.CompanyId, s => s.CompanyId)
+                .Map(d=> d.IsVerified, s=> s.IsVerified)
                 .Map(d => d.Status, s => s.Status) 
                 .Map(d => d.CreatedAt, s => s.CreatedAt)
                 .Map(d => d.UpdatedAt, s => s.UpdatedAt)

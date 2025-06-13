@@ -14,9 +14,11 @@ namespace CustomerService.API.Repositories.Implementations
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 throw new ArgumentException("El phoneNumber no puede ser vacío.", nameof(phoneNumber));
 
-            return await _dbSet
+            var contactLog = await _dbSet
                 .AsNoTracking()
                 .SingleOrDefaultAsync(cl => cl.Phone == phoneNumber, cancellation);
+
+            return contactLog;
         }
     }
 }
