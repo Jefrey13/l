@@ -18,5 +18,13 @@ namespace CustomerService.API.Repositories.Implementations
                 .AsNoTracking()
                 .SingleOrDefaultAsync(u => u.Email == email, cancellation);
         }
+
+        public Task ClearLastOnlineAsync(int userId, CancellationToken cancellation = default)
+        {
+            return _context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE [auth].[Users] SET [LastOnline] = NULL WHERE [UserId] = {userId}",
+                cancellation
+            );
+        }
     }
 }

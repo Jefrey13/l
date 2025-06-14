@@ -101,6 +101,7 @@ namespace CustomerService.API.Services.Implementations
 
                     if ((conv.AgentFirstMessageAt == null && request.SenderId != 1 ) && !isAdmin){
                          conv.AgentFirstMessageAt = localTime;
+
                     }else if(request.SenderId != 1 && !isAdmin)
                     {
                         conv.AgentLastMessageAt = localTime;
@@ -129,6 +130,14 @@ namespace CustomerService.API.Services.Implementations
                 await _hub.Clients
                    .Group(reloaded.ConversationId.ToString())
                    .SendAsync("ReceiveMessage", dto, ct);
+
+                await _hub.Clients
+                                .Group("Admin")
+                                .SendAsync("ConversationUpdated", dto, ct);
+
+                await _hub.Clients
+                   .User(dto.SenderUserId.ToString())
+                   .SendAsync("ConversationUpdated", dto, ct);
 
                 return dto;
             }

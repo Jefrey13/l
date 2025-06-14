@@ -25,6 +25,11 @@ namespace CustomerService.API.Services.Implementations
             _nicDatetime = nicDatetime;
         }
 
+        public Task<bool> IsUserConnectedAsync(int userId, CancellationToken cancellation = default)
+        {
+            // Si la clave existe, la conexión SignalR sigue activa
+            return Task.FromResult(_lastOnline.ContainsKey(userId));
+        }
         public async Task UserConnectedAsync(int userId, CancellationToken cancellation = default)
         {
             var now = await _nicDatetime.GetNicDatetime();
@@ -41,16 +46,16 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task UserDisconnectedAsync(int userId, CancellationToken cancellation = default)
         {
-            _lastOnline.TryRemove(userId, out _);
+            try
+            {
+                _lastOnline.TryRemove(userId, out _);
 
-            var now = await _nicDatetime.GetNicDatetime();
-
-            var user = await _uow.Users.GetByIdAsync(userId, cancellation)
-                       ?? throw new KeyNotFoundException($"User {userId} not found");
-
-            user.LastOnline = now;
-            _uow.Users.Update(user);
-            await _uow.SaveChangesAsync(cancellation);
+                await _uow.Users.ClearLastOnlineAsync(userId, cancellation);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         public async Task<DateTime?> GetLastOnlineAsync(int userId, CancellationToken cancellation = default)

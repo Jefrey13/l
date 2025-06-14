@@ -42,5 +42,11 @@ namespace CustomerService.API.Services.Implementations
                 );
             return Task.FromResult<IDictionary<int, DateTime?>>(result);
         }
+
+        public Task<bool> IsUserConnectedAsync(int userId, CancellationToken cancellation = default)
+        {
+            // Si la clave existe, la conexión SignalR sigue activa
+            return Task.FromResult(_lastOnline.ContainsKey(userId));
+        }
     }
 }

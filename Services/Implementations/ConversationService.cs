@@ -292,12 +292,12 @@ namespace CustomerService.API.Services.Implementations
                 {
                     await _hubContext.Clients
                                 .Group("Admin")
-                                .SendAsync("ConversationUpdated", updatedConv, ct);
+                                .SendAsync("ConversationUpdated", dto, ct);
 
-                    await _hubContext
-                         .Clients
-                         .All
-                         .SendAsync("ConversationUpdated", updatedConv, ct);
+                    await _hubContext.Clients
+                       .User(dto.AssignedAgentId.ToString())
+                       .SendAsync("ConversationUpdated", dto, ct);
+
                 }
                 // Notificar al admin
                 await _hubNotification.Clients
@@ -382,10 +382,13 @@ namespace CustomerService.API.Services.Implementations
                 //        conv.ConversationId
                 //    }, ct);
 
-                await _hubContext
-                       .Clients
-                       .All
-                       .SendAsync("ConversationUpdated", updatedConv2, ct);
+                await _hubContext.Clients
+                                .Group("Admin")
+                                .SendAsync("ConversationUpdated", dto2, ct);
+
+                await _hubContext.Clients
+               .User(dto2.AssignedAgentId.ToString())
+               .SendAsync("ConversationUpdated", dto2, ct);
             }
                 catch (Exception ex)
                 {
@@ -443,12 +446,24 @@ namespace CustomerService.API.Services.Implementations
                     MessageType = MessageType.Text
                 }, false, ct);
 
-                await _hubContext
-                    .Clients
-                    .All
-                    .SendAsync("ConversationUpdated", dto, ct);
+                //await _hubContext
+                //    .Clients
+                //    .All
+                //    .SendAsync("ConversationUpdated", dto, ct);
 
-            }catch(Exception ex)
+                await _hubContext.Clients
+                                .Group("Admin")
+                                .SendAsync("ConversationUpdated", dto, ct);
+
+                if(dto.AssignedAgentId != null)
+                {
+                    await _hubContext.Clients
+                   .User(dto.AssignedAgentId.ToString())
+                   .SendAsync("ConversationUpdated", dto, ct);
+                }
+
+            }
+            catch(Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
@@ -540,7 +555,10 @@ namespace CustomerService.API.Services.Implementations
             if (request.IsArchived.HasValue)
                 conv.IsArchived = request.IsArchived.Value;
 
-            if (request.Tags != null)
+                if (request.RequestedAgentAt.HasValue)
+                    conv.RequestedAgentAt = request.RequestedAgentAt.Value;
+
+                if (request.Tags != null)
                 conv.Tags = request.Tags;
 
             var localTime = await _nicDatetime.GetNicDatetime();
@@ -558,10 +576,20 @@ namespace CustomerService.API.Services.Implementations
                 dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
 
-                await _hubContext
+                if(dto.Status == ConversationStatus.Waiting.ToString())
+                {
+                    await _hubContext
+                     .Clients
+                     .Group("Admin")
+                     .SendAsync("ConversationUpdated", dto, ct);
+                }
+                else
+                {
+                    await _hubContext
                      .Clients
                      .All
                      .SendAsync("ConversationUpdated", dto, ct);
+                }
             }
             catch (Exception ex)
             {

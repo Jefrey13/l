@@ -101,10 +101,8 @@ namespace CustomerService.API.Controllers
         {
             var last = await _presence.GetLastOnlineAsync(id);
 
-            var nowManagua = await _nicDatetime.GetNicDatetime();
-
-            var isOnline = last.HasValue
-                && (nowManagua - last.Value).TotalMinutes < 1;
+            // 2) Decidimos “online” si existe un LastOnline
+            var isOnline = last.HasValue;
 
             var dto = new PresenceResponseDto
             {

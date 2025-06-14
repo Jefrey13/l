@@ -14,5 +14,6 @@ namespace CustomerService.API.Services.Interfaces
         // Consultas de última conexión
         Task<DateTime?> GetLastOnlineAsync(int userId, CancellationToken cancellation = default);
         Task<IDictionary<int, DateTime?>> GetLastOnlineAsync(IEnumerable<int> userIds, CancellationToken cancellation = default);
+        Task<bool> IsUserConnectedAsync(int userId, CancellationToken cancellation = default);
     }
 }
