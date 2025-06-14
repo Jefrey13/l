@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 using System;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CustomerService.API.Dtos.RequestDtos
 {
@@ -23,6 +24,9 @@ namespace CustomerService.API.Dtos.RequestDtos
         public string? Phone { get; set; }
 
         public string? Identifier { get; set; }
+
+        [FromForm(Name = "imageFile")]
+        public IFormFile? ImageFile { get; set; }
 
         public string? ImageUrl { get; set; }
 

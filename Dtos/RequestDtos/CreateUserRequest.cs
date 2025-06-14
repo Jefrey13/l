@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace CustomerService.API.Dtos.RequestDtos
 {
@@ -20,6 +21,9 @@ namespace CustomerService.API.Dtos.RequestDtos
         public string? Identifier { get; set; }
 
         public List<int> RoleIds { get; set; } = new() { 1 };
+
+        [FromForm(Name = "imageFile")]
+        public IFormFile? ImageFile { get; set; }
 
         public string? ImageUrl { get; set; }
     }
