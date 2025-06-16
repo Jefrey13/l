@@ -9,6 +9,7 @@
         Bot,
         Waiting,
         Human,
-        Closed
+        Closed,
+        Incomplete,
     }
 }

@@ -34,6 +34,8 @@ using CustomerService.API.Hubs;
 using System.Text.Json.Serialization;
 using CustomerService.API.WhContext;
 using CustomerService.API.Hosted;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using CustomerService.API.Interceptor;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +121,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // --------------------- Application Services ---------------------
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddSingleton<SaveChangesInterceptor, ConversationStatusChangeInterceptor>();
+
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -264,6 +268,7 @@ builder.Services.AddControllers()
     );
 
 
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

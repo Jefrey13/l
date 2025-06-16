@@ -73,6 +73,7 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(u => u.Messages)
                     .ThenInclude(a=> a.Attachments)
                     .FirstOrDefaultAsync(ct);
+
             return conversation ?? throw new KeyNotFoundException($"Conversation with ID {id} not found.");
         }
     }

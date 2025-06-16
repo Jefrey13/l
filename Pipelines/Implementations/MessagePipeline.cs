@@ -608,7 +608,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             var payloadHub = new
                             {
                                 ConversationId = convDto.ConversationId,
-                                ClientName = contactDto.WaName,
+                                ClientName = contactDto.FullName != null ? contactDto.FullName : contactDto.WaName,
                                 RequestedAt = nowNic
                             };
 

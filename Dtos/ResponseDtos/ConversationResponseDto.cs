@@ -16,6 +16,7 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? AssignedAgentName { get; set; }
         public int? AssignedByUserId { get; set; }
         public string? AssignedByUserName { get; set; }
+        public string? Justification { get; set; }
         public string Status { get; set; } = null!;
         public bool Initialized { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

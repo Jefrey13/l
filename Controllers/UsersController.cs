@@ -67,28 +67,24 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(
             [FromForm] CreateUserRequest req,
-            IFormFile? imageFile,
             CancellationToken ct = default)
         {
-            // 1) Guardar el archivo si viene
-            if (imageFile != null && imageFile.Length > 0)
+            if (req.ImageFile != null && req.ImageFile.Length > 0)
             {
-                var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(imageFile.FileName)}";
+                var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(req.ImageFile.FileName)}";
                 var mediaPath = Path.Combine(_env.WebRootPath, "media");
                 Directory.CreateDirectory(mediaPath);
                 var filePath = Path.Combine(mediaPath, fileName);
 
                 await using var stream = new FileStream(filePath, FileMode.Create);
-                await imageFile.CopyToAsync(stream, ct);
+                await req.ImageFile.CopyToAsync(stream, ct);
 
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
                 req.ImageUrl = $"{baseUrl}/media/{fileName}";
             }
 
-            // 2) Llamar al servicio
             var dto = await _users.CreateAsync(req, ct);
 
-            // 3) Devolver 201 con Location
             return CreatedAtRoute(
                 "GetUserById",
                 new { id = dto.UserId },
@@ -104,7 +100,6 @@ namespace CustomerService.API.Controllers
         public async Task<IActionResult> Update(
             [FromRoute] int id,
             [FromForm] UpdateUserRequest req,
-            IFormFile? imageFile,
             CancellationToken ct = default)
         {
             if (id <= 0)
@@ -112,15 +107,15 @@ namespace CustomerService.API.Controllers
 
             req.UserId = id;
 
-            if (imageFile != null && imageFile.Length > 0)
+            if (req.ImageFile != null && req.ImageFile.Length > 0)
             {
-                var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(imageFile.FileName)}";
+                var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(req.ImageFile.FileName)}";
                 var mediaPath = Path.Combine(_env.WebRootPath, "media");
                 Directory.CreateDirectory(mediaPath);
                 var filePath = Path.Combine(mediaPath, fileName);
 
                 await using var stream = new FileStream(filePath, FileMode.Create);
-                await imageFile.CopyToAsync(stream, ct);
+                await req.ImageFile.CopyToAsync(stream, ct);
 
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
                 req.ImageUrl = $"{baseUrl}/media/{fileName}";
@@ -159,8 +154,7 @@ namespace CustomerService.API.Controllers
         [HttpGet("{id}/status", Name = "GetStatus")]
         [SwaggerOperation(Summary = "Estado de conexión del usuario")]
         [ProducesResponseType(typeof(ApiResponse<PresenceResponseDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetStatus(
-            [FromRoute] int id)
+        public async Task<IActionResult> GetStatus([FromRoute] int id)
         {
             var last = await _presence.GetLastOnlineAsync(id);
             var isOnline = last.HasValue;

@@ -32,6 +32,7 @@ namespace CustomerService.API.Models
         public virtual ICollection<NotificationRecipient> NotificationRecipients { get; set; }
             = new List<NotificationRecipient>();
 
+        public virtual ICollection<ConversationHistoryLog> ConversationHistoryLogs { get; set; } = new List<ConversationHistoryLog>();
         [NotMapped]
         public string ClientType { get; set; } = "Nuevo";
 

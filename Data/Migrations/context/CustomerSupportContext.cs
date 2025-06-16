@@ -1,16 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using CustomerService.API.Models;
+﻿using CustomerService.API.Models;
 using CustomerService.API.Utils.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using System;
+using System.Collections.Generic;
 
 namespace CustomerService.API.Data.Context;
 
 public partial class CustomerSupportContext : DbContext
 {
-    public CustomerSupportContext(DbContextOptions<CustomerSupportContext> options)
+    private readonly IEnumerable<SaveChangesInterceptor> _interceptors;
+    public CustomerSupportContext(DbContextOptions<CustomerSupportContext> options,
+        IEnumerable<SaveChangesInterceptor> interceptors)
         : base(options)
     {
+        _interceptors = interceptors;
     }
 
     public virtual DbSet<AppRole> AppRoles { get; set; }
@@ -37,6 +41,22 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
     public virtual DbSet<SystemParam> SystemParams { get; set; }
+    public virtual DbSet<ConversationHistoryLog> ConversationHistoryLogs { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+
+        if (_interceptors != null)
+        {
+            foreach (var interceptor in _interceptors)
+            {
+                optionsBuilder.AddInterceptors(interceptor);
+            }
+        }
+    }
+
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppRole>(entity =>
@@ -461,7 +481,6 @@ public partial class CustomerSupportContext : DbContext
                   .HasDefaultValueSql("SYSUTCDATETIME()");
         });
 
-
         modelBuilder.Entity<NotificationRecipient>(entity => {
             entity.ToTable("NotificationRecipients", "chat");
             entity.HasKey(nr => nr.NotificationRecipientId);
@@ -515,6 +534,32 @@ public partial class CustomerSupportContext : DbContext
                 .IsRowVersion()
                 .IsConcurrencyToken();
         });
+
+        modelBuilder.Entity<ConversationHistoryLog>(entity =>
+        {
+            entity.ToTable("ConversationHistoryLog", "chat");
+
+            entity.HasKey(chl => chl.Id);
+
+            entity.HasOne(chl => chl.Conversation)
+                  .WithMany(c => c.ConversationHistoryLogs)
+                  .HasForeignKey(chl => chl.ConversationId);
+
+           entity.HasOne(chl => chl.ChangedByUser)
+                    .WithMany(u => u.ConversationHistoryLogs)
+                    .HasForeignKey(chl => chl.ChangedByUserId);
+
+
+            entity.Property(chl => chl.ChangedAt)
+                  .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.Property(chl => chl.SourceIp)
+                  .HasMaxLength(45);
+
+            entity.Property(chl => chl.UserAgent)
+                  .HasMaxLength(200);
+        });
+
         OnModelCreatingPartial(modelBuilder);
     }
 

@@ -278,7 +278,6 @@ namespace CustomerService.API.Services.Implementations
                     _uow.Conversations.Update(conv, ct);
                     await _uow.SaveChangesAsync(ct);
 
-
                 var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
                 var dto = updatedConv.Adapt<ConversationResponseDto>();
 
@@ -299,16 +298,20 @@ namespace CustomerService.API.Services.Implementations
                        .SendAsync("ConversationUpdated", dto, ct);
 
                 }
+
                 // Notificar al admin
                 await _hubNotification.Clients
                      .Group("Admins")
                      .SendAsync("AssignmentResponse", new
                      {
-                         conv.ConversationId,
+                         dto.ConversationId,
+                         dto.AssignedAgentName,
                          accepted,
                          comment,
-                         conv.Justification,
+                         dto.Justification,
                      }, ct);
+
+                Console.WriteLine("Datos del support es: ", dto);
             }
             catch (Exception ex)
             {

@@ -90,7 +90,7 @@ namespace CustomerService.API.Hosted
                     //    **sin** AsNoTracking para que EF las rastree.
                     var pendientes = await dbContext.Conversations
                         .Where(c =>
-                            c.Status == ConversationStatus.Bot)
+                            c.Status == ConversationStatus.Bot || c.Status == ConversationStatus.Waiting)
                         .Include(c => c.Messages)  // si necesitas historial; si no, puedes omitirlo
                         .ToListAsync(stoppingToken);
 
@@ -98,95 +98,122 @@ namespace CustomerService.API.Hosted
                     // 7) Iterar sobre cada conversación pendiente
                     foreach (var conv in pendientes)
                     {
-                        // A) Última vez que habló el cliente (o bien, fecha de creación si Cliente nunca habló)
-                        DateTime lastClientDt = conv.ClientLastMessageAt ?? conv.CreatedAt;
-
-                        int diff = 0;
-                        if (lastClientDt.Minute > ahoraNic.Minute) diff = lastClientDt.Minute - ahoraNic.Minute;
-                        else diff = ahoraNic.Minute - lastClientDt.Minute;
-
-                        // B) Calculamos la diferencia entre la hora de Nicaragua y el último mensaje del cliente
-                        int minuteParams = int.Parse(_warningThreshold.Value);
-
-                        // === 1) Enviar advertencia a los 2 minutos si aún no se envió ===
-                        if (diff >= minuteParams && conv.WarningSentAt == null)
+                      if(conv.Status == ConversationStatus.Bot)
                         {
-                            //string warningText = _prompts.InactivityWarning;
-                            string warningText = systemParams
-                                .FirstOrDefault(p => p.Name == "InactivityWarningThresholdMesssage")?.Value ??
-                                "Advertencia: No hemos recibido mensajes recientes. Responderemos pronto.";
+                            // A) Última vez que habló el cliente (o bien, fecha de creación si Cliente nunca habló)
+                            DateTime lastClientDt = conv.ClientLastMessageAt ?? conv.CreatedAt;
 
-                            // Llamada posicional: (SendMessageRequest, bool isFromBot, CancellationToken)
-                            await messageService.SendMessageAsync(new SendMessageRequest
+                            int diff = 0;
+                            if (lastClientDt.Minute > ahoraNic.Minute) diff = lastClientDt.Minute - ahoraNic.Minute;
+                            else diff = ahoraNic.Minute - lastClientDt.Minute;
+
+                            // B) Calculamos la diferencia entre la hora de Nicaragua y el último mensaje del cliente
+                            int minuteParams = int.Parse(_warningThreshold.Value);
+
+                            // === 1) Enviar advertencia a los 2 minutos si aún no se envió ===
+                            if (diff >= minuteParams && conv.WarningSentAt == null)
                             {
-                                ConversationId = conv.ConversationId,
-                                SenderId = 1, // BotUserId (se infiere de tu configuración)
-                                Content = warningText,
-                                MessageType = MessageType.Text
-                            },
-                            /* isFromBot: */ false,
-                            /* cancellationToken: */ stoppingToken);
+                                //string warningText = _prompts.InactivityWarning;
+                                string warningText = systemParams
+                                    .FirstOrDefault(p => p.Name == "InactivityWarningThresholdMesssage")?.Value ??
+                                    "Advertencia: No hemos recibido mensajes recientes. Responderemos pronto.";
 
-                            // Marcar en la entidad rastreada el campo WarningSentAt
-                            conv.WarningSentAt = ahoraNic;
+                                // Llamada posicional: (SendMessageRequest, bool isFromBot, CancellationToken)
+                                await messageService.SendMessageAsync(new SendMessageRequest
+                                {
+                                    ConversationId = conv.ConversationId,
+                                    SenderId = 1, // BotUserId (se infiere de tu configuración)
+                                    Content = warningText,
+                                    MessageType = MessageType.Text
+                                },
+                                /* isFromBot: */ false,
+                                /* cancellationToken: */ stoppingToken);
 
-                            // **IMPORTANTE**: al estar en modo tracking, basta con SaveChangesAsync
-                            await dbContext.SaveChangesAsync(stoppingToken);
+                                // Marcar en la entidad rastreada el campo WarningSentAt
+                                conv.WarningSentAt = ahoraNic;
 
-                            // Mapear a DTO para notificar por SignalR
-                            var convDto = conv.Adapt<ConversationResponseDto>();
+                                // **IMPORTANTE**: al estar en modo tracking, basta con SaveChangesAsync
+                                await dbContext.SaveChangesAsync(stoppingToken);
 
-                            // Notificar a administradores que hubo un cambio
-                            await _hubContext.Clients
-                                .Group("Admin")
-                                .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                                // Mapear a DTO para notificar por SignalR
+                                var convDto = conv.Adapt<ConversationResponseDto>();
 
-                            // Pasamos a la siguiente conversación sin intentar cerrar esta en el mismo ciclo
-                            continue;
+                                // Notificar a administradores que hubo un cambio
+                                await _hubContext.Clients
+                                    .Group("Admin")
+                                    .SendAsync("ConversationUpdated", convDto, stoppingToken);
+
+                                // Pasamos a la siguiente conversación sin intentar cerrar esta en el mismo ciclo
+                                continue;
+                            }
+
+                            //var _closeThreshold = systemParams
+                            //    .FirstOrDefault(p => p.Name == "InactivityCloseThreshold")?.Value is string closeThresholdStr &&
+                            //    TimeSpan.TryParse(closeThresholdStr, out var parsedCloseThreshold)
+                            //    ? parsedCloseThreshold
+                            //    : TimeSpan.FromMinutes(4); // Valor por defecto si no se encuentra o no es válido
+
+                            var _closeThreshold = systemParams
+                                .FirstOrDefault(p => p.Name == "WaitWarningCloseTime");
+
+                            var closedMinutes = int.Parse(_closeThreshold.Value);
+                            // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
+                            if (diff >= closedMinutes && conv.WarningSentAt != null)
+                            {
+                                // Cambiar estado a Closed y registrar fecha de cierre
+                                conv.Status = ConversationStatus.Closed;
+                                conv.ClosedAt = ahoraNic;
+
+                                // Guardar cambios de estado y ClosedAt
+                                await dbContext.SaveChangesAsync(stoppingToken);
+
+                                //string closeText = _prompts.InactivityClosed;
+                                string closeText = systemParams
+                                    .FirstOrDefault(p => p.Name == "WaitWarningCloseMesssage")?.Value ??
+                                    "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
+
+                                await messageService.SendMessageAsync(new SendMessageRequest
+                                {
+                                    ConversationId = conv.ConversationId,
+                                    SenderId = 1,
+                                    Content = closeText,
+                                    MessageType = MessageType.Text
+                                },
+                                /* isFromBot: */ false,
+                                /* cancellationToken: */ stoppingToken);
+
+                                var convDto = conv.Adapt<ConversationResponseDto>();
+
+                                await _hubContext.Clients
+                                    .Group("Admin")
+                                    .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                            }
+                            
+                            
                         }
 
-                        //var _closeThreshold = systemParams
-                        //    .FirstOrDefault(p => p.Name == "InactivityCloseThreshold")?.Value is string closeThresholdStr &&
-                        //    TimeSpan.TryParse(closeThresholdStr, out var parsedCloseThreshold)
-                        //    ? parsedCloseThreshold
-                        //    : TimeSpan.FromMinutes(4); // Valor por defecto si no se encuentra o no es válido
-
-                        var _closeThreshold = systemParams
-                            .FirstOrDefault(p => p.Name == "WaitWarningCloseTime");
-
-                        var closedMinutes = int.Parse(_closeThreshold.Value);
-                        // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
-                        if (diff >= closedMinutes && conv.WarningSentAt != null)
+                        if (conv.Status == ConversationStatus.Waiting)
                         {
-                            // Cambiar estado a Closed y registrar fecha de cierre
-                            conv.Status = ConversationStatus.Closed;
-                            conv.ClosedAt = ahoraNic;
-
-                            // Guardar cambios de estado y ClosedAt
-                            await dbContext.SaveChangesAsync(stoppingToken);
-
-                            //string closeText = _prompts.InactivityClosed;
-                            string closeText = systemParams
-                                .FirstOrDefault(p => p.Name == "WaitWarningCloseMesssage")?.Value ??
-                                "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
-
-                            await messageService.SendMessageAsync(new SendMessageRequest
+                            var RequestUnderReviewMessage = await sysmParamService.GetByNameAsync("RequestUnderReviewMessage");
+                            var RequestUnderReviewTime = await sysmParamService.GetByNameAsync("RequestUnderReviewTime");
+                            if (((ahoraNic - conv.RequestedAgentAt.Value).TotalMinutes > int.Parse(RequestUnderReviewTime.Value)))
                             {
-                                ConversationId = conv.ConversationId,
-                                SenderId = 1,
-                                Content = closeText,
-                                MessageType = MessageType.Text
-                            },
+                                await messageService.SendMessageAsync(new SendMessageRequest
+                                {
+                                    ConversationId = conv.ConversationId,
+                                    SenderId = 1, // BotUserId (se infiere de tu configuración)
+                                    Content = RequestUnderReviewMessage?.Value ?? "⏳ Su solicitud está en proceso. Un agente le atenderá en breve, por favor espere un momento.",
+
+                                    MessageType = MessageType.Text
+                                },
                             /* isFromBot: */ false,
                             /* cancellationToken: */ stoppingToken);
-
-                            var convDto = conv.Adapt<ConversationResponseDto>();
-
-                            await _hubContext.Clients
-                                .Group("Admin")
-                                .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                            }
                         }
                     }
+
+                    //Notificar al cliente que su solicitud esta ciendo procesada.
+                    
                 }
                 catch (OperationCanceledException)
                 {

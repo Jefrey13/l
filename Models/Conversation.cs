@@ -65,6 +65,9 @@ namespace CustomerService.API.Models
 
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
+        public virtual ICollection<ConversationHistoryLog> ConversationHistoryLogs { get; set; } = new List<ConversationHistoryLog>();
+
+
         [Column(TypeName = "nvarchar(max)")]
         public List<string> Tags { get; set; } = new List<string>();
 

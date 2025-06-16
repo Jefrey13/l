@@ -379,6 +379,48 @@ namespace CustomerService.API.Migrations
                     b.ToTable("Conversations", "chat");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.ConversationHistoryLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ChangedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<int>("ChangedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OldStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedByUserId");
+
+                    b.HasIndex("ConversationId");
+
+                    b.ToTable("ConversationHistoryLog", "chat");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.Menu", b =>
                 {
                     b.Property<int>("MenuId")
@@ -831,6 +873,25 @@ namespace CustomerService.API.Migrations
                     b.Navigation("ClientContact");
                 });
 
+            modelBuilder.Entity("CustomerService.API.Models.ConversationHistoryLog", b =>
+                {
+                    b.HasOne("CustomerService.API.Models.User", "ChangedByUser")
+                        .WithMany("ConversationHistoryLogs")
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
+                        .WithMany("ConversationHistoryLogs")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChangedByUser");
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("CustomerService.API.Models.Message", b =>
                 {
                     b.HasOne("CustomerService.API.Models.Conversation", "Conversation")
@@ -950,6 +1011,8 @@ namespace CustomerService.API.Migrations
 
             modelBuilder.Entity("CustomerService.API.Models.Conversation", b =>
                 {
+                    b.Navigation("ConversationHistoryLogs");
+
                     b.Navigation("Messages");
                 });
 
@@ -977,6 +1040,8 @@ namespace CustomerService.API.Migrations
                     b.Navigation("ConversationAssignedByNavigations");
 
                     b.Navigation("ConversationClientUsers");
+
+                    b.Navigation("ConversationHistoryLogs");
 
                     b.Navigation("Messages");
 
