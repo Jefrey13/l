@@ -1,4 +1,5 @@
 ﻿using CustomerService.API.Models;
+using CustomerService.API.Utils.Enums;
 
 namespace CustomerService.API.Repositories.Interfaces
 {
@@ -9,5 +10,7 @@ namespace CustomerService.API.Repositories.Interfaces
         Task<IEnumerable<Conversation>> GetByAgentAsync(int agentId, CancellationToken cancellation = default);
 
         Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default);
+
+        //Task<Conversation> GetByStatusAsync(List<ConversationStatus> statuses, CancellationToken cancellation = default);
     }
 }

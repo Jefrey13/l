@@ -10,6 +10,9 @@ namespace CustomerService.API.Models
         public string? WaUserId { get; set; } // String.Additional unique, alphanumeric identifier for a WhatsApp user.
         public string? Phone { get; set; }
         public string? IdCard { get; set; }
+        public string? ResidenceCard { get; set; }
+        public string? Password { get; set; }
+        public IdType IdType { get; set; } //Tipo de documento de idetificación.
         public string? FullName { get; set; }
         public int? CompanyId { get; set; }
         public ContactStatus Status { get; set; } = ContactStatus.New;

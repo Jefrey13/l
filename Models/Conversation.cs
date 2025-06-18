@@ -26,12 +26,14 @@ namespace CustomerService.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? AssignedAt { get; set; }
         public DateTime? FirstResponseAt { get; set; }
+        public DateTime? ClientFirstMessage { get; set; }
         public DateTime? ClientLastMessageAt { get; set; }
         public DateTime? AgentRequestAt { get; set; }
         public DateTime? AgentFirstMessageAt { get; set; }
         public DateTime? AgentLastMessageAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+        public DateTime? IncompletedAt { get; set; }
         public string? Justification { get; set; } = null;
 
         public DateTime? WarningSentAt { get; set; }

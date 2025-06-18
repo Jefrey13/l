@@ -58,6 +58,7 @@ namespace CustomerService.API.Services.Implementations
                 if (request.ConversationId <= 0)
                     throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
                 var localTime = await _nicDatetime.GetNicDatetime();
+
                 // Crear el objeto Message con la hora nicaragüense
                 var msg = new Message
                 {
@@ -126,6 +127,7 @@ namespace CustomerService.API.Services.Implementations
                 // Recargar el mensaje y emitir por SignalR
                 var reloaded = await _uow.Messages.GetByIdAsync(msg.MessageId);
                 var dto = reloaded.Adapt<MessageResponseDto>();
+                var convDto = conv.Adapt<ConversationResponseDto>();
 
                 await _hub.Clients
                    .Group(reloaded.ConversationId.ToString())
@@ -133,11 +135,11 @@ namespace CustomerService.API.Services.Implementations
 
                 await _hub.Clients
                                 .Group("Admin")
-                                .SendAsync("ConversationUpdated", dto, ct);
+                                .SendAsync("ConversationUpdated", convDto, ct);
 
                 await _hub.Clients
                    .User(dto.SenderUserId.ToString())
-                   .SendAsync("ConversationUpdated", dto, ct);
+                   .SendAsync("ConversationUpdated", convDto, ct);
 
                 return dto;
             }
@@ -281,6 +283,7 @@ namespace CustomerService.API.Services.Implementations
                 var reloadedMsg = await _uow.Messages.GetByIdAsync(msg.MessageId, CancellationToken.None);
 
                 var dto = reloadedMsg.Adapt<MessageResponseDto>();
+
                 await _hub.Clients
                     .Group(req.ConversationId.ToString())
                     .SendAsync("ReceiveMessage", dto, ct);

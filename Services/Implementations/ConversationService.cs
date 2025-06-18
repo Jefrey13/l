@@ -35,7 +35,6 @@ namespace CustomerService.API.Services.Implementations
         private readonly IHubContext<NotificationsHub> _hubNotification;
         private readonly ITokenService _tokenService;
         private readonly IGeminiClient _geminiClient;
-        private readonly IWhatsAppService _whatsAppService;
         private readonly IMessageService _messageService;
 
         public ConversationService(
@@ -46,7 +45,6 @@ namespace CustomerService.API.Services.Implementations
             IHubContext<NotificationsHub> hubNotification,
             ITokenService tokenService,
             IGeminiClient geminiClient,
-            IWhatsAppService whatsAppService,
             IMessageService messageService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
@@ -55,7 +53,6 @@ namespace CustomerService.API.Services.Implementations
             _hubContext = hubContext;
             _tokenService = tokenService;
             _geminiClient = geminiClient;
-            _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
             _hubNotification = hubNotification ?? throw new ArgumentException(nameof(_hubNotification));
             _messageService = messageService;
         }
@@ -485,13 +482,15 @@ namespace CustomerService.API.Services.Implementations
 
                 var conv = await _uow.Conversations.GetAll()
                     .Where(c => c.ClientContactId == clientContactId
-                             && c.Status != ConversationStatus.Closed)
-                    .Include(c => c.Messages)
-                    .SingleOrDefaultAsync(cancellation);
+                             && c.Status != ConversationStatus.Closed
+                             && c.Status != ConversationStatus.Incomplete)
+                    .SingleOrDefaultAsync();
 
+                //Si tiene conversación en estado activo se obtiene
                 if (conv != null)
                     return conv.Adapt<ConversationResponseDto>();
 
+                //Si no hay conversaciones activas (closed o incomplete) se crea una nueva.
                 var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
                               ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
 
@@ -501,7 +500,8 @@ namespace CustomerService.API.Services.Implementations
                     ClientContactId = clientContactId,
                     Status = ConversationStatus.Bot,
                     CreatedAt = localDate,
-                    Initialized = false
+                    Initialized = false,
+                    ClientFirstMessage = localDate,
                 };
 
                 await _uow.Conversations.AddAsync(conv, cancellation);
@@ -638,7 +638,6 @@ namespace CustomerService.API.Services.Implementations
 
             return dto;
         }
-
 
         public async Task<int> GetAssignedCountAsync(int agentUserId, CancellationToken cancellation = default)
         {

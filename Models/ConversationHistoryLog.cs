@@ -10,7 +10,6 @@ namespace CustomerService.API.Models
     /// </summary>
     public class ConversationHistoryLog
     {
-        [Key]
         public int Id { get; set; }
 
         public int ConversationId { get; set; }
@@ -18,7 +17,7 @@ namespace CustomerService.API.Models
         public ConversationStatus OldStatus { get; set; }
         public ConversationStatus NewStatus { get; set; }
 
-        public int ChangedByUserId { get; set; }
+        public int? ChangedByUserId { get; set; }
 
         public DateTime ChangedAt { get; set; } = DateTime.UtcNow;
 
@@ -32,6 +31,6 @@ namespace CustomerService.API.Models
         public virtual Conversation Conversation { get; set; } = null!;
 
         [ForeignKey(nameof(ChangedByUserId))]
-        public virtual User ChangedByUser { get; set; } = null!;
+        public virtual User? ChangedByUser { get; set; } = null!;
     }
 }

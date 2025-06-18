@@ -246,8 +246,8 @@ public partial class CustomerSupportContext : DbContext
                   .HasColumnType("datetime2")
                   .IsRequired(false);
             entity.Property(e => e.AgentRequestAt)
-            .HasColumnType("datetime2")
-                  .IsRequired(false);
+                .HasColumnType("datetime2")
+                      .IsRequired(false);
 
             entity.Property(e => e.UpdatedAt)
                   .HasColumnType("datetime2")
@@ -257,6 +257,10 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(e => e.ClosedAt)
                   .HasColumnType("datetime2")
                   .IsRequired(false);
+
+            entity.Property(e => e.IncompletedAt)
+                    .HasColumnType("datetime2")
+                    .IsRequired(false);
 
             // <<-- AGREGAR EL MAPEADO DE WarningSentAt justo aquí: >> 
             entity.Property(e => e.WarningSentAt)
@@ -545,10 +549,11 @@ public partial class CustomerSupportContext : DbContext
                   .WithMany(c => c.ConversationHistoryLogs)
                   .HasForeignKey(chl => chl.ConversationId);
 
-           entity.HasOne(chl => chl.ChangedByUser)
-                    .WithMany(u => u.ConversationHistoryLogs)
-                    .HasForeignKey(chl => chl.ChangedByUserId);
-
+            entity.HasOne(e => e.ChangedByUser)
+              .WithMany(u => u.ConversationHistoryLogs)
+              .HasForeignKey(e => e.ChangedByUserId)
+              .OnDelete(DeleteBehavior.Restrict)
+              .HasConstraintName("FK_ConversationHistoryLog_ChangedByUserId");
 
             entity.Property(chl => chl.ChangedAt)
                   .HasDefaultValueSql("SYSUTCDATETIME()");

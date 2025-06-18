@@ -8,6 +8,7 @@ using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using CustomerService.API.WhContext;
+using HtmlAgilityPack;
 using Humanizer;
 using Mapster;
 using Microsoft.AspNetCore;
@@ -16,8 +17,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Client;
 using Newtonsoft.Json;
+using PuppeteerSharp;
 using System;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -46,7 +49,7 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly MessagePrompts _prompts;
         private readonly MessageKeywords _keywords;
         private readonly ISystemParamService _systemParamService;
-
+        private readonly HttpClient _httpClient;
         private const int BotUserId = 1;
 
         public MessagePipeline(
@@ -67,7 +70,8 @@ namespace CustomerService.API.Pipelines.Implementations
             IOptions<MessagePrompts> promptOpts,
             IOptions<MessageKeywords> keywordOpts,
             ISystemParamService systemParamService,
-            IHubContext<NotificationsHub> hubNotification)
+            IHubContext<NotificationsHub> hubNotification,
+            HttpClient httpClient)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -87,6 +91,7 @@ namespace CustomerService.API.Pipelines.Implementations
             _keywords = keywordOpts.Value;
             _systemParamService = systemParamService;
             _hubNotification = hubNotification;
+            _httpClient = httpClient;
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -136,9 +141,9 @@ namespace CustomerService.API.Pipelines.Implementations
             }
             else
             {
-                await _hubContext.Clients
-    .Group("Admin")
-    .SendAsync("ConversationUpdated", convDto, ct);
+                            await _hubContext.Clients
+                .Group("Admin")
+                .SendAsync("ConversationUpdated", convDto, ct);
             }
 
             // ───────────────────────────────────────────────────────────────────
@@ -318,7 +323,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     // Definir los botones que ya tenías:
                     var buttons1 = new[]
                     {
-                            new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
+                            new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con chatbot" },
                             new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
                     };
 
@@ -455,7 +460,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var buttons = new[]
                 {
-                    new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con asistente" },
+                    new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con chatbot" },
                     new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
                 };
 
@@ -653,45 +658,102 @@ namespace CustomerService.API.Pipelines.Implementations
             string? userText,
             CancellationToken ct = default)
         {
-            // Recuperar el histórico de la conversación
-            var history = await _messageService
-                .GetByConversationAsync(convoDto.ConversationId, ct);
-
-            // Construir el prompt para Gemini
-            var allTexts = history
-                .Select(m => m.Content)
-                .Where(t => !string.IsNullOrWhiteSpace(t));
-
-            var fullPrompt = _systemPrompt
-                           + Environment.NewLine
-                           + string.Join(Environment.NewLine, allTexts)
-                           + Environment.NewLine
-                           + (userText ?? "");
-
-            // Invocar Gemini
-            var botReply = (await _geminiClient
-                .GenerateContentAsync(fullPrompt, userText ?? "", ct))
-                .Trim();
-
-            // Enviar y persistir el mensaje del bot
-            var sendReq = new SendMessageRequest
+            try
             {
-                ConversationId = convoDto.ConversationId,
-                SenderId = BotUserId,
-                Content = botReply
-            };
-            await _messageService.SendMessageAsync(sendReq, false, ct);
+                // Recuperar el histórico de la conversación
+                var history = await _messageService
+                    .GetByConversationAsync(convoDto.ConversationId, ct);
 
-            var convEntity = await _uow.Conversations.GetAll()
-            .Where(c => c.ConversationId == convoDto.ConversationId)
-            .Include(c => c.ClientContact)
-            .SingleAsync(ct);
+                // Construir el prompt para Gemini
+                var allTexts = history
+                    .Select(m => m.Content)
+                    .Where(t => !string.IsNullOrWhiteSpace(t));
 
-            var convDto = convEntity.Adapt<ConversationResponseDto>();
+                var urls = new[]
+                    {
+                        "https://www.pcgroupsa.com",
+                        "https://www.pcgroupsa.com/inicio",
+                        "https://www.pcgroupsa.com/servicios",
+                        "https://www.pcgroupsa.com/nosotros",
+                        "https://www.pcgroupsa.com/contactanos"
+                    };
 
-            await _hubContext.Clients
-                .All
-                .SendAsync("ConversationUpdated", convDto, ct);
+                var websiteText = await ExtractTextFromUrlsAsync(urls, ct);
+
+                var fullPrompt = "Resumen breve sobre quien eres:" + _systemPrompt
+                               + "Información del sitio web:" + Environment.NewLine
+                               + websiteText + Environment.NewLine
+                               + Environment.NewLine
+                               + "Historial de mensajes:"  + string.Join(Environment.NewLine, allTexts)
+                               + Environment.NewLine
+                               + "Responde a:" + (userText ?? "");
+
+                // Invocar Gemini
+                var botReply = (await _geminiClient
+                    .GenerateContentAsync(fullPrompt, userText ?? "", ct))
+                    .Trim();
+
+                // Enviar y persistir el mensaje del bot
+                var sendReq = new SendMessageRequest
+                {
+                    ConversationId = convoDto.ConversationId,
+                    SenderId = BotUserId,
+                    Content = botReply
+                };
+
+                await _messageService.SendMessageAsync(sendReq, false);
+
+                var convEntity = await _uow.Conversations.GetAll()
+                    .Where(c => c.ConversationId == convoDto.ConversationId)
+                    .Include(c => c.ClientContact)
+                    .SingleAsync();
+
+                var convDto = convEntity.Adapt<ConversationResponseDto>();
+
+                await _hubContext.Clients
+                    .All
+                    .SendAsync("ConversationUpdated", convDto, ct);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        public async Task<string> ExtractTextFromUrlsAsync(IEnumerable<string> urls, CancellationToken ct = default)
+        {
+            var browserFetcher = new BrowserFetcher();
+            await browserFetcher.DownloadAsync();
+
+
+            var allText = new List<string>();
+
+            using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true
+            });
+
+            foreach (var url in urls)
+            {
+                try
+                {
+                    using var page = await browser.NewPageAsync();
+
+                    await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
+
+                    var content = await page.EvaluateExpressionAsync<string>("document.body.innerText");
+
+                    allText.Add(content.Trim());
+
+                    var isThere = "";
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+            }
+
+            return string.Join("\n", allText);
         }
     }
 }

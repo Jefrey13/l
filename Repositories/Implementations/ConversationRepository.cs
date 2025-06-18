@@ -31,7 +31,7 @@ namespace CustomerService.API.Repositories.Implementations
             if (agentId <= 0) throw new ArgumentException(nameof(agentId));
 
             return await _dbSet.AsNoTracking()
-                .Where(c => c.AssignedAgentId == agentId && c.Status != ConversationStatus.Closed &&( c.AssignmentState == AssignmentState.Forced ||
+                .Where(c => c.AssignedAgentId == agentId &&( c.AssignmentState == AssignmentState.Forced ||
                 c.AssignmentState == AssignmentState.Accepted) )
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
@@ -62,6 +62,14 @@ namespace CustomerService.API.Repositories.Implementations
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.Messages)
                         .ThenInclude(a=>  a.Attachments);
+
+        //public async Task<Conversation> GetByStatusAsync(List<ConversationStatus> statuses, CancellationToken cancellation = default)
+        //{
+        //    var conv = await _dbSet.Where(c=> c.Status 
+        //    != ConversationStatus.Closed || c.Status != ConversationStatus.Incomplete).ToListAsync();
+
+        //    return conv.FirstOrDefault();
+        //}
 
         public override async Task<Conversation?> GetByIdAsync(int id, CancellationToken ct = default)
         {

@@ -43,7 +43,6 @@ namespace CustomerService.API.Hosted
             _prompts = promptOpts.Value;
             _logger = logger;
         }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // Guardamos el TimeZoneInfo una sola vez
@@ -90,15 +89,16 @@ namespace CustomerService.API.Hosted
                     //    **sin** AsNoTracking para que EF las rastree.
                     var pendientes = await dbContext.Conversations
                         .Where(c =>
-                            c.Status == ConversationStatus.Bot || c.Status == ConversationStatus.Waiting)
+                            c.Status == ConversationStatus.Bot || c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
                         .Include(c => c.Messages)  // si necesitas historial; si no, puedes omitirlo
                         .ToListAsync(stoppingToken);
 
                     var data = 1;
+                    var senderId = 1;
                     // 7) Iterar sobre cada conversación pendiente
                     foreach (var conv in pendientes)
                     {
-                      if(conv.Status == ConversationStatus.Bot)
+                        if (conv.Status == ConversationStatus.Bot)
                         {
                             // A) Última vez que habló el cliente (o bien, fecha de creación si Cliente nunca habló)
                             DateTime lastClientDt = conv.ClientLastMessageAt ?? conv.CreatedAt;
@@ -158,46 +158,54 @@ namespace CustomerService.API.Hosted
 
                             var closedMinutes = int.Parse(_closeThreshold.Value);
                             // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
-                            if (diff >= closedMinutes && conv.WarningSentAt != null)
+                           if (diff >= closedMinutes && conv.WarningSentAt != null)
                             {
-                                // Cambiar estado a Closed y registrar fecha de cierre
-                                conv.Status = ConversationStatus.Closed;
-                                conv.ClosedAt = ahoraNic;
-
-                                // Guardar cambios de estado y ClosedAt
-                                await dbContext.SaveChangesAsync(stoppingToken);
-
-                                //string closeText = _prompts.InactivityClosed;
-                                string closeText = systemParams
-                                    .FirstOrDefault(p => p.Name == "WaitWarningCloseMesssage")?.Value ??
-                                    "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
-
-                                await messageService.SendMessageAsync(new SendMessageRequest
+                                try
                                 {
-                                    ConversationId = conv.ConversationId,
-                                    SenderId = 1,
-                                    Content = closeText,
-                                    MessageType = MessageType.Text
-                                },
-                                /* isFromBot: */ false,
-                                /* cancellationToken: */ stoppingToken);
+                                    // Cambiar estado a Closed y registrar fecha de cierre
+                                    conv.Status = ConversationStatus.Incomplete;
+                                    conv.IncompletedAt = ahoraNic;
 
-                                var convDto = conv.Adapt<ConversationResponseDto>();
+                                    // Guardar cambios de estado y ClosedAt
+                                    await dbContext.SaveChangesAsync(stoppingToken);
 
-                                await _hubContext.Clients
-                                    .Group("Admin")
-                                    .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                                    //string closeText = _prompts.InactivityClosed;
+                                    string closeText = systemParams
+                                        .FirstOrDefault(p => p.Name == "WaitWarningCloseMesssage")?.Value ??
+                                        "La conversación se ha cerrado por inactividad. Si necesitas ayuda, por favor inicia una nueva conversación.";
+
+                                    await messageService.SendMessageAsync(new SendMessageRequest
+                                    {
+                                        ConversationId = conv.ConversationId,
+                                        SenderId = 1,
+                                        Content = closeText,
+                                        MessageType = MessageType.Text
+                                    },
+                                    /* isFromBot: */ false,
+                                    /* cancellationToken: */ stoppingToken);
+
+                                    var convDto = conv.Adapt<ConversationResponseDto>();
+
+                                    await _hubContext.Clients
+                                        .Group("Admin")
+                                        .SendAsync("ConversationUpdated", convDto, stoppingToken);
+
+                                } catch (Exception ex)
+                                {
+                                    Console.WriteLine(ex.Message);
+                                }
                             }
-                            
-                            
                         }
 
                         if (conv.Status == ConversationStatus.Waiting)
                         {
-                            var RequestUnderReviewMessage = await sysmParamService.GetByNameAsync("RequestUnderReviewMessage");
+
                             var RequestUnderReviewTime = await sysmParamService.GetByNameAsync("RequestUnderReviewTime");
+
                             if (((ahoraNic - conv.RequestedAgentAt.Value).TotalMinutes > int.Parse(RequestUnderReviewTime.Value)))
                             {
+                                var RequestUnderReviewMessage = await sysmParamService.GetByNameAsync("RequestUnderReviewMessage");
+
                                 await messageService.SendMessageAsync(new SendMessageRequest
                                 {
                                     ConversationId = conv.ConversationId,
@@ -208,8 +216,54 @@ namespace CustomerService.API.Hosted
                                 },
                             /* isFromBot: */ false,
                             /* cancellationToken: */ stoppingToken);
+
+
+                                var convDto = conv.Adapt<ConversationResponseDto>();
+
+                                await _hubContext.Clients
+                                    .Group("Admin")
+                                    .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                            }
+                        } 
+                        
+                        if (conv.Status == ConversationStatus.Human || conv.Status == ConversationStatus.Waiting)
+                        {
+                            try
+                            {
+                                var UnclosedConversationTime = await sysmParamService.GetByNameAsync("UnclosedConversationTime");
+
+                                //Marcar conversación con estado incompleto si se ha dejada colga por um largo periodo de tiempo por el admin o un miebro de soporte..
+                                if (((ahoraNic - (conv.AgentLastMessageAt.HasValue ? conv.AgentLastMessageAt.Value : conv.AssignedAt.Value)).TotalMinutes > int.Parse(UnclosedConversationTime.Value) && conv.Status == ConversationStatus.Human)
+                                    || ((ahoraNic - conv.AgentRequestAt.Value).TotalMinutes > int.Parse(UnclosedConversationTime.Value)) && conv.Status == ConversationStatus.Waiting)
+                                {
+                                    var UnclosedConversationMessage = await sysmParamService.GetByNameAsync("UnclosedConversationMessage");
+
+                                    await messageService.SendMessageAsync(new SendMessageRequest
+                                    {
+                                        ConversationId = conv.ConversationId,
+                                        SenderId = senderId,
+                                        Content = UnclosedConversationMessage?.Value ?? "⏳ La conversación ha sido cerrada por falta de actividad. Ahora puede hablar con Milena de nuevo.",
+                                        MessageType = MessageType.Text
+                                    },
+                                /* isFromBot: */ false,
+                                /* cancellationToken: */ stoppingToken);
+
+                                    conv.IncompletedAt = ahoraNic;
+                                    conv.Status = ConversationStatus.Incomplete;
+                                    await dbContext.SaveChangesAsync(stoppingToken);
+
+                                    var convDto = conv.Adapt<ConversationResponseDto>();
+
+                                    await _hubContext.Clients
+                                        .Group("Admin")
+                                        .SendAsync("ConversationUpdated", convDto, stoppingToken);
+                                }
+                            }catch(Exception ex)
+                            {
+                                Console.WriteLine(ex.ToString());
                             }
                         }
+                    
                     }
 
                     //Notificar al cliente que su solicitud esta ciendo procesada.

@@ -33,6 +33,7 @@ namespace CustomerService.API.Models
             = new List<NotificationRecipient>();
 
         public virtual ICollection<ConversationHistoryLog> ConversationHistoryLogs { get; set; } = new List<ConversationHistoryLog>();
+
         [NotMapped]
         public string ClientType { get; set; } = "Nuevo";
 
