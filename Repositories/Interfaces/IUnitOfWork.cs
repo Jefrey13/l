@@ -21,6 +21,8 @@ namespace CustomerService.API.Repositories.Interfaces
         INotificationRecipientRepository NotificationRecipients { get; }
 
         ISystemParamRepository SystemParamRepository { get; }
+
+        IOpeningHourRepository OpeningHours { get; }
         void ClearChangeTracker();
 
         Task<int> SaveChangesAsync(CancellationToken cancellation = default);

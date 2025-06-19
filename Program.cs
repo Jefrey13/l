@@ -115,6 +115,7 @@ builder.Services.AddScoped<IRoleMenuRepository, RoleMenuRepository>();
 builder.Services.AddScoped<IContactLogRepository, ContactLogRespository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationRecipientRepository, NotificationRecipientRepository>();
+builder.Services.AddScoped<IOpeningHourRepository, OpeningHourRepository>();
 builder.Services.AddScoped<ISystemParamRepository, SystemParamRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -140,6 +141,8 @@ builder.Services.AddScoped<INicDatetime, NicDatetime>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationRecipientService, NotificationRecipientService>();
 builder.Services.AddScoped<ISystemParamService, SystemParamService>();
+builder.Services.AddScoped<IOpeningHourService, OpeningHourService>();
+
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHostedService<InactivityHostedService>();

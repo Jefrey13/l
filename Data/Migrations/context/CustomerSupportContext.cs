@@ -42,6 +42,7 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<NotificationRecipient> NotificationRecipients { get; set; }
     public virtual DbSet<SystemParam> SystemParams { get; set; }
     public virtual DbSet<ConversationHistoryLog> ConversationHistoryLogs { get; set; }
+    public virtual DbSet<OpeningHour> OpeningHours { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -55,7 +56,6 @@ public partial class CustomerSupportContext : DbContext
             }
         }
     }
-
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -300,8 +300,6 @@ public partial class CustomerSupportContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("FK_Conversations_AssignedByUser");
         });
-
-
 
         modelBuilder.Entity<Message>(entity =>
         {
@@ -563,6 +561,35 @@ public partial class CustomerSupportContext : DbContext
 
             entity.Property(chl => chl.UserAgent)
                   .HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<OpeningHour>(entity =>
+        {
+            entity.ToTable("OpeningHour", "crm");
+            entity.HasKey(oh => oh.Id);
+            entity.Property(oh => oh.Name)
+            .HasMaxLength(100)
+            .IsRequired();
+            entity.Property(oh => oh.Description)
+            .HasMaxLength(255)
+            .IsRequired(false);
+            entity.Property(oh => oh.CreatedAt)
+            .HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(oh => oh.UpdatedAt)
+            .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(e => e.CreatedBy)
+                  .WithMany(u => u.OpeningHoursCreatedBy)
+                  .HasForeignKey(e => e.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_OpeningHour_CreateBy");
+
+            entity.HasOne(e => e.UpdatedBy)
+                 .WithMany(u => u.OpeningHoursUpdatedBy)
+                 .HasForeignKey(e => e.UpdatedById)
+                 .OnDelete(DeleteBehavior.Restrict)
+                 .HasConstraintName("FK_OpeningHour_");
+
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -25,6 +25,9 @@ namespace CustomerService.API.Models
         public virtual Company? Company { get; set; }
         public virtual ICollection<Conversation> ConversationAssignedAgentNavigations { get; set; } = new List<Conversation>();
         public virtual ICollection<Conversation> ConversationAssignedByNavigations { get; set; } = new List<Conversation>();
+
+        public virtual ICollection<OpeningHour> OpeningHoursCreatedBy { get; set; } = new List<OpeningHour>();
+        public virtual ICollection<OpeningHour> OpeningHoursUpdatedBy { get; set; } = new List<OpeningHour>();
         public virtual ICollection<Conversation> ConversationClientUsers { get; set; } = new List<Conversation>();
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

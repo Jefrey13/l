@@ -680,8 +680,10 @@ namespace CustomerService.API.Pipelines.Implementations
 
                 var websiteText = await ExtractTextFromUrlsAsync(urls, ct);
 
-                var fullPrompt = "Resumen breve sobre quien eres:" + _systemPrompt
-                               + "Información del sitio web:" + Environment.NewLine
+                var fullPrompt = "Resumen breve sobre quien eres: " + Environment.NewLine
+                               + _systemPrompt + Environment.NewLine
+                               + Environment.NewLine
+                               + "Información del sitio web: " + Environment.NewLine
                                + websiteText + Environment.NewLine
                                + Environment.NewLine
                                + "Historial de mensajes:"  + string.Join(Environment.NewLine, allTexts)

@@ -182,6 +182,9 @@ namespace CustomerService.API.Utils
                .Map(dest => dest.CreatedAt, src => src.CreatedAt)
                .Map(dest => dest.UpdatedAt, src => src.UpdatedAt)
                .IgnoreNullValues(true);
+
+            config.NewConfig<OpeningHour, OpeningHourResponseDto>();
+            config.NewConfig<OpeningHourRequestDto, OpeningHour>();
         }
     }
 }

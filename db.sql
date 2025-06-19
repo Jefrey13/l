@@ -191,8 +191,9 @@ BEGIN TRY
 		('Usuarios',         'List of system users',                         'users',         3, 'Users'),
 		('Notificaciones ', 'Conversation assignment, new users, etc.',     'notifications', 4, 'BellRing'),
 		('Perfil',       'User profile details',                         'profile',       5, 'User'),
-		('Param CRM',     'CRM Dynamic Params',         'system-params',     6, 'TbDatabase '),
-		('Cerrar Sesión',        'Redirects to login', 'login',        7, 'LogOut');
+		('Parametros',     'CRM Dynamic Params',         'system-params',     6, 'TbDatabase '),
+		('Horarios',     'Business opening hour',         'opening-hour',     7, 'TfiTimer '),
+		('Cerrar Sesión',        'Redirects to login', 'login',        8, 'LogOut');
 	END
 
 	-- =================================================================================
@@ -212,7 +213,8 @@ BEGIN TRY
 		--(4, @AdminRoleId),
 		(5, @AdminRoleId),
 		(6, @AdminRoleId),
-		(7, @AdminRoleId);
+		(7, @AdminRoleId),
+		(8, @AdminRoleId);
 	END
 
 	-- Support role menus

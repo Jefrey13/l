@@ -24,7 +24,8 @@ namespace CustomerService.API.Repositories.Implementations
             IContactLogRepository contactLogRepository,
             INotificationRepository notificationRepository,
             INotificationRecipientRepository notificationRecipientRepository,
-            ISystemParamRepository systemParamRepository)
+            ISystemParamRepository systemParamRepository,
+            IOpeningHourRepository openingHourRepository)
         {
             _context = context;
             Users = userRepository;
@@ -42,6 +43,7 @@ namespace CustomerService.API.Repositories.Implementations
             Notifications = notificationRepository;
             NotificationRecipients = notificationRecipientRepository;
             SystemParamRepository = systemParamRepository ?? throw new ArgumentNullException(nameof(systemParamRepository));
+            OpeningHours = openingHourRepository;
         }
 
         public IUserRepository Users { get; }
@@ -59,6 +61,7 @@ namespace CustomerService.API.Repositories.Implementations
         public INotificationRecipientRepository NotificationRecipients { get; }
 
         public ISystemParamRepository SystemParamRepository { get;}
+        public IOpeningHourRepository OpeningHours { get; }
 
         public void ClearChangeTracker()
         => _context.ChangeTracker.Clear();

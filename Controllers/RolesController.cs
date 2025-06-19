@@ -51,6 +51,7 @@ namespace CustomerService.API.Controllers
         public async Task<IActionResult> Create([FromBody] CreateRoleRequest req, CancellationToken ct = default)
         {
             var dto = await _roles.CreateAsync(req, ct);
+
             return CreatedAtRoute("GetRoleById", new { id = dto.RoleId },
                 new ApiResponse<RoleResponseDto>(dto, "Role created."));
         }

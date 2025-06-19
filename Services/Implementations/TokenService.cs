@@ -120,6 +120,7 @@ namespace CustomerService.API.Services.Implementations
             };
 
             var handler = new JwtSecurityTokenHandler();
+
             // lanza si no es válido
             return handler.ValidateToken(token, validationParameters, out _);
         }
