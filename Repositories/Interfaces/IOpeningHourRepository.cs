@@ -4,11 +4,15 @@ namespace CustomerService.API.Repositories.Interfaces
 {
     public interface IOpeningHourRepository: IGenericRepository<OpeningHour>
     {
+        ///<summary>Verificar si la fecha actual, dia y mes es feriaro a nivel nacional o no.</summary>
+        ///<param name="ct"></param>
+        ///<returns>True si la fecha actual esta dentro de unos de los feriados espesificados por el admin, caso contrario false.</returns>
+        Task<bool> IsHolidayAsync(CancellationToken ct = default);
         /// <summary>
-        /// Cambia el estado de activo a inactivo y viseversa dependiendo de estado actual !
+        /// Verificar si la hora actual esta dentro de un horario de atención o no.
         /// </summary>
-        /// <param name="id">Id de la entidad a actualizar</param>
-        /// <returns>Entitdad actualizada</returns>
-       //Task<OpeningHour> ToggleStatusAsync(int id);
+        /// <param name="ct"></param>
+        /// <returns>True si la hora actual esta dentro del rango de una hora de atención al cliente, caso contrario false.</returns>
+        Task<bool> IsOutOfOpeningHour(CancellationToken ct = default);
     }
 }

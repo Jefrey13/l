@@ -26,11 +26,7 @@ namespace CustomerService.API.Models
 
         [MaxLength(200)]
         public string? UserAgent { get; set; }
- 
-        [ForeignKey(nameof(ConversationId))]
-        public virtual Conversation Conversation { get; set; } = null!;
-
-        [ForeignKey(nameof(ChangedByUserId))]
+        public virtual Conversation? Conversation { get; set; } = null!;
         public virtual User? ChangedByUser { get; set; }
     }
 }

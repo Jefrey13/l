@@ -27,20 +27,27 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task<OpeningHourResponseDto?> CreateAsync(OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default)
         {
-            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
-            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+                var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            if (request is null)
-                throw new ArgumentNullException(nameof(request), "El horario no puede ser null");
+                if (request is null)
+                    throw new ArgumentNullException(nameof(request), "El horario no puede ser null");
 
-            var entity = request.Adapt<OpeningHour>();
-            entity.CreatedAt = await _nicDateTime.GetNicDatetime();
-            entity.CreatedById = userId;
+                var entity = request.Adapt<OpeningHour>();
+                entity.CreatedAt = await _nicDateTime.GetNicDatetime();
+                entity.CreatedById = userId;
 
-            await _uow.OpeningHours.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync(ct);
+                await _uow.OpeningHours.AddAsync(entity, ct);
+                await _uow.SaveChangesAsync(ct);
 
-            return entity.Adapt<OpeningHourResponseDto>();
+                return entity.Adapt<OpeningHourResponseDto>();
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return new OpeningHourResponseDto();
+            }
         }
 
         public async Task<PagedResponse<OpeningHourResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken ct = default)
@@ -61,6 +68,16 @@ namespace CustomerService.API.Services.Implementations
                 ?? throw new KeyNotFoundException($"No se encontró horario con id {id}");
 
             return data.Adapt<OpeningHourResponseDto>();
+        }
+
+        public async Task<bool> IsHolidayAsync(CancellationToken ct = default)
+        {
+            return await _uow.OpeningHours.IsHolidayAsync(ct);
+        }
+
+        public async Task<bool> IsOutOfOpeningHour(CancellationToken ct = default)
+        {
+            return await _uow.OpeningHours.IsHolidayAsync(ct);
         }
 
         public async Task<OpeningHourResponseDto?> ToggleAsync(int id, string jwtToken, CancellationToken ct = default)

@@ -1,7 +1,9 @@
 ﻿using CustomerService.API.Models;
+using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
 using System.Collections.Generic;
 
@@ -547,12 +549,6 @@ public partial class CustomerSupportContext : DbContext
                   .WithMany(c => c.ConversationHistoryLogs)
                   .HasForeignKey(chl => chl.ConversationId);
 
-            entity.HasOne(e => e.ChangedByUser)
-                  .WithMany(u => u.ConversationHistoryLogs)
-                  .HasForeignKey(e => e.ChangedByUserId)
-                  .OnDelete(DeleteBehavior.Restrict)
-                  .HasConstraintName("FK_ConversationHistoryLog_ChangedByUserId");
-
             entity.Property(chl => chl.ChangedAt)
                   .HasDefaultValueSql("SYSUTCDATETIME()");
 
@@ -561,20 +557,46 @@ public partial class CustomerSupportContext : DbContext
 
             entity.Property(chl => chl.UserAgent)
                   .HasMaxLength(200);
+
+            entity.HasOne(e => e.Conversation)
+              .WithMany(u => u.ConversationHistoryLogs)
+              .HasForeignKey(e => e.ConversationId)
+              .OnDelete(DeleteBehavior.Restrict)
+              .HasConstraintName("FK_ConversationHistoryLog_Conversation");
+
+            entity.HasOne(e => e.ChangedByUser)
+              .WithMany(u => u.ConversationHistoryLogs)
+              .HasForeignKey(e => e.ChangedByUserId)
+              .OnDelete(DeleteBehavior.Restrict)
+              .HasConstraintName("FK_ConversationHistoryLog_ChangedByUserId");
         });
 
         modelBuilder.Entity<OpeningHour>(entity =>
         {
             entity.ToTable("OpeningHour", "crm");
             entity.HasKey(oh => oh.Id);
+
             entity.Property(oh => oh.Name)
             .HasMaxLength(100)
             .IsRequired();
+
             entity.Property(oh => oh.Description)
-            .HasMaxLength(255)
-            .IsRequired(false);
+                .HasMaxLength(255)
+                .IsRequired(false);
+
+            var dayMonthConverter = new ValueConverter<DayMonth, string>(
+                dm => dm.ToString(),         // Al guardar (DayMonth -> "dd/MM")
+                s => DayMonth.Parse(s));     // Al leer ("dd/MM" -> DayMonth)
+
+            entity.Property(oh => oh.HolidayDate)
+                .HasConversion(dayMonthConverter)
+                .HasMaxLength(5)
+                .IsRequired(false);
+
             entity.Property(oh => oh.CreatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+
+
             entity.Property(oh => oh.UpdatedAt)
             .HasDefaultValueSql("SYSUTCDATETIME()");
 
@@ -588,8 +610,21 @@ public partial class CustomerSupportContext : DbContext
                  .WithMany(u => u.OpeningHoursUpdatedBy)
                  .HasForeignKey(e => e.UpdatedById)
                  .OnDelete(DeleteBehavior.Restrict)
-                 .HasConstraintName("FK_OpeningHour_");
+                 .HasConstraintName("FK_OpeningHour_UpdateBy");
 
+        });
+
+        modelBuilder.Entity<WorkShift_User>(entity =>
+        {
+            entity.ToTable("WorkShift_User", "crm");
+            entity.HasKey(ws => new { ws.OpeningHourId, ws.AssingedUserId });
+
+            entity.Property(ws => ws.CreatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(ws => ws.UpdatedAt)
+                .HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(ws => ws.IsActive)
+            .HasDefaultValue(false);
         });
 
         OnModelCreatingPartial(modelBuilder);

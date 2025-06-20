@@ -1,4 +1,6 @@
-﻿namespace CustomerService.API.Dtos.RequestDtos
+﻿using CustomerService.API.Utils;
+
+namespace CustomerService.API.Dtos.RequestDtos
 {
     public class OpeningHourRequestDto
     {
@@ -13,6 +15,8 @@
 
         public bool? IsHoliday { get; set; }
 
-        public bool IsActive { get; set; }
+        public DayMonth? HolidayDate { get; set; }
+
+        public bool? IsActive { get; set; }
     }
 }

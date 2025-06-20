@@ -1,4 +1,6 @@
-﻿namespace CustomerService.API.Models
+﻿using CustomerService.API.Utils;
+
+namespace CustomerService.API.Models
 {
     public class OpeningHour
     {
@@ -13,20 +15,22 @@
 
         public TimeOnly? EndTime { get; set; }
 
+        public DayMonth? HolidayDate { get; set; }
+
         public bool? IsHoliday { get; set; }
 
-        public bool IsActive { get; set; }
+        public bool? IsActive { get; set; }
 
-        public DateTime CreatedAt { get; set; }
+        public DateTime? CreatedAt { get; set; }
 
-        public DateTime UpdatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
-        public int CreatedById { get; set; }
+        public int? CreatedById { get; set; }
 
-        public int UpdatedById { get; set; }
+        public int? UpdatedById { get; set; }
 
-        public virtual User CreatedBy { get; set; } = null!;
+        public virtual User? CreatedBy { get; set; } = null!;
 
-        public virtual User UpdatedBy { get; set; } = null!;
+        public virtual User? UpdatedBy { get; set; } = null!;
     }
 }

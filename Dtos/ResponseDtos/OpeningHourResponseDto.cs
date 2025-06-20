@@ -1,4 +1,6 @@
-﻿namespace CustomerService.API.Dtos.ResponseDtos
+﻿using CustomerService.API.Utils;
+
+namespace CustomerService.API.Dtos.ResponseDtos
 {
     public class OpeningHourResponseDto
     {
@@ -14,6 +16,7 @@
         public TimeOnly? EndTime { get; set; }
 
         public bool? IsHoliday { get; set; }
+        public DayMonth? HolidayDate { get; set; }
 
         public bool IsActive { get; set; }
 

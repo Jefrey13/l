@@ -389,3 +389,25 @@ VALUES
       1
     );
 GO
+
+
+USE CustomerSupportDB;
+
+SELECT * FROM crm.OpeningHour WHERE Name = 'Día de la Madre';
+SELECT * FROM chat.ConversationHistoryLog
+SELECT * FROM chat.Conversations
+SELECT * FROM crm.OpeningHour
+SELECT * FROM auth.ContactLogs;
+SELECT * FROM auth.SystemParams;
+
+---- Delete test data
+DELETE chat.Attachments
+DELETE chat.[Messages]
+DELETE chat.ConversationHistoryLog
+DELETE chat.Conversations
+DELETE auth.ContactLogs;
+
+DELETE crm.OpeningHour WHERE id = 2;
+
+----Update testDatea
+UPDATE  crm.OpeningHour SET StartTime = null, EndTime = null;

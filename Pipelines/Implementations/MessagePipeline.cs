@@ -4,6 +4,7 @@ using CustomerService.API.Hosted;
 using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Pipelines.Interfaces;
+using CustomerService.API.Repositories.Implementations;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
@@ -54,6 +55,7 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly HttpClient _httpClient;
         private const int BotUserId = 1;
         private readonly IWebHostEnvironment _env;
+        private readonly IOpeningHourService _openingHourService;
         public MessagePipeline(
             IContactLogService contactService,
             IConversationService conversationService,
@@ -74,7 +76,8 @@ namespace CustomerService.API.Pipelines.Implementations
             ISystemParamService systemParamService,
             IHubContext<NotificationsHub> hubNotification,
             HttpClient httpClient,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IOpeningHourService openingHourService)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -95,7 +98,8 @@ namespace CustomerService.API.Pipelines.Implementations
             _systemParamService = systemParamService;
             _hubNotification = hubNotification;
             _httpClient = httpClient;
-            _env = env; 
+            _env = env;
+            _openingHourService = openingHourService;
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -299,7 +303,7 @@ namespace CustomerService.API.Pipelines.Implementations
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Hola", ex);
+                Console.WriteLine("Exeption", ex);
             }
 
             // Solo aplicamos esta detección si el mensaje es texto y no es un payload interactivo:
@@ -324,18 +328,34 @@ namespace CustomerService.API.Pipelines.Implementations
                 if (requestSupport
                     && convoDto.Status.ToString() == ConversationStatus.Bot.ToString())
                 {
+                    //Si es dia feriado, solo se puede contactar con el chatbot.
+                    var isHoliday = await _openingHourService.IsHolidayAsync();
+
+                    if (isHoliday) {
+                        await HandleBotReplyAsync(convoDto, payload.TextBody, ct, isHoliday = true);
+                        return;
+                    };
+
+                    var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHour();
+
+                    if (isOutOfOpeningHour)
+                    {
+                        await HandleBotReplyAsync(convoDto, payload.TextBody, ct, false, isOutOfOpeningHour = true);
+                        return;
+                    };
+
                     // Definir los botones que ya tenías:
                     var buttons1 = new[]
                     {
                             new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con chatbot" },
-                            new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
+                            new WhatsAppInteractiveButton { Id = "2", Title = "Contactar con soporte" }
                     };
 
                     // Enviar el mensaje interactivo con lista de opciones
                     await _whatsAppService.SendInteractiveButtonsAsync(
                         convoDto.ConversationId,
                         BotUserId,
-                        "Parece que deseas hablar con un agente. ¿Qué prefieres?",
+                        "Parece que deseas contactar con un agente. ¿Qué prefieres?",
                         buttons1,
                         ct
                     );
@@ -365,6 +385,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         .SendAsync("ConversationUpdated", convoDto, ct);
                     return;
                 }
+            
             }
 
 
@@ -446,6 +467,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         _ => MessageType.Document
                     }
                 };
+
                 var messageDto = await _messageService.SendMessageAsync(sendReq, isContact: true, CancellationToken.None);
 
                 // 2.5) Guardar el attachment en BD con TU URL pública
@@ -465,43 +487,56 @@ namespace CustomerService.API.Pipelines.Implementations
             var buttons = new[]
                 {
                     new WhatsAppInteractiveButton { Id = "1", Title = "Seguir con chatbot" },
-                    new WhatsAppInteractiveButton { Id = "2", Title = "Hablar con soporte" }
+                    new WhatsAppInteractiveButton { Id = "2", Title = "Contactar con soporte" }
                 };
 
             if (!convoDto.Initialized)
             {
-                _uow.ClearChangeTracker();
+                //Si es dia feriado, solo se puede contactar con el chatbot.
+                var isHoliday = await _openingHourService.IsHolidayAsync();
+                var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHour();
 
-                await _conversationService.UpdateAsync(new UpdateConversationRequest
+                //Si es dia feriado, solo puede hablar con el bot. Y no contactar a alguien de soporte
+                if (isHoliday || isOutOfOpeningHour)
                 {
-                    ConversationId = convoDto.ConversationId,
-                    Initialized = true,
-                    Priority = PriorityLevel.Normal,
-                    Status = ConversationStatus.Bot,
-                    IsArchived = false
-                }, ct);
+                    await HandleBotReplyAsync(convoDto, payload.TextBody, ct);
+                    return;
+                }
+                else
+                {
+                    _uow.ClearChangeTracker();
 
-                //await _messageService.SendMessageAsync(new SendMessageRequest
-                //{
-                //    ConversationId = convoDto.ConversationId,
-                //    SenderId = BotUserId,
-                //    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
-                //    MessageType = MessageType.Text
-                //}, false, ct);
+                    await _conversationService.UpdateAsync(new UpdateConversationRequest
+                    {
+                        ConversationId = convoDto.ConversationId,
+                        Initialized = true,
+                        Priority = PriorityLevel.Normal,
+                        Status = ConversationStatus.Bot,
+                        IsArchived = false
+                    }, ct);
 
-                await _whatsAppService.SendInteractiveButtonsAsync(
-                    convoDto.ConversationId,
-                    BotUserId,
-                    "Selecciona una opción:",
-                    buttons,
-                    ct
-                );
+                    //await _messageService.SendMessageAsync(new SendMessageRequest
+                    //{
+                    //    ConversationId = convoDto.ConversationId,
+                    //    SenderId = BotUserId,
+                    //    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
+                    //    MessageType = MessageType.Text
+                    //}, false, ct);
 
-                await _hubContext.Clients
-                   .All
-                   .SendAsync("ConversationUpdated", convDto, ct);
+                    await _whatsAppService.SendInteractiveButtonsAsync(
+                        convoDto.ConversationId,
+                        BotUserId,
+                        "Selecciona una opción:",
+                        buttons,
+                        ct
+                    );
 
-                return;
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", convDto, ct);
+                }
+
+                    return;
             }
 
             //Cuando el usuario seleccione una opcion de la lista enviada.
@@ -660,7 +695,9 @@ namespace CustomerService.API.Pipelines.Implementations
         private async Task HandleBotReplyAsync(
             ConversationResponseDto convoDto,
             string? userText,
-            CancellationToken ct = default)
+            CancellationToken ct = default, bool?
+            isHoliday = false,
+            bool? isOutOfOpeningHour = false)
         {
             try
             {
@@ -693,9 +730,32 @@ namespace CustomerService.API.Pipelines.Implementations
 
                         Responde a: {userText}";
 
+                if (isHoliday == true)
+                {
+                    fullPrompt += $@"
+                        Nota relevante:
+                        No agendes, ni transfiere con un agente o miembro de atención al cliente. Hoy es un dia feriado nacional por lo que la persona solo puedes contactar con vos, esto es muy importante
+                        asi no des indicaciones como: Entiendo que desea hablar con un agente. Por favor, espere un momento mientras le transfiero a un miembro de nuestro equipo de atención al cliente.
+                        Por que no se puede contactar con un agente. Ni indiques que escriba una palabra como agente o operador tampoco des esa recomendación tipo: Para hablar con un agente, por favor escriba ""agente"" u ""operador"".
+                        Asi espero que prevalesca el que es un dia feriado. Y se respetuoso y amable.";
+                }
+
+
+                if (isOutOfOpeningHour == true)
+                {
+                    fullPrompt += $@"
+                        Nota relevante: 
+                        No agendes, ni transfiere con un agente o miembro de atención al cliente. Dado actualmente estaria fuera de horario de atención  al cliente por lo que la persona solo puedes contactar con vos, esto es muy importante
+                        asi no des indicaciones como: Entiendo que desea hablar con un agente. Por favor, espere un momento mientras le transfiero a un miembro de nuestro equipo de atención al cliente.
+                        Por que no se puede contactar con un agente. Ni indiques que escriba una palabra como agente o operador tampoco des esa recomendación tipo: Para hablar con un agente, por favor escriba """"agente"""" u """"operador"""".
+                        Asi espero que prevalesca que esta fuera de horario de atención  al cliente. Y se respetuoso y amable.""
+                    ";
+
+                }
+
                 var botReply = (await _geminiClient
-                    .GenerateContentAsync(fullPrompt, userText ?? "", ct))
-                    .Trim();
+                        .GenerateContentAsync(fullPrompt, userText ?? "", ct))
+                        .Trim();
 
                 var sendReq = new SendMessageRequest
                 {
