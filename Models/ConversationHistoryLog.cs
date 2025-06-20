@@ -31,6 +31,6 @@ namespace CustomerService.API.Models
         public virtual Conversation Conversation { get; set; } = null!;
 
         [ForeignKey(nameof(ChangedByUserId))]
-        public virtual User? ChangedByUser { get; set; } = null!;
+        public virtual User? ChangedByUser { get; set; }
     }
 }

@@ -146,6 +146,7 @@ builder.Services.AddScoped<IOpeningHourService, OpeningHourService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHostedService<InactivityHostedService>();
+builder.Services.AddHostedService<WebsiteContextHostedService>();
 //builder.Services.AddScoped<IHostedService, ConversationCleanupService>();
 
 // --------------------- Mapster ---------------------

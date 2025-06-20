@@ -548,10 +548,10 @@ public partial class CustomerSupportContext : DbContext
                   .HasForeignKey(chl => chl.ConversationId);
 
             entity.HasOne(e => e.ChangedByUser)
-              .WithMany(u => u.ConversationHistoryLogs)
-              .HasForeignKey(e => e.ChangedByUserId)
-              .OnDelete(DeleteBehavior.Restrict)
-              .HasConstraintName("FK_ConversationHistoryLog_ChangedByUserId");
+                  .WithMany(u => u.ConversationHistoryLogs)
+                  .HasForeignKey(e => e.ChangedByUserId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_ConversationHistoryLog_ChangedByUserId");
 
             entity.Property(chl => chl.ChangedAt)
                   .HasDefaultValueSql("SYSUTCDATETIME()");

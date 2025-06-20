@@ -1,5 +1,6 @@
 ﻿using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Hosted;
 using CustomerService.API.Hubs;
 using CustomerService.API.Models;
 using CustomerService.API.Pipelines.Interfaces;
@@ -26,6 +27,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using WhatsappBusiness.CloudApi.Messages.Requests;
+using WhatsappBusiness.CloudApi.Webhook;
 
 namespace CustomerService.API.Pipelines.Implementations
 {
@@ -51,7 +53,7 @@ namespace CustomerService.API.Pipelines.Implementations
         private readonly ISystemParamService _systemParamService;
         private readonly HttpClient _httpClient;
         private const int BotUserId = 1;
-
+        private readonly IWebHostEnvironment _env;
         public MessagePipeline(
             IContactLogService contactService,
             IConversationService conversationService,
@@ -71,7 +73,8 @@ namespace CustomerService.API.Pipelines.Implementations
             IOptions<MessageKeywords> keywordOpts,
             ISystemParamService systemParamService,
             IHubContext<NotificationsHub> hubNotification,
-            HttpClient httpClient)
+            HttpClient httpClient,
+            IWebHostEnvironment env)
         {
             _contactService = contactService;
             _conversationService = conversationService;
@@ -92,6 +95,7 @@ namespace CustomerService.API.Pipelines.Implementations
             _systemParamService = systemParamService;
             _hubNotification = hubNotification;
             _httpClient = httpClient;
+            _env = env; 
         }
 
         public async Task ProcessIncomingAsync(ChangeValue value, CancellationToken ct = default)
@@ -660,42 +664,39 @@ namespace CustomerService.API.Pipelines.Implementations
         {
             try
             {
-                // Recuperar el histórico de la conversación
-                var history = await _messageService
-                    .GetByConversationAsync(convoDto.ConversationId, ct);
-
-                // Construir el prompt para Gemini
-                var allTexts = history
+                var allTexts = (await _messageService
+                    .GetByConversationAsync(convoDto.ConversationId, ct))
                     .Select(m => m.Content)
                     .Where(t => !string.IsNullOrWhiteSpace(t));
 
-                var urls = new[]
-                    {
-                        "https://www.pcgroupsa.com",
-                        "https://www.pcgroupsa.com/inicio",
-                        "https://www.pcgroupsa.com/servicios",
-                        "https://www.pcgroupsa.com/nosotros",
-                        "https://www.pcgroupsa.com/contactanos"
-                    };
+                var jsonPath = Path.Combine(_env.ContentRootPath, "WhContext", "websiteContext.json");
+                WebsiteContextDto websiteCtx;
+                if (File.Exists(jsonPath))
+                {
+                    var websiteJson = await File.ReadAllTextAsync(jsonPath, ct);
+                    websiteCtx = System.Text.Json.JsonSerializer.Deserialize<WebsiteContextDto>(websiteJson)!;
+                }
+                else
+                {
+                    websiteCtx = new WebsiteContextDto { Content = "", UpdatedAtUtc = DateTime.MinValue };
+                }
 
-                var websiteText = await ExtractTextFromUrlsAsync(urls, ct);
+                var fullPrompt = $@"
+                        Resumen breve sobre quien eres:
+                        {_systemPrompt}
 
-                var fullPrompt = "Resumen breve sobre quien eres: " + Environment.NewLine
-                               + _systemPrompt + Environment.NewLine
-                               + Environment.NewLine
-                               + "Información del sitio web: " + Environment.NewLine
-                               + websiteText + Environment.NewLine
-                               + Environment.NewLine
-                               + "Historial de mensajes:"  + string.Join(Environment.NewLine, allTexts)
-                               + Environment.NewLine
-                               + "Responde a:" + (userText ?? "");
+                        Información del sitio web (actualizado {websiteCtx.UpdatedAtUtc:u}):
+                        {websiteCtx.Content}
 
-                // Invocar Gemini
+                        Historial de mensajes:
+                        {string.Join('\n', allTexts)}
+
+                        Responde a: {userText}";
+
                 var botReply = (await _geminiClient
                     .GenerateContentAsync(fullPrompt, userText ?? "", ct))
                     .Trim();
 
-                // Enviar y persistir el mensaje del bot
                 var sendReq = new SendMessageRequest
                 {
                     ConversationId = convoDto.ConversationId,
@@ -716,46 +717,11 @@ namespace CustomerService.API.Pipelines.Implementations
                     .All
                     .SendAsync("ConversationUpdated", convDto, ct);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
         }
-
-        public async Task<string> ExtractTextFromUrlsAsync(IEnumerable<string> urls, CancellationToken ct = default)
-        {
-            var browserFetcher = new BrowserFetcher();
-            await browserFetcher.DownloadAsync();
-
-
-            var allText = new List<string>();
-
-            using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
-            {
-                Headless = true
-            });
-
-            foreach (var url in urls)
-            {
-                try
-                {
-                    using var page = await browser.NewPageAsync();
-
-                    await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
-
-                    var content = await page.EvaluateExpressionAsync<string>("document.body.innerText");
-
-                    allText.Add(content.Trim());
-
-                    var isThere = "";
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine(ex);
-                }
-            }
-
-            return string.Join("\n", allText);
-        }
+    
     }
 }

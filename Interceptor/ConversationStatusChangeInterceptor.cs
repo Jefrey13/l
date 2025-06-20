@@ -25,51 +25,49 @@ namespace CustomerService.API.Interceptor
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            try
+            var context = eventData.Context;
+            if (context == null)
+                return await base.SavingChangesAsync(eventData, result, cancellationToken);
+
+            var entries = context.ChangeTracker
+                .Entries<Conversation>()
+                .Where(e => e.State == EntityState.Modified);
+
+            foreach (var entry in entries)
             {
+                var oldStatus = (ConversationStatus)entry.OriginalValues[nameof(Conversation.Status)];
+                var newStatus = (ConversationStatus)entry.CurrentValues[nameof(Conversation.Status)];
 
-                var context = eventData.Context;
-                if (context == null) return await base.SavingChangesAsync(eventData, result, cancellationToken);
-
-                var entries = context.ChangeTracker
-                    .Entries<Conversation>()
-                    .Where(e => e.State == EntityState.Modified);
-
-                foreach (var entry in entries)
+                if (oldStatus != newStatus)
                 {
-                    var oldStatus = (ConversationStatus?)entry.OriginalValues[nameof(Conversation.Status)];
-                    var newStatus = (ConversationStatus?)entry.CurrentValues[nameof(Conversation.Status)];
+                    var httpContext = _httpContextAccessor.HttpContext;
+                    var userIdStr = httpContext?
+                                        .User?
+                                        .FindFirst(ClaimTypes.NameIdentifier)?
+                                        .Value;
 
-                    if (oldStatus != newStatus && newStatus != null)
+                    // Sólo asignar cuando tenemos un valor válido
+                    int? userId = null;
+                    if (int.TryParse(userIdStr, out var parsed) && parsed > 0)
+                        userId = parsed;
+
+                    var ip = httpContext?.Connection?.RemoteIpAddress?.ToString();
+                    var userAgent = httpContext?.Request?.Headers["User-Agent"].ToString();
+
+                    context.Set<ConversationHistoryLog>().Add(new ConversationHistoryLog
                     {
-                        var httpContext = _httpContextAccessor.HttpContext;
-                        var userIdStr = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                        int.TryParse(userIdStr, out int userId);
-
-                        var ip = httpContext?.Connection?.RemoteIpAddress?.ToString();
-                        var userAgent = httpContext?.Request?.Headers["User-Agent"].ToString();
-
-                        context.Add(new ConversationHistoryLog
-                        {
-                            ConversationId = (int)entry.CurrentValues[nameof(Conversation.ConversationId)],
-                            OldStatus = oldStatus!.Value,
-                            NewStatus = newStatus!.Value,
-                            ChangedByUserId = userId,
-                            ChangedAt = DateTime.UtcNow,
-                            SourceIp = ip,
-                            UserAgent = userAgent
-                        });
-                    }
+                        ConversationId = entry.Entity.ConversationId,
+                        OldStatus = oldStatus,
+                        NewStatus = newStatus,
+                        ChangedByUserId = userId,           // null si no había usuario válido
+                        ChangedAt = DateTime.UtcNow,
+                        SourceIp = ip,
+                        UserAgent = userAgent
+                    });
                 }
+            }
 
-                return await base.SavingChangesAsync(eventData, result, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                return await base.SavingChangesAsync(eventData, result, cancellationToken);
-            }
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
     }
 }
