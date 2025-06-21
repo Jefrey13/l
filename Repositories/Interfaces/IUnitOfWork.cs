@@ -23,8 +23,9 @@ namespace CustomerService.API.Repositories.Interfaces
         ISystemParamRepository SystemParamRepository { get; }
 
         IOpeningHourRepository OpeningHours { get; }
-        void ClearChangeTracker();
 
+        IWorkShiftRepository WorkShifts { get; }
+        void ClearChangeTracker();
         Task<int> SaveChangesAsync(CancellationToken cancellation = default);
     }
 }

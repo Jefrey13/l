@@ -10,5 +10,7 @@ namespace CustomerService.API.Services.Interfaces
         ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
 
         ClaimsPrincipal GetPrincipalFromToken(string token);
+
+        Task<int> GetUserIdAsync(string token);
     }
 }

@@ -191,9 +191,10 @@ BEGIN TRY
 		('Usuarios',         'List of system users',                         'users',         3, 'Users'),
 		('Notificaciones ', 'Conversation assignment, new users, etc.',     'notifications', 4, 'BellRing'),
 		('Perfil',       'User profile details',                         'profile',       5, 'User'),
-		('Parametros',     'CRM Dynamic Params',         'system-params',     6, 'TbDatabase '),
-		('Horarios',     'Business opening hour',         'opening-hour',     7, 'TfiTimer '),
-		('Cerrar Sesión',        'Redirects to login', 'login',        8, 'LogOut');
+		('Parametros',     'CRM Dynamic Params',         'system-params',     6, 'Database'),
+		('Horarios',     'Business opening hour',         'opening-hour',     7, 'CalendarClock'),
+		('Turnos',     'Business work shift',         'work-shift',     8, 'CalendarCog'),
+		('Cerrar Sesión',        'Redirects to login', 'login',        9, 'LogOut');
 	END
 
 	-- =================================================================================
@@ -214,7 +215,8 @@ BEGIN TRY
 		(5, @AdminRoleId),
 		(6, @AdminRoleId),
 		(7, @AdminRoleId),
-		(8, @AdminRoleId);
+		(8, @AdminRoleId),
+		(9, @AdminRoleId);
 	END
 
 	-- Support role menus
@@ -239,30 +241,6 @@ BEGIN CATCH
 	THROW;
 END CATCH;
 GO
-
-
-
--- ==================EXTRA ==========================
-USE CustomerSupportDB;
-
-SELECT * FROM chat.Conversations
-SELECT * FROM chat.[Messages]
-SELECT * FROM auth.ContactLogs;
-SELECT * FROM auth.Users;
-SELECT * FROM auth.AppRoles;
-SELECT * FROM auth.UserRoles;
-SELECT * FROM auth.Menus;
------------------
-DELETE chat.Conversations;
-DELETE chat.[Messages];
-DELETE auth.ContactLogs;
-
-UPDATE auth.Menus SET [Url] = 'login' WHERE MenuId = 6
-SELECT * FROM  crm.Companies;
-
-UPDATE chat.Conversations SET Status = 'Closed'
-
-UPDATE chat.Conversations SET Status  = 'Closed'  where ConversationId = 12;
 
 USE CustomerSupportDB;
 GO

@@ -1,16 +1,17 @@
-﻿using System;
+﻿using CustomerService.API.Models;
+using CustomerService.API.Repositories.Interfaces;
+using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using CustomerService.API.Models;
-using CustomerService.API.Repositories.Interfaces;
-using CustomerService.API.Services.Interfaces;
-using CustomerService.API.Utils;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace CustomerService.API.Services.Implementations
 {
@@ -123,6 +124,16 @@ namespace CustomerService.API.Services.Implementations
 
             // lanza si no es válido
             return handler.ValidateToken(token, validationParameters, out _);
+        }
+
+        public async Task<int> GetUserIdAsync(string token)
+        {
+            if(string.IsNullOrEmpty(token)) { throw new ArgumentNullException("Token invalido"); }
+
+            var principal = GetPrincipalFromToken(token);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            return userId;
         }
     }
 }

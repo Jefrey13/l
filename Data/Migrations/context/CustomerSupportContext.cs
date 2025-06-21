@@ -617,7 +617,7 @@ public partial class CustomerSupportContext : DbContext
         modelBuilder.Entity<WorkShift_User>(entity =>
         {
             entity.ToTable("WorkShift_User", "crm");
-            entity.HasKey(ws => new { ws.OpeningHourId, ws.AssingedUserId });
+            entity.HasKey(ws => ws.Id);
 
             entity.Property(ws => ws.CreatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
@@ -625,6 +625,29 @@ public partial class CustomerSupportContext : DbContext
                 .HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(ws => ws.IsActive)
             .HasDefaultValue(false);
+
+            entity.HasOne(ws => ws.AssignedUser)
+              .WithMany(u => u.WorkShift_UsersAssignedTo)
+              .HasForeignKey(ws => ws.AssingedUserId)
+              .OnDelete(DeleteBehavior.Restrict)
+              .HasConstraintName("FK_WorkShift_User_AssignedBy");
+
+            entity.HasOne(ws => ws.CreatedBy)
+                  .WithMany(u => u.WorkShift_UsersCreatedBy)
+                  .HasForeignKey(ws => ws.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_WorkShift_User_CreatedBy");
+
+            entity.HasOne(ws => ws.UpdatedBy)
+                  .WithMany(u => u.WorkShift_UsersUpdatedBy)
+                  .HasForeignKey(ws => ws.UpdatedById)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_Workshift_User_UpdatedBy");
+
+            entity.HasOne(ws => ws.OpeningHour)
+            .WithMany(oh => oh.WorkShift_Users)
+            .HasForeignKey(ws=> ws.OpeningHourId)
+            .HasConstraintName("FK_OpeningHour_Workshift");
         });
 
         OnModelCreatingPartial(modelBuilder);

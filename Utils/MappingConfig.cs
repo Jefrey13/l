@@ -185,6 +185,9 @@ namespace CustomerService.API.Utils
 
             config.NewConfig<OpeningHour, OpeningHourResponseDto>();
             config.NewConfig<OpeningHourRequestDto, OpeningHour>();
+
+            config.NewConfig<WorkShift_User, WorkShiftResponseDto>();
+            config.NewConfig<WorkShiftRequestDto, WorkShift_User>();
         }
     }
 }

@@ -32,5 +32,7 @@ namespace CustomerService.API.Models
         public virtual User? CreatedBy { get; set; } = null!;
 
         public virtual User? UpdatedBy { get; set; } = null!;
+
+        public virtual IEnumerable<WorkShift_User> WorkShift_Users { get; set; } = new List<WorkShift_User>();
     }
 }
