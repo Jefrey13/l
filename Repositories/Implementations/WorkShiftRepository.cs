@@ -11,12 +11,16 @@ namespace CustomerService.API.Repositories.Implementations
     {
         public WorkShiftRepository(CustomerSupportContext context) : base(context) { }
 
-        public override IQueryable<WorkShift_User> GetAll() =>
-            _dbSet
-                .Include(ws => ws.AssignedUser)
-                .Include(ws => ws.CreatedBy)
-                .Include(ws => ws.UpdatedBy)
-                .Include(ws => ws.OpeningHour);
+        public async Task<IQueryable<WorkShift_User>> GetAllAsync()
+        {
+            var data = await _dbSet.
+                AsNoTracking()
+                .Include(ws=> ws.AssignedUser)
+                .Include(ws=> ws.OpeningHour)
+                .ToListAsync();
+
+            return data.AsQueryable();
+        }
 
         public override async Task<WorkShift_User> GetByIdAsync(int id, CancellationToken ct = default)
         {

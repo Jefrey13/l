@@ -10,6 +10,16 @@ namespace CustomerService.API.Repositories.Implementations
     {
         public OpeningHourRepository(CustomerSupportContext context) : base(context) { }
 
+        public async Task<IQueryable<OpeningHour>> GetAllAsync()
+        {
+            var data = await _dbSet.
+                AsNoTracking()
+                .Include(ah=> ah.CreatedBy)
+                .Include(ah=> ah.UpdatedBy)
+                .ToListAsync();
+
+            return data.AsQueryable();
+        }
         public async Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default)
         {
             return await _dbSet
@@ -28,6 +38,7 @@ namespace CustomerService.API.Repositories.Implementations
         {
             var date = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua"));
             var time = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua"));
+
             var applicable = await _dbSet
                 .AsNoTracking()
                 .Where(oh => oh.IsActive == true

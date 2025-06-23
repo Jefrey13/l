@@ -60,7 +60,8 @@ namespace CustomerService.API.Services.Implementations
             PaginationParams @params,
             CancellationToken ct = default)
         {
-            var query = _uow.WorkShifts.GetAll();
+            var query = await _uow.WorkShifts.GetAllAsync();
+
             var paged = await PagedList<WorkShift_User>
                 .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
             var dtos = paged.Select(ws => ws.Adapt<WorkShiftResponseDto>());

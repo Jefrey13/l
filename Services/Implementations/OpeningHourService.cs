@@ -86,11 +86,22 @@ namespace CustomerService.API.Services.Implementations
             PaginationParams @params,
             CancellationToken ct = default)
         {
-            var query = _uow.OpeningHours.GetAll();
-            var paged = await PagedList<OpeningHour>
-                .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
-            var dtos = paged.Select(oh => oh.Adapt<OpeningHourResponseDto>());
-            return new PagedResponse<OpeningHourResponseDto>(dtos, paged.MetaData);
+            try
+            {
+                var query = await _uow.OpeningHours.GetAllAsync();
+
+                var paged = await PagedList<OpeningHour>
+                    .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+
+                var dtos = paged.Select(oh => oh.Adapt<OpeningHourResponseDto>());
+
+                return new PagedResponse<OpeningHourResponseDto>(dtos, paged.MetaData);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
+            }
         }
 
         public async Task<OpeningHourResponseDto> GetByIdAsync(int id, CancellationToken ct = default)

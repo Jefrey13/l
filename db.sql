@@ -389,3 +389,73 @@ DELETE crm.OpeningHour WHERE id = 2;
 
 ----Update testDatea
 UPDATE  crm.OpeningHour SET StartTime = null, EndTime = null;
+
+USE CustomerSupportDB;
+
+	SELECT * FROM crm.OpeningHour;	
+	SELECT * FROM.crm.WorkShift_User;
+
+INSERT INTO crm.OpeningHour
+    (Name, Description, Recurrence, DaysOfWeek, HolidayDate, SpecificDate,
+     StartTime, EndTime, EffectiveFrom, EffectiveTo, IsActive,
+     CreatedById, CreatedAt)
+VALUES
+    -- 1) Horario semanal Lun-Vie 08:00–17:30
+    (
+     N'Atención Lun-Vie',
+     N'Horario regular de lunes a viernes',
+     N'Weekly',
+     N'Monday,Tuesday,Wednesday,Thursday,Friday',
+     NULL,
+     NULL,
+     '08:00:00',
+     '17:30:00',
+     '2025-01-01',
+     '2099-12-31',
+     1,
+     1,
+     GETDATE());
+	 
+	 
+INSERT INTO crm.OpeningHour
+    ([Name], [Description], Recurrence, EffectiveFrom, EffectiveTo, IsActive,
+     CreatedById, CreatedAt)
+VALUES
+    -- 3) Feriado único 19/04/2025
+    (
+     N'Feriado 19-04-2025',
+     N'Evento extraordinario',
+     N'OneTimeHoliday',
+     '2025-04-19',
+     '2025-04-19',
+     1,
+     1,
+     GETDATE());
+
+INSERT INTO crm.OpeningHour
+    ([Name], [Description], [Recurrence], [HolidayDate],
+     [EffectiveFrom], [EffectiveTo], [IsActive], [CreatedById], [CreatedAt])
+VALUES
+    (
+     N'Feriado 15/09',
+     N'Día de la Independencia',
+     N'AnnualHoliday',
+     N'15/09',
+     '2025-01-01',
+     '2099-12-31',
+     1,
+     1,
+     GETDATE()
+    );
+
+
+	--------------------
+	
+INSERT INTO crm.WorkShift_User
+    (OpeningHourId, AssignedUserId, CreatedById, IsActive,
+     ValidFrom, ValidTo, CreatedAt)
+VALUES
+    -- Agente en feriado único
+    (49, 4, 1, 1, '2025-04-19', '2025-04-19', GETDATE()),
+	    -- Agente en feriado anual
+    (48, 3, 1, 1, '2025-09-15', '2025-09-15', GETDATE());

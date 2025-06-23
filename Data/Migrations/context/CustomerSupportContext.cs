@@ -623,7 +623,7 @@ public partial class CustomerSupportContext : DbContext
                 .IsRequired();
             entity.Property(oh => oh.EndTime)
                 .HasColumnType("time")
-                .IsRequired();
+                .IsRequired(false);
 
             // Vigencia como DATE
             entity.Property(oh => oh.EffectiveFrom)

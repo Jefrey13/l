@@ -34,6 +34,7 @@ namespace CustomerService.API.Utils
             CancellationToken cancellation = default)
         {
             var count = await source.CountAsync(cancellation);
+
             var items = await source
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

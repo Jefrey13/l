@@ -758,5 +758,52 @@ namespace CustomerService.API.Services.Implementations
             var prompt = "Resume este histórico completo en un párrafo breve, de los mensajes enviados por el clintes. Es para ver el resumen de sus mensajes:";
             return await _geminiClient.GenerateContentAsync(prompt, sb.ToString(), ct);
         }
+        public async Task AutoAssingAsync(int convId, int agentUserId, CancellationToken ct = default)
+        {
+            try
+            {
+                if (convId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(convId));
+
+                var conv = await _uow.Conversations.GetByIdAsync(convId, ct)
+                    ?? throw new KeyNotFoundException("Conversation not found.");
+
+                var localDate = await _nicDatetime.GetNicDatetime();
+                conv.AssignedAgentId = agentUserId;
+                conv.AssignedByUserId = 1;
+                conv.AssignedAt = await _nicDatetime.GetNicDatetime();
+                conv.AssignmentState = AssignmentState.Forced;
+                conv.RequestedAgentAt = await _nicDatetime.GetNicDatetime();
+                conv.Status = ConversationStatus.Human;
+
+                _uow.Conversations.Update(conv);
+                await _uow.SaveChangesAsync(ct);
+
+                var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+
+                var dto = updatedConv.Adapt<ConversationResponseDto>();
+
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = dto.ConversationId,
+                    SenderId = 1,
+                    Content = $"Se le asigno el agente de turno {conv.AssignedAgent?.FullName}",
+                    MessageType = MessageType.Text
+                }, false, ct);
+
+                await _hubContext.Clients
+                 .Group("Admin")
+                 .SendAsync("ConversationUpdated", dto, ct);
+
+                await _hubNotification
+                      .Clients
+                      .Group(agentUserId.ToString())
+                      .SendAsync("ConversationAssigned", dto, ct);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
     }
 }

@@ -22,8 +22,8 @@ namespace CustomerService.API.Models
         public DateOnly? SpecificDate { get; set; }
 
         // Horas de apertura
-        public TimeOnly StartTime { get; set; }
-        public TimeOnly EndTime { get; set; }
+        public TimeOnly? StartTime { get; set; }
+        public TimeOnly? EndTime { get; set; }
 
         // Vigencia opcional
         public DateOnly? EffectiveFrom { get; set; }

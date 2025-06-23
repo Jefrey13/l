@@ -28,7 +28,7 @@ namespace CustomerService.API.Controllers
             return header.Split(' ')[1];
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetOpeningHourById")]
         [SwaggerOperation(Summary = "Retrieve a specific opening hour by its ID")]
         [ProducesResponseType(typeof(ApiResponse<OpeningHourResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
@@ -104,7 +104,7 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] OpeningHourRequestDto request, CancellationToken ct = default)
         {
-            if (!ModelState.IsValid)
+            if (request == null)
                 return BadRequest(new ApiResponse<object>(null, "Invalid request data", false));
 
             string token;
