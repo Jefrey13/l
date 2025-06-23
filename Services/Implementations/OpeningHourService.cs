@@ -4,6 +4,7 @@ using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
 using CustomerService.API.Utils;
+using CustomerService.API.Utils.Enums;
 using k8s.KubeConfigModels;
 using Mapster;
 using System.Security.Claims;
@@ -16,84 +17,127 @@ namespace CustomerService.API.Services.Implementations
         private readonly INicDatetime _nicDateTime;
         private readonly ITokenService _tokenService;
 
-        public OpeningHourService(IUnitOfWork uow, 
-            INicDatetime nicDateTime,
-            ITokenService tokenService)
+        public OpeningHourService(IUnitOfWork uow, INicDatetime nicDateTime, ITokenService tokenService)
         {
             _uow = uow;
             _nicDateTime = nicDateTime;
             _tokenService = tokenService;
         }
 
-        public async Task<OpeningHourResponseDto?> CreateAsync(OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default)
+        private void ValidateRequest(OpeningHourRequestDto request)
         {
-            try
+            if (request.StartTime >= request.EndTime)
+                throw new ArgumentException("StartTime must be before EndTime");
+
+            switch (request.Recurrence)
             {
-                var principal = _tokenService.GetPrincipalFromToken(jwtToken);
-                var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                case RecurrenceType.Weekly:
+                    // Para reglas semanales, se requieren días de la semana
+                    if (request.DaysOfWeek == null || !request.DaysOfWeek.Any())
+                        throw new ArgumentException("DaysOfWeek required for Weekly recurrence");
+                    break;
 
-                if (request is null)
-                    throw new ArgumentNullException(nameof(request), "El horario no puede ser null");
+                case RecurrenceType.AnnualHoliday:
+                    // Para feriado anual, mes y día son obligatorios
+                    if (request.HolidayDate == null)
+                        throw new ArgumentException("HolidayDate required for AnnualHoliday recurrence");
+                    break;
 
-                var entity = request.Adapt<OpeningHour>();
-                entity.CreatedAt = await _nicDateTime.GetNicDatetime();
-                entity.CreatedById = userId;
+                case RecurrenceType.OneTimeHoliday:
+                    // Para feriado único, fecha completa es obligatoria
+                    if (request.SpecificDate == null)
+                        throw new ArgumentException("SpecificDate required for OneTimeHoliday recurrence");
+                    break;
+            }
 
-                await _uow.OpeningHours.AddAsync(entity, ct);
-                await _uow.SaveChangesAsync(ct);
-
-                return entity.Adapt<OpeningHourResponseDto>();
-            } catch (Exception ex)
+            if (request.EffectiveFrom.HasValue &&
+                request.EffectiveTo.HasValue &&
+                request.EffectiveFrom > request.EffectiveTo)
             {
-                Console.WriteLine(ex.Message);
-                return new OpeningHourResponseDto();
+                throw new ArgumentException("EffectiveFrom must be on or before EffectiveTo");
             }
         }
 
-        public async Task<PagedResponse<OpeningHourResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken ct = default)
+        public async Task<OpeningHourResponseDto?> CreateAsync(
+            OpeningHourRequestDto request,
+            string jwtToken,
+            CancellationToken ct = default)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            ValidateRequest(request);
+
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var now = await _nicDateTime.GetNicDatetime();
+            var entity = request.Adapt<OpeningHour>();
+            entity.CreatedAt = now;
+            entity.CreatedById = userId;
+
+            // TODO: validar solapamiento de horarios antes de guardar
+
+            await _uow.OpeningHours.AddAsync(entity, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            return entity.Adapt<OpeningHourResponseDto>();
+        }
+
+        public async Task<PagedResponse<OpeningHourResponseDto>> GetAllAsync(
+            PaginationParams @params,
+            CancellationToken ct = default)
         {
             var query = _uow.OpeningHours.GetAll();
-            var paged = await PagedList<OpeningHour>.CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
-            var dtos = paged.Select(op => op.Adapt<OpeningHourResponseDto>());
-
+            var paged = await PagedList<OpeningHour>
+                .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+            var dtos = paged.Select(oh => oh.Adapt<OpeningHourResponseDto>());
             return new PagedResponse<OpeningHourResponseDto>(dtos, paged.MetaData);
         }
 
         public async Task<OpeningHourResponseDto> GetByIdAsync(int id, CancellationToken ct = default)
         {
-            if (id <= 0)
-                throw new ArgumentOutOfRangeException(nameof(id), "El id debe ser mayor que cero");
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 
-            var data = await _uow.OpeningHours.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"No se encontró horario con id {id}");
+            var entity = await _uow.OpeningHours.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"OpeningHour {id} not found");
 
-            return data.Adapt<OpeningHourResponseDto>();
+            return entity.Adapt<OpeningHourResponseDto>();
         }
 
-        public async Task<bool> IsHolidayAsync(CancellationToken ct = default)
+        public Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default)
+            => _uow.OpeningHours.IsHolidayAsync(date, ct);
+
+        public Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
+            => _uow.OpeningHours.IsOutOfOpeningHourAsync(instant, ct);
+
+        public async Task<IEnumerable<OpeningHourResponseDto>> GetEffectiveScheduleAsync(
+            DateOnly date,
+            CancellationToken ct = default)
         {
-            return await _uow.OpeningHours.IsHolidayAsync(ct);
+            var list = await _uow.OpeningHours.GetEffectiveScheduleAsync(date, ct);
+            return list.Select(oh => oh.Adapt<OpeningHourResponseDto>());
         }
 
-        public async Task<bool> IsOutOfOpeningHour(CancellationToken ct = default)
+        public async Task<OpeningHourResponseDto?> UpdateAsync(
+            int id,
+            OpeningHourRequestDto request,
+            string jwtToken,
+            CancellationToken ct = default)
         {
-            return await _uow.OpeningHours.IsHolidayAsync(ct);
-        }
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            ValidateRequest(request);
 
-        public async Task<OpeningHourResponseDto?> ToggleAsync(int id, string jwtToken, CancellationToken ct = default)
-        {
+            var entity = await _uow.OpeningHours.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"OpeningHour {id} not found");
+
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            if (id <= 0)
-                throw new ArgumentOutOfRangeException(nameof(id), "El id no es válido");
-
-            var entity = await _uow.OpeningHours.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"No se encontró horario con id {id}");
-
-            entity.IsActive = !entity.IsActive;
+            entity = request.Adapt(entity);
             entity.UpdatedAt = await _nicDateTime.GetNicDatetime();
             entity.UpdatedById = userId;
+
+            // TODO: validar solapamiento tras cambios antes de guardar
 
             _uow.OpeningHours.Update(entity, ct);
             await _uow.SaveChangesAsync(ct);
@@ -101,28 +145,22 @@ namespace CustomerService.API.Services.Implementations
             return entity.Adapt<OpeningHourResponseDto>();
         }
 
-        public async Task<OpeningHourResponseDto?> UpdateAsync(int id, OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default)
+        public async Task<OpeningHourResponseDto?> ToggleAsync(
+            int id,
+            string jwtToken,
+            CancellationToken ct = default)
         {
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+
+            var entity = await _uow.OpeningHours.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"OpeningHour {id} not found");
+
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            if (id <= 0)
-                throw new ArgumentOutOfRangeException(nameof(id), "El id no es válido");
-
-            if (request is null)
-                throw new ArgumentNullException(nameof(request), "El contenido no puede ser null");
-
-            var entity = await _uow.OpeningHours.GetByIdAsync(id, ct)
-                ?? throw new KeyNotFoundException($"No se encontró horario con id {id}");
-
-            entity.Name = request.Name;
-            entity.Description = request.Description;
-            entity.StartTime = request.StartTime;
-            entity.EndTime = request.EndTime;
-            entity.IsHoliday = request.IsHoliday;
-            entity.UpdatedById = userId;
-            entity.IsActive = request.IsActive;
+            entity.IsActive = !entity.IsActive;
             entity.UpdatedAt = await _nicDateTime.GetNicDatetime();
+            entity.UpdatedById = userId;
 
             _uow.OpeningHours.Update(entity, ct);
             await _uow.SaveChangesAsync(ct);

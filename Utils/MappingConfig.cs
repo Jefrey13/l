@@ -183,11 +183,52 @@ namespace CustomerService.API.Utils
                .Map(dest => dest.UpdatedAt, src => src.UpdatedAt)
                .IgnoreNullValues(true);
 
-            config.NewConfig<OpeningHour, OpeningHourResponseDto>();
-            config.NewConfig<OpeningHourRequestDto, OpeningHour>();
+            config.NewConfig<OpeningHour, OpeningHourResponseDto>()
+    .Map(dest => dest.Recurrence, src => src.Recurrence)
+    .Map(dest => dest.DaysOfWeek, src => src.DaysOfWeek)
+    .Map(dest => dest.HolidayDate, src => src.HolidayDate)
+    .Map(dest => dest.SpecificDate, src => src.SpecificDate)
+    .Map(dest => dest.StartTime, src => src.StartTime)
+    .Map(dest => dest.EndTime, src => src.EndTime)
+    .Map(dest => dest.EffectiveFrom, src => src.EffectiveFrom)
+    .Map(dest => dest.EffectiveTo, src => src.EffectiveTo)
+    .Map(dest => dest.IsActive, src => src.IsActive);
 
-            config.NewConfig<WorkShift_User, WorkShiftResponseDto>();
-            config.NewConfig<WorkShiftRequestDto, WorkShift_User>();
+            config.NewConfig<OpeningHourRequestDto, OpeningHour>()
+                .Map(dest => dest.Name, src => src.Name)
+                .Map(dest => dest.Description, src => src.Description)
+                .Map(dest => dest.Recurrence, src => src.Recurrence)
+                .Map(dest => dest.DaysOfWeek, src => src.DaysOfWeek)
+                .Map(dest => dest.HolidayDate, src => src.HolidayDate)
+                .Map(dest => dest.SpecificDate, src => src.SpecificDate)
+                .Map(dest => dest.StartTime, src => src.StartTime)
+                .Map(dest => dest.EndTime, src => src.EndTime)
+                .Map(dest => dest.EffectiveFrom, src => src.EffectiveFrom)
+                .Map(dest => dest.EffectiveTo, src => src.EffectiveTo)
+                .Map(dest => dest.IsActive, src => src.IsActive);
+
+            config.NewConfig<WorkShift_User, WorkShiftResponseDto>()
+                .Map(dest => dest.OpeningHourId, src => src.OpeningHourId)
+                .Map(dest => dest.OpeningHour, src => src.OpeningHour)
+                .Map(dest => dest.AssignedUserId, src => src.AssignedUserId)
+                .Map(dest => dest.AssignedUser, src => src.AssignedUser)
+                .Map(dest => dest.ValidFrom, src => src.ValidFrom)
+                .Map(dest => dest.ValidTo, src => src.ValidTo)
+                .Map(dest => dest.IsActive, src => src.IsActive)
+                .Map(dest => dest.CreatedAt, src => src.CreatedAt)
+                .Map(dest => dest.UpdatedAt, src => src.UpdatedAt)
+                .Map(dest => dest.CreatedById, src => src.CreatedById)
+                .Map(dest => dest.UpdatedById, src => src.UpdatedById)
+                .Map(dest => dest.CreatedBy, src => src.CreatedBy)
+                .Map(dest => dest.UpdatedBy, src => src.UpdatedBy);
+
+            config.NewConfig<WorkShiftRequestDto, WorkShift_User>()
+                .Map(dest => dest.OpeningHourId, src => src.OpeningHourId)
+                .Map(dest => dest.AssignedUserId, src => src.AssignedUserId)
+                .Map(dest => dest.ValidFrom, src => src.ValidFrom)
+                .Map(dest => dest.ValidTo, src => src.ValidTo)
+                .Map(dest => dest.IsActive, src => src.IsActive);
+
         }
     }
 }

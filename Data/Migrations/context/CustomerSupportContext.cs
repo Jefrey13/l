@@ -577,41 +577,82 @@ public partial class CustomerSupportContext : DbContext
             entity.HasKey(oh => oh.Id);
 
             entity.Property(oh => oh.Name)
-            .HasMaxLength(100)
-            .IsRequired();
+                .HasMaxLength(100)
+                .IsRequired();
 
             entity.Property(oh => oh.Description)
                 .HasMaxLength(255)
                 .IsRequired(false);
 
+            // RecurrenceType como string
+            entity.Property(oh => oh.Recurrence)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            // DaysOfWeek[] <-> "Mon,Tue,Wed"
+            var dowConverter = new ValueConverter<DayOfWeek[], string>(
+                v => string.Join(',', v.Select(d => d.ToString())),
+                s => s.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                      .Select(str => Enum.Parse<DayOfWeek>(str))
+                      .ToArray());
+
+            entity.Property(oh => oh.DaysOfWeek)
+                .HasConversion(dowConverter)
+                .HasMaxLength(50)
+                .IsRequired(false);
+
+            // HolidayDate (DayMonth) <-> "dd/MM"
             var dayMonthConverter = new ValueConverter<DayMonth, string>(
-                dm => dm.ToString(),         // Al guardar (DayMonth -> "dd/MM")
-                s => DayMonth.Parse(s));     // Al leer ("dd/MM" -> DayMonth)
+                dm => dm.ToString(),
+                s => DayMonth.Parse(s));
 
             entity.Property(oh => oh.HolidayDate)
                 .HasConversion(dayMonthConverter)
                 .HasMaxLength(5)
                 .IsRequired(false);
 
+            // SpecificDate como DATE
+            entity.Property(oh => oh.SpecificDate)
+                .HasColumnType("date")
+                .IsRequired(false);
+
+            // Horas como TIME
+            entity.Property(oh => oh.StartTime)
+                .HasColumnType("time")
+                .IsRequired();
+            entity.Property(oh => oh.EndTime)
+                .HasColumnType("time")
+                .IsRequired();
+
+            // Vigencia como DATE
+            entity.Property(oh => oh.EffectiveFrom)
+                .HasColumnType("date")
+                .IsRequired(false);
+            entity.Property(oh => oh.EffectiveTo)
+                .HasColumnType("date")
+                .IsRequired(false);
+
+            // Estado por defecto
+            entity.Property(oh => oh.IsActive)
+                .HasDefaultValue(true);
+
             entity.Property(oh => oh.CreatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
-
-
             entity.Property(oh => oh.UpdatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+                .HasDefaultValueSql("SYSUTCDATETIME()");
 
             entity.HasOne(e => e.CreatedBy)
-                  .WithMany(u => u.OpeningHoursCreatedBy)
-                  .HasForeignKey(e => e.CreatedById)
-                  .OnDelete(DeleteBehavior.Restrict)
-                  .HasConstraintName("FK_OpeningHour_CreateBy");
+                .WithMany(u => u.OpeningHoursCreatedBy)
+                .HasForeignKey(e => e.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OpeningHour_CreatedBy");
 
             entity.HasOne(e => e.UpdatedBy)
-                 .WithMany(u => u.OpeningHoursUpdatedBy)
-                 .HasForeignKey(e => e.UpdatedById)
-                 .OnDelete(DeleteBehavior.Restrict)
-                 .HasConstraintName("FK_OpeningHour_UpdateBy");
-
+                .WithMany(u => u.OpeningHoursUpdatedBy)
+                .HasForeignKey(e => e.UpdatedById)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_OpeningHour_UpdatedBy");
         });
 
         modelBuilder.Entity<WorkShift_User>(entity =>
@@ -619,35 +660,46 @@ public partial class CustomerSupportContext : DbContext
             entity.ToTable("WorkShift_User", "crm");
             entity.HasKey(ws => ws.Id);
 
+            entity.Property(ws => ws.IsActive)
+                .HasDefaultValue(true);
             entity.Property(ws => ws.CreatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(ws => ws.UpdatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(ws => ws.IsActive)
-            .HasDefaultValue(false);
 
+            entity.Property(ws => ws.ValidFrom)
+                .HasColumnType("date")
+                .IsRequired(false);
+            entity.Property(ws => ws.ValidTo)
+                .HasColumnType("date")
+                .IsRequired(false);
+
+            entity.Property(ws => ws.RowVersion)
+                .IsRowVersion();
+
+            // Relaciones
             entity.HasOne(ws => ws.AssignedUser)
-              .WithMany(u => u.WorkShift_UsersAssignedTo)
-              .HasForeignKey(ws => ws.AssingedUserId)
-              .OnDelete(DeleteBehavior.Restrict)
-              .HasConstraintName("FK_WorkShift_User_AssignedBy");
+                .WithMany(u => u.WorkShift_UsersAssignedTo)
+                .HasForeignKey(ws => ws.AssignedUserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_WorkShift_User_AssignedUser");
 
             entity.HasOne(ws => ws.CreatedBy)
-                  .WithMany(u => u.WorkShift_UsersCreatedBy)
-                  .HasForeignKey(ws => ws.CreatedById)
-                  .OnDelete(DeleteBehavior.Restrict)
-                  .HasConstraintName("FK_WorkShift_User_CreatedBy");
+                .WithMany(u => u.WorkShift_UsersCreatedBy)
+                .HasForeignKey(ws => ws.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_WorkShift_User_CreatedBy");
 
             entity.HasOne(ws => ws.UpdatedBy)
-                  .WithMany(u => u.WorkShift_UsersUpdatedBy)
-                  .HasForeignKey(ws => ws.UpdatedById)
-                  .OnDelete(DeleteBehavior.Restrict)
-                  .HasConstraintName("FK_Workshift_User_UpdatedBy");
+                .WithMany(u => u.WorkShift_UsersUpdatedBy)
+                .HasForeignKey(ws => ws.UpdatedById)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_WorkShift_User_UpdatedBy");
 
             entity.HasOne(ws => ws.OpeningHour)
-            .WithMany(oh => oh.WorkShift_Users)
-            .HasForeignKey(ws=> ws.OpeningHourId)
-            .HasConstraintName("FK_OpeningHour_Workshift");
+                .WithMany(oh => oh.WorkShift_Users)
+                .HasForeignKey(ws => ws.OpeningHourId)
+                .HasConstraintName("FK_OpeningHour_WorkShift_User");
         });
 
         OnModelCreatingPartial(modelBuilder);

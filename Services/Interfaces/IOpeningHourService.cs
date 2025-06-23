@@ -9,14 +9,11 @@ namespace CustomerService.API.Services.Interfaces
     {
         Task<PagedResponse<OpeningHourResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken ct = default);
         Task<OpeningHourResponseDto> GetByIdAsync(int id, CancellationToken ct = default);
-
         Task<OpeningHourResponseDto?> CreateAsync(OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default);
-
         Task<OpeningHourResponseDto?> UpdateAsync(int id, OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default);
-        Task<OpeningHourResponseDto?> ToggleAsync(int id, string jwtToken,CancellationToken ct = default);
-
-        Task<bool> IsHolidayAsync(CancellationToken ct = default);
-
-        Task<bool> IsOutOfOpeningHour(CancellationToken ct = default);
+        Task<OpeningHourResponseDto?> ToggleAsync(int id, string jwtToken, CancellationToken ct = default);
+        Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default);
+        Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default);
+        Task<IEnumerable<OpeningHourResponseDto>> GetEffectiveScheduleAsync(DateOnly date, CancellationToken ct = default);
     }
 }

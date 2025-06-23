@@ -16,17 +16,39 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly ITokenService _tokenService;
         private readonly INicDatetime _nicDatetime;
+
         public WorkShiftService(IUnitOfWork uow, ITokenService tokenService, INicDatetime nicDatetime)
         {
             _uow = uow;
             _tokenService = tokenService;
             _nicDatetime = nicDatetime;
         }
-        public async Task<WorkShiftResponseDto> CreateAsync(WorkShiftRequestDto request, string jwtToken, CancellationToken ct = default)
+
+        private void ValidateRequest(WorkShiftRequestDto request)
         {
-            if(request == null) throw new ArgumentNullException("Solicitud invalida. No puede ser null", nameof(request));
+            if (request.OpeningHourId <= 0)
+                throw new ArgumentException("Invalid OpeningHourId", nameof(request.OpeningHourId));
+            if (request.AssignedUserId <= 0)
+                throw new ArgumentException("Invalid AssignedUserId", nameof(request.AssignedUserId));
+            if (request.ValidFrom.HasValue && request.ValidTo.HasValue && request.ValidFrom > request.ValidTo)
+                throw new ArgumentException("ValidFrom must be on or before ValidTo");
+        }
+
+        public async Task<WorkShiftResponseDto> CreateAsync(
+            WorkShiftRequestDto request,
+            string jwtToken,
+            CancellationToken ct = default)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            ValidateRequest(request);
+
+            var userId = await _tokenService.GetUserIdAsync(jwtToken);
+            var now = await _nicDatetime.GetNicDatetime();
 
             var entity = request.Adapt<WorkShift_User>();
+            entity.CreatedAt = now;
+            entity.CreatedById = userId;
+            entity.IsActive = request.IsActive;
 
             await _uow.WorkShifts.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
@@ -34,57 +56,88 @@ namespace CustomerService.API.Services.Implementations
             return entity.Adapt<WorkShiftResponseDto>();
         }
 
-        public async Task<PagedResponse<WorkShiftResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken ct = default)
+        public async Task<PagedResponse<WorkShiftResponseDto>> GetAllAsync(
+            PaginationParams @params,
+            CancellationToken ct = default)
         {
             var query = _uow.WorkShifts.GetAll();
-            var paged = await PagedList<WorkShift_User>.CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
-            var dto = paged.Select(ws => ws.Adapt<WorkShiftResponseDto>());
-
-            return new PagedResponse<WorkShiftResponseDto>(dto, paged.MetaData);
+            var paged = await PagedList<WorkShift_User>
+                .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+            var dtos = paged.Select(ws => ws.Adapt<WorkShiftResponseDto>());
+            return new PagedResponse<WorkShiftResponseDto>(dtos, paged.MetaData);
         }
 
         public async Task<WorkShiftResponseDto> GetByIdAsync(int id, CancellationToken ct = default)
         {
-            if(id <= 0) {  throw new ArgumentOutOfRangeException("El id no puede ser null", nameof(id));}
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 
-            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct);
+            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"WorkShift {id} not found");
 
             return entity.Adapt<WorkShiftResponseDto>();
         }
 
-        public async Task<WorkShiftResponseDto> ToggleAsync(int id, string jwtToken, CancellationToken ct = default)
+        public async Task<WorkShiftResponseDto> ToggleAsync(
+            int id,
+            string jwtToken,
+            CancellationToken ct = default)
         {
-           var userId = await _tokenService.GetUserIdAsync(jwtToken);
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 
-            if (id <= 0) { throw new ArgumentException("El id no puede ser null", nameof(id)); }
+            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"WorkShift {id} not found");
 
-            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct);
-
+            var userId = await _tokenService.GetUserIdAsync(jwtToken);
             entity.IsActive = !entity.IsActive;
             entity.UpdatedById = userId;
+            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-             _uow.WorkShifts.Update(entity, ct);
+            _uow.WorkShifts.Update(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
             return entity.Adapt<WorkShiftResponseDto>();
         }
 
-        public async Task<WorkShiftResponseDto> UpdateAsync(int id, WorkShiftRequestDto request, string jwtToken, CancellationToken ct = default)
+        public async Task<WorkShiftResponseDto> UpdateAsync(
+            int id,
+            WorkShiftRequestDto request,
+            string jwtToken,
+            CancellationToken ct = default)
         {
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            ValidateRequest(request);
+
+            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"WorkShift {id} not found");
+
             var userId = await _tokenService.GetUserIdAsync(jwtToken);
 
-            if (id <= 0) { throw new ArgumentException("El id del turno a actualizar no puede ser null ", nameof(id)); }
-            if(request == null) { throw new ArgumentNullException("Los datos ha actualizar no pueden ser null", nameof(request)); }
-
-            var entity = await _uow.WorkShifts.GetByIdAsync(id, ct);
-
             entity.OpeningHourId = request.OpeningHourId;
-            entity.AssingedUserId = request.AssingedUserId;
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+            entity.AssignedUserId = request.AssignedUserId;
+            entity.ValidFrom = request.ValidFrom;
+            entity.ValidTo = request.ValidTo;
+            entity.IsActive = request.IsActive;
             entity.UpdatedById = userId;
+            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+
+            _uow.WorkShifts.Update(entity, ct);
+            await _uow.SaveChangesAsync(ct);
 
             return entity.Adapt<WorkShiftResponseDto>();
+        }
+
+        public Task<int> GetActiveAssignmentsCountAsync(
+            DateOnly date,
+            CancellationToken ct = default) =>
+            _uow.WorkShifts.GetActiveAssignmentsCountAsync(date, ct);
+
+        public async Task<IEnumerable<WorkShiftResponseDto>> GetByDateAsync(
+            DateOnly date,
+            CancellationToken ct = default)
+        {
+            var list = await _uow.WorkShifts.GetByDateAsync(date, ct);
+            return list.Select(ws => ws.Adapt<WorkShiftResponseDto>());
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CustomerService.API.Data.Context;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
+using CustomerService.API.Utils.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Repositories.Implementations
@@ -9,30 +10,51 @@ namespace CustomerService.API.Repositories.Implementations
     {
         public OpeningHourRepository(CustomerSupportContext context) : base(context) { }
 
-       public async Task<bool> IsHolidayAsync(CancellationToken ct = default)
+        public async Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default)
         {
-            var today = DateTime.Today;
-            var todayString = today.ToString("dd/MM");
-
-            return await _dbSet.AsNoTracking()
-                .Where(h => h.IsHoliday == true && h.IsActive == true)
-                .ToListAsync(ct)
-                .ContinueWith(task => task.Result.Any(h => h.HolidayDate.ToString() == todayString), ct);
+            return await _dbSet
+                .AsNoTracking()
+                .Where(oh => oh.IsActive == true
+                    && (oh.Recurrence == RecurrenceType.OneTimeHoliday && oh.SpecificDate == date
+                        || oh.Recurrence == RecurrenceType.AnnualHoliday
+                            && oh.HolidayDate.Month == date.Month
+                            && oh.HolidayDate.Day == date.Day)
+                    && (oh.EffectiveFrom == null || oh.EffectiveFrom <= date)
+                    && (oh.EffectiveTo == null || oh.EffectiveTo >= date))
+                .AnyAsync(ct);
         }
 
-        public async Task<bool> IsOutOfOpeningHour(CancellationToken ct = default)
+        public async Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
         {
-            var localTime = TimeOnly.FromDateTime(DateTime.Now);
-
-            //Si la hora actual es antes de la hora de inicio y despues de la hora final se retorna false, si esta dentro del rango se retorna true.
-            //eje: si la jhora actual es la 1:00 y la hora de incio 8:00 y cierre 15:00 retorna true esta fuera del rango, o si son las 16:00. Pero si es la 14:00 esta ddentro del rango y retorna false
-            //Cancelationtoken ct
-            var isInRange = await _dbSet
+            var date = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua"));
+            var time = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua"));
+            var applicable = await _dbSet
                 .AsNoTracking()
-                .AnyAsync(h => h.StartTime.HasValue && h.EndTime.HasValue &&
-                               h.StartTime.Value <= localTime || localTime >= h.EndTime.Value, ct);
+                .Where(oh => oh.IsActive == true
+                    && (oh.EffectiveFrom == null || oh.EffectiveFrom <= date)
+                    && (oh.EffectiveTo == null || oh.EffectiveTo >= date)
+                    && (oh.Recurrence == RecurrenceType.Weekly && oh.DaysOfWeek.Contains(date.DayOfWeek)
+                        || oh.Recurrence == RecurrenceType.AnnualHoliday
+                            && oh.HolidayDate.Month == date.Month
+                            && oh.HolidayDate.Day == date.Day
+                        || oh.Recurrence == RecurrenceType.OneTimeHoliday && oh.SpecificDate == date))
+                .ToListAsync(ct);
+            return !applicable.Any(r => r.StartTime <= time && r.EndTime >= time);
+        }
 
-            return isInRange;
+        public async Task<IEnumerable<OpeningHour>> GetEffectiveScheduleAsync(DateOnly date, CancellationToken ct = default)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .Where(oh => oh.IsActive == true
+                    && (oh.EffectiveFrom == null || oh.EffectiveFrom <= date)
+                    && (oh.EffectiveTo == null || oh.EffectiveTo >= date)
+                    && (oh.Recurrence == RecurrenceType.Weekly && oh.DaysOfWeek.Contains(date.DayOfWeek)
+                        || oh.Recurrence == RecurrenceType.AnnualHoliday
+                            && oh.HolidayDate.Month == date.Month
+                            && oh.HolidayDate.Day == date.Day
+                        || oh.Recurrence == RecurrenceType.OneTimeHoliday && oh.SpecificDate == date))
+                .ToListAsync(ct);
         }
     }
 }

@@ -328,15 +328,17 @@ namespace CustomerService.API.Pipelines.Implementations
                 if (requestSupport
                     && convoDto.Status.ToString() == ConversationStatus.Bot.ToString())
                 {
+                    var localDate = await _nicDatetime.GetNicDatetime();
+
                     //Si es dia feriado, solo se puede contactar con el chatbot.
-                    var isHoliday = await _openingHourService.IsHolidayAsync();
+                    var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(localDate));
 
                     if (isHoliday) {
                         await HandleBotReplyAsync(convoDto, payload.TextBody, ct, isHoliday = true);
                         return;
                     };
 
-                    var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHour();
+                    var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(localDate);
 
                     if (isOutOfOpeningHour)
                     {
@@ -492,9 +494,10 @@ namespace CustomerService.API.Pipelines.Implementations
 
             if (!convoDto.Initialized)
             {
+                var localDate = await _nicDatetime.GetNicDatetime();
                 //Si es dia feriado, solo se puede contactar con el chatbot.
-                var isHoliday = await _openingHourService.IsHolidayAsync();
-                var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHour();
+                var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(localDate));
+                var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(localDate);
 
                 //Si es dia feriado, solo puede hablar con el bot. Y no contactar a alguien de soporte
                 if (isHoliday || isOutOfOpeningHour)
