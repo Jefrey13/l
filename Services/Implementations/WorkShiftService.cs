@@ -139,5 +139,11 @@ namespace CustomerService.API.Services.Implementations
             var list = await _uow.WorkShifts.GetByDateAsync(date, ct);
             return list.Select(ws => ws.Adapt<WorkShiftResponseDto>());
         }
+
+        public async Task<IEnumerable<UserResponseDto>> GetMembersOnShiftAsync(DateTime instant, CancellationToken ct = default)
+        {
+            var users = await _uow.WorkShifts.GetMembersOnShiftAsync(instant, ct);
+            return users.Select(u => u.Adapt<UserResponseDto>());
+        }
     }
 }

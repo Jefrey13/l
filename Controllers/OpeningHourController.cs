@@ -28,7 +28,7 @@ namespace CustomerService.API.Controllers
             return header.Split(' ')[1];
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetOpeningHourById")]
         [SwaggerOperation(Summary = "Retrieve a specific opening hour by its ID")]
         [ProducesResponseType(typeof(ApiResponse<OpeningHourResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]

@@ -49,5 +49,63 @@ namespace CustomerService.API.Repositories.Implementations
                     && (ws.ValidFrom == null || ws.ValidFrom <= date)
                     && (ws.ValidTo == null || ws.ValidTo >= date))
                 .ToListAsync(ct);
+
+        /// <summary>
+        /// Devuelve la lista de usuarios asignados que están de turno en el instante dado.
+        /// </summary>
+        public async Task<IEnumerable<User>> GetMembersOnShiftAsync(DateTime instant, CancellationToken ct = default)
+        {
+            // 1) convertir al huso de Managua
+            var local = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua");
+            var date = DateOnly.FromDateTime(local);
+            var time = TimeOnly.FromDateTime(local);
+
+            // 2) filtrar WorkShift_User válidos en fecha/hora y traer AssignedUser
+            var shifts = await _dbSet
+                .AsNoTracking()
+                .Include(ws => ws.AssignedUser)
+                .Include(ws => ws.OpeningHour)
+                .Where(ws =>
+                    ws.IsActive
+                    && (ws.ValidFrom == null || ws.ValidFrom <= date)
+                    && (ws.ValidTo == null || ws.ValidTo >= date)
+
+                    // OpeningHour cubre este instante:
+                    && (
+                        // Semanales
+                        (ws.OpeningHour.Recurrence == RecurrenceType.Weekly
+                            && ws.OpeningHour.DaysOfWeek != null
+                            && ws.OpeningHour.DaysOfWeek.Contains(date.DayOfWeek)
+                            && ws.OpeningHour.StartTime <= time
+                            && time <= ws.OpeningHour.EndTime
+                        )
+                        ||
+                        // Feriado puntual o rango
+                        (ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday
+                            && (
+                                (ws.OpeningHour.SpecificDate.HasValue && ws.OpeningHour.SpecificDate.Value == date)
+                                || (!ws.OpeningHour.SpecificDate.HasValue
+                                    && ws.OpeningHour.EffectiveFrom.HasValue && ws.OpeningHour.EffectiveFrom.Value <= date
+                                    && ws.OpeningHour.EffectiveTo.HasValue && ws.OpeningHour.EffectiveTo.Value >= date)
+                            )
+                        )
+                        ||
+                        // Feriado anual
+                        (ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday
+                            && ws.OpeningHour.HolidayDate != null
+                            && ws.OpeningHour.HolidayDate.Month == date.Month
+                            && ws.OpeningHour.HolidayDate.Day == date.Day
+                        )
+                    )
+                )
+                .ToListAsync(ct);
+
+            // 3) Devolver los usuarios asignados (sin duplicados)
+            return shifts
+                .Select(ws => ws.AssignedUser)
+                .Where(u => u != null)
+                .GroupBy(u => u.UserId)
+                .Select(g => g.First());
+        }
     }
 }

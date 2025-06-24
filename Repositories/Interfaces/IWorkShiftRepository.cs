@@ -6,5 +6,7 @@ namespace CustomerService.API.Repositories.Interfaces
     {
         Task<int> GetActiveAssignmentsCountAsync(DateOnly date, CancellationToken ct = default);
         Task<IEnumerable<WorkShift_User>> GetByDateAsync(DateOnly date, CancellationToken ct = default);
+
+        Task<IEnumerable<User>> GetMembersOnShiftAsync(DateTime instant, CancellationToken ct = default);
     }
 }
