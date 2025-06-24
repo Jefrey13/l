@@ -184,15 +184,15 @@ namespace CustomerService.API.Utils
                .IgnoreNullValues(true);
 
             config.NewConfig<OpeningHour, OpeningHourResponseDto>()
-    .Map(dest => dest.Recurrence, src => src.Recurrence)
-    .Map(dest => dest.DaysOfWeek, src => src.DaysOfWeek)
-    .Map(dest => dest.HolidayDate, src => src.HolidayDate)
-    .Map(dest => dest.SpecificDate, src => src.SpecificDate)
-    .Map(dest => dest.StartTime, src => src.StartTime)
-    .Map(dest => dest.EndTime, src => src.EndTime)
-    .Map(dest => dest.EffectiveFrom, src => src.EffectiveFrom)
-    .Map(dest => dest.EffectiveTo, src => src.EffectiveTo)
-    .Map(dest => dest.IsActive, src => src.IsActive);
+                .Map(dest => dest.Recurrence, src => src.Recurrence)
+                .Map(dest => dest.DaysOfWeek, src => src.DaysOfWeek)
+                .Map(dest => dest.HolidayDate, src => src.HolidayDate)
+                .Map(dest => dest.SpecificDate, src => src.SpecificDate)
+                .Map(dest => dest.StartTime, src => src.StartTime)
+                .Map(dest => dest.EndTime, src => src.EndTime)
+                .Map(dest => dest.EffectiveFrom, src => src.EffectiveFrom)
+                .Map(dest => dest.EffectiveTo, src => src.EffectiveTo)
+                .Map(dest => dest.IsActive, src => src.IsActive);
 
             config.NewConfig<OpeningHourRequestDto, OpeningHour>()
                 .Map(dest => dest.Name, src => src.Name)

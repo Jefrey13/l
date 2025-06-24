@@ -620,10 +620,10 @@ public partial class CustomerSupportContext : DbContext
             // Horas como TIME
             entity.Property(oh => oh.StartTime)
                 .HasColumnType("time")
-                .IsRequired();
+                .IsRequired(false);
             entity.Property(oh => oh.EndTime)
                 .HasColumnType("time")
-                .IsRequired();
+                .IsRequired(false);
 
             // Vigencia como DATE
             entity.Property(oh => oh.EffectiveFrom)

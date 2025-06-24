@@ -8,9 +8,13 @@
 
   <ItemGroup>
     <Compile Remove="Configurations\**" />
+    <Compile Remove="Logs\**" />
     <Content Remove="Configurations\**" />
+    <Content Remove="Logs\**" />
     <EmbeddedResource Remove="Configurations\**" />
+    <EmbeddedResource Remove="Logs\**" />
     <None Remove="Configurations\**" />
+    <None Remove="Logs\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,7 +61,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Logs\" />
     <Folder Include="Migrations\" />
     <Folder Include="wwwroot\media\" />
   </ItemGroup>

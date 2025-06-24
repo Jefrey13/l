@@ -46,6 +46,7 @@ namespace CustomerService.API.Repositories.Implementations
             var time = TimeOnly.FromDateTime(local);
 
             var weeklySlots = await _dbSet
+
                 .AsNoTracking()
                 .Where(oh =>
                     oh.IsActive == true

@@ -104,7 +104,7 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Create([FromBody] OpeningHourRequestDto request, CancellationToken ct = default)
         {
-            if (!ModelState.IsValid)
+            if (request == null)
                 return BadRequest(new ApiResponse<object>(null, "Invalid request data", false));
 
             string token;
