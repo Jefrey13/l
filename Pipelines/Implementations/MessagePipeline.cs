@@ -583,15 +583,20 @@ namespace CustomerService.API.Pipelines.Implementations
                             var nowNic = await _nicDatetime.GetNicDatetime();
                             _uow.ClearChangeTracker();
 
-                            var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(nowNic));
+                            var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
                             var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(nowNic, ct);
 
-                            if (isHoliday || isOutOfOpeningHour)
+                            if (isHoliday || !isOutOfOpeningHour)
                             {
-                                var workShift = await _workShiftService.GetByDateAsync(DateOnly.FromDateTime(nowNic), ct);
+                                var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
+
+                                if(workShift != null)
+                                {
+                                    var data = workShift.First().UserId;
+                                }
 
                                 //El first  es temporal, en posterios actualizaciones se puede aumentar la cantidad.
-                                await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().AssignedUserId , ct);
+                                await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().UserId, ct);
 
                                 return;
                             }
@@ -647,11 +652,13 @@ namespace CustomerService.API.Pipelines.Implementations
                         }
                         else
                         {
+                            
+
                             await _messageService.SendMessageAsync(new SendMessageRequest
                             {
                                 ConversationId = convoDto.ConversationId,
                                 SenderId = BotUserId,
-                                Content = "Lo sentimo su conversación esta siendo atendida por un agente de soporte, por el momento deve de finalizar la conversación actual.",
+                                Content = systemParam.FirstOrDefault(p => p.Name == "WaitingQueue")?.Value ?? "ℹ️ Lo sentimo su conversación esta siendo atendida por un agente de soporte, por el momento deve de finalizar la conversación actual.",
                                 MessageType = MessageType.Text
                             }, false, ct);
 
@@ -662,6 +669,22 @@ namespace CustomerService.API.Pipelines.Implementations
 
                         return;
                 }
+            }
+
+            if (convDto.Status == ConversationStatus.Waiting.ToString())
+            {
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = convoDto.ConversationId,
+                    SenderId = BotUserId,
+                    Content = systemParam.FirstOrDefault(p => p.Name == "RequestUnderReviewMessage")?.Value ?? "⏳ Su solicitud está en proceso. Un agente le atenderá en breve, por favor espere un momento.",
+                    MessageType = MessageType.Text
+                }, false, ct);
+
+                await _hubContext.Clients
+                   .All
+                   .SendAsync("ConversationUpdated", convDto, ct);
+                return;
             }
 
             if (convoDto.Status == ConversationStatus.Bot.ToString())

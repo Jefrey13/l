@@ -11,6 +11,8 @@ namespace CustomerService.API.Repositories.Implementations
     {
         public WorkShiftRepository(CustomerSupportContext context) : base(context) { }
 
+        public virtual IQueryable<WorkShift_User> GetAll() =>
+           _dbSet.AsNoTracking().Include(ws=> ws.AssignedUser).Include(ws=> ws.CreatedBy).Include(ws=> ws.CreatedBy).Include(ws=> ws.OpeningHour);
 
         public override async Task<WorkShift_User> GetByIdAsync(int id, CancellationToken ct = default)
         {
@@ -44,62 +46,67 @@ namespace CustomerService.API.Repositories.Implementations
                     && (ws.ValidTo == null || ws.ValidTo >= date))
                 .ToListAsync(ct);
 
-        /// <summary>
-        /// Devuelve la lista de usuarios asignados que están de turno en el instante dado.
-        /// </summary>
         public async Task<IEnumerable<User>> GetMembersOnShiftAsync(DateTime instant, CancellationToken ct = default)
         {
-            // 1) convertir al huso de Managua
-            var local = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua");
-            var date = DateOnly.FromDateTime(local);
-            var time = TimeOnly.FromDateTime(local);
+            try
+            {
+                var local = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(instant, "America/Managua");
+                var date = DateOnly.FromDateTime(local);
+                var time = TimeOnly.FromDateTime(local);
 
-            // 2) filtrar WorkShift_User válidos en fecha/hora y traer AssignedUser
-            var shifts = await _dbSet
-                .AsNoTracking()
-                .Include(ws => ws.AssignedUser)
-                .Include(ws => ws.OpeningHour)
-                .Where(ws =>
-                    ws.IsActive
-                    && (ws.ValidFrom == null || ws.ValidFrom <= date)
-                    && (ws.ValidTo == null || ws.ValidTo >= date)
-
-                    // OpeningHour cubre este instante:
-                    && (
-                        // Semanales
-                        (ws.OpeningHour.Recurrence == RecurrenceType.Weekly
-                            && ws.OpeningHour.DaysOfWeek != null
-                            && ws.OpeningHour.DaysOfWeek.Contains(date.DayOfWeek)
-                            && ws.OpeningHour.StartTime <= time
-                            && time <= ws.OpeningHour.EndTime
-                        )
-                        ||
-                        // Feriado puntual o rango
-                        (ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday
-                            && (
-                                (ws.OpeningHour.SpecificDate.HasValue && ws.OpeningHour.SpecificDate.Value == date)
-                                || (!ws.OpeningHour.SpecificDate.HasValue
-                                    && ws.OpeningHour.EffectiveFrom.HasValue && ws.OpeningHour.EffectiveFrom.Value <= date
-                                    && ws.OpeningHour.EffectiveTo.HasValue && ws.OpeningHour.EffectiveTo.Value >= date)
+                var shifts = await _dbSet
+                    .AsNoTracking()
+                    .Include(ws => ws.AssignedUser)
+                    .Include(ws => ws.OpeningHour)
+                    .Where(ws =>
+                        ws.IsActive &&
+                        (
+                            // Solo los Weekly validan rango de WorkShift
+                            (ws.OpeningHour.Recurrence == RecurrenceType.Weekly
+                                && (ws.ValidFrom == null || ws.ValidFrom <= date)
+                                && (ws.ValidTo == null || ws.ValidTo >= date)
                             )
-                        )
-                        ||
-                        // Feriado anual
-                        (ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday
-                            && ws.OpeningHour.HolidayDate != null
-                            && ws.OpeningHour.HolidayDate.Month == date.Month
-                            && ws.OpeningHour.HolidayDate.Day == date.Day
+                            || ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday
+                            || ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday
                         )
                     )
-                )
-                .ToListAsync(ct);
+                    .ToListAsync(ct);
 
-            // 3) Devolver los usuarios asignados (sin duplicados)
-            return shifts
-                .Select(ws => ws.AssignedUser)
-                .Where(u => u != null)
-                .GroupBy(u => u.UserId)
-                .Select(g => g.First());
+                // ahora filtras en memoria exactamente igual que antes
+                var result = shifts.Where(ws =>
+                    (ws.OpeningHour.Recurrence == RecurrenceType.Weekly &&
+                        ws.OpeningHour.DaysOfWeek?.Contains(date.DayOfWeek) == true
+                        && ws.OpeningHour.StartTime <= time
+                        && time <= ws.OpeningHour.EndTime
+                    )
+                    ||
+                    (ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday &&
+                        (
+                            (ws.OpeningHour.SpecificDate.HasValue && ws.OpeningHour.SpecificDate.Value == date)
+                            || (!ws.OpeningHour.SpecificDate.HasValue
+                                && ws.OpeningHour.EffectiveFrom <= date
+                                && ws.OpeningHour.EffectiveTo >= date)
+                        )
+                    )
+                    ||
+                    (ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday &&
+                        ws.OpeningHour.HolidayDate.Month == date.Month
+                        && ws.OpeningHour.HolidayDate.Day == date.Day
+                    )
+                ).ToList();
+
+                // extrae usuarios únicos
+                return result
+                    .Select(ws => ws.AssignedUser!)
+                    .GroupBy(u => u.UserId)
+                    .Select(g => g.First());
+            }
+            catch (Exception ex)
+            {
+                Console.Write(ex.Message);
+                return null;
+            }
         }
+
     }
 }

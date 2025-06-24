@@ -45,7 +45,17 @@ namespace CustomerService.API.Hosted
                             await using var page = await browser.NewPageAsync();
                             await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
                             var content = await page.EvaluateExpressionAsync<string>("document.body.innerText");
-                            allText.Add(content.Trim());
+                            //allText.Add(content.Trim());
+                            var hrefs = await page.EvaluateFunctionAsync<string[]>(
+                                @"() => Array.from(document.querySelectorAll('a'))
+                                            .map(a => a.href)
+                                            .filter(href => href && href.trim().length > 0)"
+                            );
+
+                            var textContent = await page.EvaluateExpressionAsync<string>("document.body.innerText");
+
+                            allText.Add("URLS:\n" + string.Join("\n", hrefs));
+                            allText.Add("TEXT:\n" + textContent.Trim());
                         }
                         catch (Exception exUrl)
                         {

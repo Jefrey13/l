@@ -94,7 +94,7 @@ namespace CustomerService.API.Services.Implementations
                 conv.UpdatedAt = sentAtNic;
 
                 // Si el remitente es un agente (no es contacto) y no es el bot, actualizar sus marcas
-                if (!isContact && conv.AssignedByUserId != 1)
+                if (!isContact )
                 {
                     //Garantizar que los mensajes sea del agente que tiene asignada la conversación.
                     //bool isAdmin = conv.AssignedAgent.UserRoles.First().Role.RoleName != "Admin";

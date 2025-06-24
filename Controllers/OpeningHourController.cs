@@ -127,14 +127,17 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<OpeningHourResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Update(int id, [FromBody] OpeningHourRequestDto request, CancellationToken ct = default)
         {
-            if (id <= 0 || !ModelState.IsValid)
+            if (id <= 0 || request == null)
                 return BadRequest(new ApiResponse<object>(null, "Invalid request data", false));
 
             string token;
-            try { token = GetJwt(); }
+
+            try { 
+                token = GetJwt(); 
+            }
             catch (UnauthorizedAccessException ex) { return Unauthorized(new ApiResponse<object>(null, ex.Message, false)); }
 
             try

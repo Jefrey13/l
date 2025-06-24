@@ -786,18 +786,29 @@ namespace CustomerService.API.Services.Implementations
                 {
                     ConversationId = dto.ConversationId,
                     SenderId = 1,
-                    Content = $"Se le asigno el agente de turno {conv.AssignedAgent?.FullName}",
+                    Content = $"Se le asigno el agente de turno {dto.AssignedAgentName}, ya puede conversar con el 💬.",
                     MessageType = MessageType.Text
                 }, false, ct);
 
-                await _hubContext.Clients
-                 .Group("Admin")
-                 .SendAsync("ConversationUpdated", dto, ct);
+                // Notificar tanto al agente forzado como a los admins
+                if (dto.Status == ConversationStatus.Human.ToString())
+                {
+                    await _hubNotification.Clients
+                        .User(dto.AssignedAgentId.ToString())
+                        .SendAsync("AssignmentForced", new
+                        {
+                            conv.ConversationId,
+                            conv.AssignmentComment
+                        }, ct);
+                }
 
-                await _hubNotification
-                      .Clients
-                      .Group(agentUserId.ToString())
-                      .SendAsync("ConversationAssigned", dto, ct);
+                await _hubContext.Clients
+                     .Group("Admin")
+                     .SendAsync("ConversationUpdated", dto, ct);
+
+                await _hubContext.Clients
+                   .User(dto.AssignedAgentId.ToString())
+                   .SendAsync("ConversationUpdated", dto, ct);
 
             }
             catch (Exception ex)
