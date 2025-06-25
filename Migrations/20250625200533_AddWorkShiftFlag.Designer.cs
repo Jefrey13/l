@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250625200533_AddWorkShiftFlag")]
+    partial class AddWorkShiftFlag
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -660,22 +663,10 @@ namespace CustomerService.API.Migrations
                         .HasMaxLength(5)
                         .HasColumnType("nvarchar(5)");
 
-                    b.Property<DateOnly?>("HolidayMoveTo")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("HolidayMovedFrom")
-                        .HasColumnType("date");
-
                     b.Property<bool?>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
-
-                    b.Property<bool?>("IsHolidayMoved")
-                        .HasColumnType("bit");
-
-                    b.Property<bool?>("IsWorkShift")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -700,6 +691,9 @@ namespace CustomerService.API.Migrations
 
                     b.Property<int?>("UpdatedById")
                         .HasColumnType("int");
+
+                    b.Property<bool?>("isWorkShift")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 

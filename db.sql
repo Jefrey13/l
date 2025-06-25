@@ -231,7 +231,7 @@ BEGIN TRY
 		(2, @SupportRoleId),
 		--(4, @SupportRoleId),
 		(5, @SupportRoleId),
-		(7, @SupportRoleId);
+		(9, @SupportRoleId);
 	END
 
 	COMMIT TRANSACTION;
@@ -369,93 +369,51 @@ VALUES
 GO
 
 
-USE CustomerSupportDB;
+USE crmpcg;
 
-SELECT * FROM crm.OpeningHour WHERE Name = 'Día de la Madre';
-SELECT * FROM chat.ConversationHistoryLog
-SELECT * FROM chat.Conversations
-SELECT * FROM crm.OpeningHour
+SELECT * FROM chat.Attachments;
+SELECT * FROM chat.[Messages];
+SELECT * FROM chat.ConversationHistoryLog;
+SELECT * FROM chat.Conversations;
+SELECT * FROM chat.NotificationRecipients;
+SELECT * FROM chat.Notifications;
 SELECT * FROM auth.ContactLogs;
+SELECT * FROM chat.ConversationHistoryLog;
+SELECT * FROM chat.Conversations;
+SELECT * FROM crm.OpeningHour;
+SELECT * FROM crm.WorkShift_User;
 SELECT * FROM auth.SystemParams;
 
 ---- Delete test data
-DELETE chat.Attachments
-DELETE chat.[Messages]
-DELETE chat.ConversationHistoryLog
-DELETE chat.Conversations
+-- DELETE crm.OpeningHour;
+-- DELETE crm.Workshift_User;
+DELETE chat.Attachments;
+DELETE chat.[Messages];
+DELETE chat.ConversationHistoryLog;
+DELETE chat.Conversations;
+DELETE chat.NotificationRecipients;
+DELETE chat.Notifications;
 DELETE auth.ContactLogs;
-
-DELETE crm.OpeningHour WHERE id = 2;
-
-----Update testDatea
-UPDATE  crm.OpeningHour SET StartTime = null, EndTime = null;
-
-USE CustomerSupportDB;
-
-	SELECT * FROM crm.OpeningHour;	
-	SELECT * FROM.crm.WorkShift_User;
-
-INSERT INTO crm.OpeningHour
-    (Name, Description, Recurrence, DaysOfWeek, HolidayDate, SpecificDate,
-     StartTime, EndTime, EffectiveFrom, EffectiveTo, IsActive,
-     CreatedById, CreatedAt)
-VALUES
-    -- 1) Horario semanal Lun-Vie 08:00–17:30
-    (
-     N'Atención Lun-Vie',
-     N'Horario regular de lunes a viernes',
-     N'Weekly',
-     N'Monday,Tuesday,Wednesday,Thursday,Friday',
-     NULL,
-     NULL,
-     '08:00:00',
-     '17:30:00',
-     '2025-01-01',
-     '2099-12-31',
-     1,
-     1,
-     GETDATE());
-	 
-	 
-INSERT INTO crm.OpeningHour
-    ([Name], [Description], Recurrence, EffectiveFrom, EffectiveTo, IsActive,
-     CreatedById, CreatedAt)
-VALUES
-    -- 3) Feriado único 19/04/2025
-    (
-     N'Feriado 19-04-2025',
-     N'Evento extraordinario',
-     N'OneTimeHoliday',
-     '2025-04-19',
-     '2025-04-19',
-     1,
-     1,
-     GETDATE());
-
-INSERT INTO crm.OpeningHour
-    ([Name], [Description], [Recurrence], [HolidayDate],
-     [EffectiveFrom], [EffectiveTo], [IsActive], [CreatedById], [CreatedAt])
-VALUES
-    (
-     N'Feriado 15/09',
-     N'Día de la Independencia',
-     N'AnnualHoliday',
-     N'15/09',
-     '2025-01-01',
-     '2099-12-31',
-     1,
-     1,
-     GETDATE()
-    );
+DELETE auth.AuthTokens;
+DELETE chat.ConversationHistoryLog;
+DELETE chat.Conversations;
+-- DELETE auth.SystemParams;
 
 
-	--------------------
-	
-INSERT INTO crm.WorkShift_User
-    (OpeningHourId, AssignedUserId, CreatedById, IsActive,
-     ValidFrom, ValidTo, CreatedAt)
-VALUES
-    -- Agente en feriado único
-    (49, 4, 1, 1, '2025-04-19', '2025-04-19', GETDATE()),
-	    -- Agente en feriado anual
-    (48, 3, 1, 1, '2025-09-15', '2025-09-15', GETDATE());
+DELETE crm.OpeningHour WHERE Id = 10
+
+
+GO
+SET IDENTITY_INSERT [crm].[OpeningHour] ON 
+
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (2, N'Horario L-V 08:00-17:30', N'Atención de lunes a viernes', CAST(N'08:00:00' AS Time), CAST(N'17:30:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4766667' AS DateTime2), NULL, 1, NULL, NULL, N'Monday,Tuesday,Wednesday,Thursday,Friday', NULL, NULL, N'Weekly', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (3, N'Horario Sáb 08:00-17:00', N'Atención el sábado', CAST(N'08:00:00' AS Time), CAST(N'17:00:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4800000' AS DateTime2), NULL, 1, NULL, NULL, N'Saturday', NULL, NULL, N'Weekly', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (4, N'Horario Dom 13:00-18:00', N'Atención el domingo', CAST(N'13:00:00' AS Time), CAST(N'18:00:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4800000' AS DateTime2), NULL, 1, NULL, NULL, N'Sunday', NULL, NULL, N'Weekly', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (5, N'Feriado 15/09', N'Día de la Independencia', CAST(N'00:00:00' AS Time), CAST(N'00:00:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4800000' AS DateTime2), NULL, 1, NULL, N'15/09', NULL, NULL, NULL, N'AnnualHoliday', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (6, N'Feriado 19/04/2025', N'Decreto extraordinario', CAST(N'00:00:00' AS Time), CAST(N'00:00:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4800000' AS DateTime2), NULL, 1, NULL, NULL, NULL, NULL, NULL, N'OneTimeHoliday', CAST(N'2025-04-19' AS Date))
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (7, N'Feriado móvil 01-07/06/2025', N'Periodo especial de receso', CAST(N'00:00:00' AS Time), CAST(N'00:00:00' AS Time), 1, CAST(N'2025-06-24T05:45:51.4800000' AS DateTime2), NULL, 1, NULL, NULL, NULL, CAST(N'2025-06-01' AS Date), CAST(N'2025-06-07' AS Date), N'OneTimeHoliday', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (8, N'Dia', N'Horario de prueba de dia', CAST(N'05:00:00' AS Time), CAST(N'09:00:00' AS Time), 1, CAST(N'2025-06-24T07:05:21.0000000' AS DateTime2), CAST(N'2025-06-24T13:05:21.2400038' AS DateTime2), 2, NULL, NULL, N'Saturday', CAST(N'2025-06-24' AS Date), CAST(N'2025-06-24' AS Date), N'Weekly', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (9, N'Uno', N'Dos', NULL, NULL, 1, CAST(N'2025-06-24T07:45:06.0000000' AS DateTime2), CAST(N'2025-06-24T13:45:06.4674557' AS DateTime2), 2, NULL, N'24/06', NULL, NULL, NULL, N'AnnualHoliday', NULL)
+INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (10, N'prueba 3', N'prueba 3', NULL, NULL, 1, CAST(N'2025-06-24T07:54:45.0000000' AS DateTime2), CAST(N'2025-06-24T13:54:45.8526437' AS DateTime2), 2, NULL, N'24/06', NULL, NULL, NULL, N'AnnualHoliday', NULL)
+SET IDENTITY_INSERT [crm].[OpeningHour] OFF
+GO

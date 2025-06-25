@@ -21,8 +21,9 @@ namespace CustomerService.API.Repositories.Implementations
                        oh.IsActive == true
                        && oh.Recurrence == RecurrenceType.OneTimeHoliday
                        && (
-                           (oh.SpecificDate.HasValue && oh.SpecificDate.Value == date)
-                           || (!oh.SpecificDate.HasValue &&
+                       (
+                           //(oh.SpecificDate.HasValue && oh.SpecificDate.Value == date)
+                           //|| (!oh.SpecificDate.HasValue &&
                                oh.EffectiveFrom.HasValue && oh.EffectiveFrom.Value <= date &&
                                oh.EffectiveTo.HasValue && oh.EffectiveTo.Value >= date)
                        ), ct);
@@ -45,8 +46,6 @@ namespace CustomerService.API.Repositories.Implementations
             {
                 return false;
             }
-
-
         }
 
         public async Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
@@ -63,6 +62,7 @@ namespace CustomerService.API.Repositories.Implementations
                     oh.IsActive == true
                     && oh.Recurrence == RecurrenceType.Weekly
                     && oh.DaysOfWeek != null
+                    && oh.IsWorkShift == true
                 )
                 .ToListAsync(ct);
 
@@ -72,7 +72,7 @@ namespace CustomerService.API.Repositories.Implementations
 
                             var inside = weeklySlots.Any(r => r.StartTime <= time && time <= r.EndTime);
 
-                            return !inside;
+                            return inside;
 
             }
             catch (Exception ex)
@@ -81,7 +81,6 @@ namespace CustomerService.API.Repositories.Implementations
                 return false;
             }
         }
-
 
         public async Task<IEnumerable<OpeningHour>> GetEffectiveScheduleAsync(DateOnly date, CancellationToken ct = default)
         {

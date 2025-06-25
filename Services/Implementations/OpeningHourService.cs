@@ -37,16 +37,16 @@ namespace CustomerService.API.Services.Implementations
                         throw new ArgumentException("DaysOfWeek required for Weekly recurrence");
                     break;
 
-                case RecurrenceType.AnnualHoliday:
-                    // Para feriado anual, mes y día son obligatorios
-                    if (request.HolidayDate == null)
-                        throw new ArgumentException("HolidayDate required for AnnualHoliday recurrence");
-                    break;
+                //case RecurrenceType.AnnualHoliday:
+                //    // Para feriado anual, mes y día son obligatorios
+                //    if (request.HolidayDate == null)
+                //        throw new ArgumentException("HolidayDate required for AnnualHoliday recurrence");
+                //    break;
 
                 case RecurrenceType.OneTimeHoliday:
-                    // Para feriado único, fecha completa es obligatoria
-                    if (request.SpecificDate == null)
-                        throw new ArgumentException("SpecificDate required for OneTimeHoliday recurrence");
+                    // Para feriado único o largo, una de las dos fecha son obligatoria
+                    if (request.HolidayDate == null && (request.EffectiveFrom == null && request.EffectiveTo == null))
+                        throw new ArgumentException("SpecificDate or EffectiveFrom and EffectiveTo are required for OneTimeHoliday recurrence");
                     break;
             }
 

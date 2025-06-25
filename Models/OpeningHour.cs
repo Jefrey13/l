@@ -15,6 +15,8 @@ namespace CustomerService.API.Models
         // Días de la semana (para Recurrence.Weekly)
         public DayOfWeek[]? DaysOfWeek { get; set; }
 
+        public bool? IsWorkShift { get; set; }
+
         // Feriado anual: mes y día
         public DayMonth? HolidayDate { get; set; }
 
@@ -29,6 +31,11 @@ namespace CustomerService.API.Models
         public DateOnly? EffectiveFrom { get; set; }
         public DateOnly? EffectiveTo { get; set; }
 
+        //Bandera y propiedad para los feriados que se mueven a dia habil (Domingo a Lunes.)
+        public bool? IsHolidayMoved { get; set; }
+        public DateOnly? HolidayMovedFrom { get; set; }
+
+        public DateOnly? HolidayMoveTo { get; set; }
         public bool? IsActive { get; set; }             // Estado activo
 
         // Auditoría

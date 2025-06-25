@@ -617,6 +617,17 @@ public partial class CustomerSupportContext : DbContext
                 .HasColumnType("date")
                 .IsRequired(false);
 
+            entity.Property(oh => oh.IsWorkShift)
+            .IsRequired(false);
+            entity.Property(oh=> oh.IsHolidayMoved)
+            .IsRequired (false);
+            entity.Property(oh => oh.HolidayMovedFrom)
+            .HasColumnType("date")
+            .IsRequired(false);
+            entity.Property(oh=> oh.HolidayMoveTo)
+            .HasColumnType ("date")
+            .IsRequired(false);
+
             // Horas como TIME
             entity.Property(oh => oh.StartTime)
                 .HasColumnType("time")

@@ -4,6 +4,7 @@ using CustomerService.API.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CustomerService.API.Migrations
 {
     [DbContext(typeof(CustomerSupportContext))]
-    partial class CustomerSupportContextModelSnapshot : ModelSnapshot
+    [Migration("20250625205914_AddHolidayMovedProperties")]
+    partial class AddHolidayMovedProperties
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -659,9 +662,6 @@ namespace CustomerService.API.Migrations
                     b.Property<string>("HolidayDate")
                         .HasMaxLength(5)
                         .HasColumnType("nvarchar(5)");
-
-                    b.Property<DateOnly?>("HolidayMoveTo")
-                        .HasColumnType("date");
 
                     b.Property<DateOnly?>("HolidayMovedFrom")
                         .HasColumnType("date");

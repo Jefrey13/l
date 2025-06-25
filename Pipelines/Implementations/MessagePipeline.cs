@@ -586,7 +586,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
                             var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(nowNic, ct);
 
-                            if (isHoliday || !isOutOfOpeningHour)
+                            if (isHoliday || isOutOfOpeningHour)
                             {
                                 var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
 

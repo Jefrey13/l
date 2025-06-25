@@ -10,12 +10,18 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? Description { get; set; }
         public RecurrenceType Recurrence { get; set; }
         public DayOfWeek[]? DaysOfWeek { get; set; }
+        public bool? IsWorkShift { get; set; }
         public DayMonth? HolidayDate { get; set; }
         public DateOnly? SpecificDate { get; set; }
         public TimeOnly? StartTime { get; set; }
         public TimeOnly? EndTime { get; set; }
         public DateOnly? EffectiveFrom { get; set; }
         public DateOnly? EffectiveTo { get; set; }
+
+        public bool? IsHolidayMoved { get; set; }
+        public DateOnly? HolidayMovedFrom { get; set; }
+
+        public DateOnly? HolidayMoveTo;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

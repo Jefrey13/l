@@ -30,8 +30,8 @@ namespace CustomerService.API.Services.Implementations
                 throw new ArgumentException("Invalid OpeningHourId", nameof(request.OpeningHourId));
             if (request.AssignedUserId <= 0)
                 throw new ArgumentException("Invalid AssignedUserId", nameof(request.AssignedUserId));
-            if (request.ValidFrom.HasValue && request.ValidTo.HasValue && request.ValidFrom > request.ValidTo)
-                throw new ArgumentException("ValidFrom must be on or before ValidTo");
+            //if (request.ValidFrom.HasValue && request.ValidTo.HasValue && request.ValidFrom > request.ValidTo)
+            //    throw new ArgumentException("ValidFrom must be on or before ValidTo");
         }
 
         public async Task<WorkShiftResponseDto> CreateAsync(
