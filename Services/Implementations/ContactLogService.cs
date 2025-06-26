@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,18 +25,21 @@ namespace CustomerService.API.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly INicDatetime _nicDatetime;
         private readonly INotificationService _notification;
+        private readonly ITokenService _tokenService;
         private readonly IHubContext<NotificationsHub> _hubNotification;
 
         public ContactLogService(
             IUnitOfWork uow,
             INicDatetime nicDatetime,
             INotificationService notification,
-            IHubContext<NotificationsHub> hubNotification)
+            IHubContext<NotificationsHub> hubNotification,
+            ITokenService tokenService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
             _notification = notification ?? throw new ArgumentNullException(nameof(notification));
             _hubNotification = hubNotification ?? throw new ArgumentException(nameof(_hubNotification));
+            _tokenService = tokenService;
         }
 
         public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
@@ -117,6 +121,22 @@ namespace CustomerService.API.Services.Implementations
 
             _uow.ContactLogs.Update(entity);
             await _uow.SaveChangesAsync(cancellation);
+        }
+        public async Task VerifyAsync(int id, string jwtToken, CancellationToken ct = default)
+        {
+            if (id <= 0) throw new ArgumentException("El id es obligatorio", nameof(id));
+
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var entity = await _uow.ContactLogs.GetByIdAsync(id, ct)
+                ?? throw new KeyNotFoundException($"COntacto no encontrado.");
+
+            entity.IsVerified = true;
+            entity.verifiedId = userId;
+            entity.VerifiedAt = await _nicDatetime.GetNicDatetime();
+            _uow.ContactLogs.Update(entity);
+            await _uow.SaveChangesAsync(ct);
         }
 
         public async Task DeleteAsync(int id, CancellationToken cancellation = default)

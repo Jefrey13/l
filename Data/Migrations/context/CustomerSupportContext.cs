@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
 using System.Collections.Generic;
+using System.Reflection.Metadata;
 
 namespace CustomerService.API.Data.Context;
 
@@ -143,6 +144,17 @@ public partial class CustomerSupportContext : DbContext
 
             entity.Property(e => e.UpdatedAt)
                 .IsRequired(false);
+
+            entity.Property(e => e.verifiedId)
+            .IsRequired(false);
+
+            entity.Property(e=> e.verifiedId) 
+            .IsRequired(false);
+
+            //entity.HasOne(e => e.VerifiedBy)
+            //     .WithOne(c => c.ContactLog)
+            //     .OnDelete(DeleteBehavior.Restrict)
+            //     .HasConstraintName("FK_ContactLogs_verifyUser");
 
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()

@@ -24,5 +24,9 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public DateTime? UpdatedAt { get; set; }
 
         public Company? Company { get; set; }
+
+        public DateTime? VerifiedAt { get; set; }
+        public int? verifiedId { get; set; }
+        //public virtual User? VerifiedBy { get; set; } = new User();
     }
 }

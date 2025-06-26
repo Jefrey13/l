@@ -27,5 +27,9 @@ namespace CustomerService.API.Models
 
         public virtual ICollection<Message> MessagesSent { get; set; }
        = new List<Message>();
+
+        public DateTime? VerifiedAt { get; set; }
+        public int? verifiedId { get; set; }
+        //public virtual User? VerifiedBy { get; set; } = new User();
     }
 }

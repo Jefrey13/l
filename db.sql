@@ -417,3 +417,49 @@ INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime],
 INSERT [crm].[OpeningHour] ([Id], [Name], [Description], [StartTime], [EndTime], [IsActive], [CreatedAt], [UpdatedAt], [CreatedById], [UpdatedById], [HolidayDate], [DaysOfWeek], [EffectiveFrom], [EffectiveTo], [Recurrence], [SpecificDate]) VALUES (10, N'prueba 3', N'prueba 3', NULL, NULL, 1, CAST(N'2025-06-24T07:54:45.0000000' AS DateTime2), CAST(N'2025-06-24T13:54:45.8526437' AS DateTime2), 2, NULL, N'24/06', NULL, NULL, NULL, N'AnnualHoliday', NULL)
 SET IDENTITY_INSERT [crm].[OpeningHour] OFF
 GO
+
+
+USE crmpcg;
+
+SELECT * FROM chat.Attachments;
+SELECT * FROM chat.[Messages];
+SELECT * FROM chat.ConversationHistoryLog;
+SELECT * FROM chat.Conversations;
+SELECT * FROM chat.NotificationRecipients;
+SELECT * FROM chat.Notifications;
+SELECT * FROM auth.ContactLogs;
+SELECT * FROM chat.ConversationHistoryLog;
+SELECT * FROM chat.Conversations;
+SELECT * FROM crm.OpeningHour;
+SELECT * FROM crm.WorkShift_User;
+SELECT * FROM auth.SystemParams;
+SELECT * FROM auth.RoleMenus;
+SELECT * FROM auth.Menus;
+
+---- Delete test data
+-- DELETE crm.OpeningHour;
+-- DELETE crm.Workshift_User;
+DELETE chat.Attachments;
+DELETE chat.[Messages];
+DELETE chat.ConversationHistoryLog;
+DELETE chat.Conversations;
+DELETE chat.NotificationRecipients;
+DELETE chat.Notifications;
+DELETE auth.ContactLogs;
+DELETE auth.AuthTokens;
+DELETE chat.ConversationHistoryLog;
+DELETE chat.Conversations;
+-- DELETE auth.SystemParams;
+
+
+DELETE crm.OpeningHour WHERE Id BETWEEN 17 AND 18
+DELETE crm.WorkShift_User
+
+UPDATE auth.RoleMenus SET MenuId = 9 WHERE MenuId = 7 AND RoleId = 2
+
+
+UPDATE crm.OpeningHour SET StartTime = NULL, EndTime = NULL WHERE Id BETWEEN 11 AND 16
+
+UPDATE crm.OpeningHour SET Recurrence = 'OneTimeHoliday' WHERE Id = 5
+
+UPDATE crm.OpeningHour SET IsWorkShift = 0 WHERE Id BETWEEN 2 AND 4

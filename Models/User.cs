@@ -41,6 +41,8 @@ namespace CustomerService.API.Models
         public ICollection<WorkShift_User> WorkShift_UsersCreatedBy { get; set; } = new List<WorkShift_User>();
         public ICollection<WorkShift_User> WorkShift_UsersUpdatedBy { get; set; } = new List<WorkShift_User>();
 
+        //public ContactLog? ContactLog { get; set; } = new ContactLog();
+
         [NotMapped]
         public string ClientType { get; set; } = "Nuevo";
 

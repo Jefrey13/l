@@ -21,6 +21,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using WhatsappBusiness.CloudApi.Messages.Requests;
 using WhatsappBusiness.CloudApi.Webhook;
 using Conversation = CustomerService.API.Models.Conversation;
 
@@ -36,6 +37,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly ITokenService _tokenService;
         private readonly IGeminiClient _geminiClient;
         private readonly IMessageService _messageService;
+        private readonly ISystemParamService _systemParamService;
 
         public ConversationService(
             IUnitOfWork uow,
@@ -45,7 +47,8 @@ namespace CustomerService.API.Services.Implementations
             IHubContext<NotificationsHub> hubNotification,
             ITokenService tokenService,
             IGeminiClient geminiClient,
-            IMessageService messageService)
+            IMessageService messageService,
+            ISystemParamService systemParamService)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime ?? throw new ArgumentNullException(nameof(nicDatetime));
@@ -55,6 +58,7 @@ namespace CustomerService.API.Services.Implementations
             _geminiClient = geminiClient;
             _hubNotification = hubNotification ?? throw new ArgumentException(nameof(_hubNotification));
             _messageService = messageService;
+            _systemParamService = systemParamService ?? throw new ArgumentException(nameof(systemParamService));
         }
 
         public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
@@ -471,7 +475,7 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task<ConversationResponseDto> GetOrCreateAsync(
             int clientContactId,
-            CancellationToken cancellation = default)
+            CancellationToken ct = default)
         {
             try
             {
@@ -491,7 +495,7 @@ namespace CustomerService.API.Services.Implementations
                     return conv.Adapt<ConversationResponseDto>();
 
                 //Si no hay conversaciones activas (closed o incomplete) se crea una nueva.
-                var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, cancellation)
+                var contact = await _uow.ContactLogs.GetByIdAsync(clientContactId, ct)
                               ?? throw new KeyNotFoundException($"Contact {clientContactId} not found.");
 
                 var localDate = await _nicDatetime.GetNicDatetime();
@@ -504,8 +508,8 @@ namespace CustomerService.API.Services.Implementations
                     ClientFirstMessage = localDate,
                 };
 
-                await _uow.Conversations.AddAsync(conv, cancellation);
-                await _uow.SaveChangesAsync(cancellation);
+                await _uow.Conversations.AddAsync(conv, ct);
+                await _uow.SaveChangesAsync(ct);
 
                 //var full = await _uow.Conversations.GetAll()
                 //    .Where(c => c.ConversationId == conv.ConversationId)
@@ -521,8 +525,7 @@ namespace CustomerService.API.Services.Implementations
                 //    .All
                 //    .SendAsync("ConversationCreated", dto, cancellation);
                 //await _hubContext.Clients.Group("Admin")
-                //    .SendAsync("ConversationCreated", dto, cancellation);
-
+                //    .SendAsync("ConversationCreated", dto, cancellation)
 
                 return dto;
             }

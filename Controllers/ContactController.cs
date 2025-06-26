@@ -59,6 +59,7 @@ namespace CustomerService.API.Controllers
         public async Task<IActionResult> GetByPhoneAsync([FromRoute] string phone, CancellationToken ct = default)
         {
             var dto = await _contactLogService.GetByPhoneAsync(phone, ct);
+
             if (dto is null)
                 return NotFound(new ApiResponse<object>(null, "Contact not found."));
             return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contact retrieved."));

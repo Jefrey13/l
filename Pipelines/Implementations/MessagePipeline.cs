@@ -210,6 +210,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
                     //var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
                     var textoParaCedula = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "AskIdCard")?.Value ?? "¿Cual es su numero de cedula?", nombre);
+                    
                     await _messageService.SendMessageAsync(
                     new SendMessageRequest
                     {
@@ -290,10 +291,17 @@ namespace CustomerService.API.Pipelines.Implementations
 
                     var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
+
+
                     // 3) emítelo por SignalR
                     await _hubContext.Clients
                        .All
                        .SendAsync("ConversationUpdated", convDto5, ct);
+
+                    await _hubNotification
+                      .Clients
+                      .Group("Admins")
+                      .SendAsync("newContactValidation", contactDto, ct);
 
                     // A partir de aquí, el pipeline continúa con el flujo normal
                 }
@@ -472,6 +480,29 @@ namespace CustomerService.API.Pipelines.Implementations
 
             if (!convoDto.Initialized)
             {
+                if (contactDto.Status == ContactStatus.Completed)
+                {
+
+                    var BotGreetings = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "BotGreetings")?.Value ?? "¿Cual es su numero de cedula?", contactDto.FullName);
+
+                    await _messageService.SendMessageAsync(
+                            new SendMessageRequest
+                            {
+                                ConversationId = convDto.ConversationId,
+                                SenderId = 1,
+                                //Content = _prompts.DataComplete,
+                                Content = BotGreetings,
+                                MessageType = MessageType.Text
+                            },
+                            isContact: false,
+                            ct);
+
+                    // 3) emítelo por SignalR
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", ct, ct);
+                }
+
                 _uow.ClearChangeTracker();
 
                 await _conversationService.UpdateAsync(new UpdateConversationRequest
