@@ -16,7 +16,11 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string? Password { get; set; }
         public IdType IdType { get; set; } //Tipo de documento de idetificación.
         public string? FullName { get; set; }
+
+        public string? CompanyName { get; set; }
+
         public int? CompanyId { get; set; }
+        public bool? IsProvidingData { get; set; }
         public bool IsVerified { get; set; }
         public ContactStatus Status { get; set; }
 

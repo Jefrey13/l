@@ -12,6 +12,8 @@ namespace CustomerService.API.Dtos.RequestDtos
         public string? ResidenceCard { get; set; }
         public string? Passport { get; set; }
         public string? FullName { get; set; }
+        public string? CompanyName { get; set; }
+        public bool? IsProvidingData { get; set; }
         public int CompanyId { get; set; }
         public ContactStatus Status { get; set; }
     }

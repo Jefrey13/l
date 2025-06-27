@@ -11,6 +11,7 @@
         Rejected,           // rechazado manualmente
         AwaitingFullName,   // nombre completo
         AwaitingIdCard,     // número de cédula
+        AwaitingCompanyName, //nombre de la empresa del contacto
         Completed           // ya recibimos ambos datos
     }
 }

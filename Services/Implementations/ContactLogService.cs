@@ -133,7 +133,7 @@ namespace CustomerService.API.Services.Implementations
                 ?? throw new KeyNotFoundException($"COntacto no encontrado.");
 
             entity.IsVerified = true;
-            entity.verifiedId = userId;
+            entity.VerifiedId = userId;
             entity.VerifiedAt = await _nicDatetime.GetNicDatetime();
             _uow.ContactLogs.Update(entity);
             await _uow.SaveChangesAsync(ct);
@@ -223,25 +223,31 @@ namespace CustomerService.API.Services.Implementations
                 Console.WriteLine(ex);
                 return new ContactLogResponseDto();
             }
-            }
+        }
 
-        public async Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)
+        public async Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken ct = default)
         {
             try
             {
-            var entity = await _uow.ContactLogs.GetByIdAsync(requestDto.Id, cancellation)
+                var entity = await _uow.ContactLogs.GetByIdAsync(requestDto.Id, ct)
                          ?? throw new KeyNotFoundException($"ContactLog {requestDto.Id} not found");
 
-            if (!string.IsNullOrWhiteSpace(requestDto.FullName))
-                entity.FullName = requestDto.FullName;
+                if (!string.IsNullOrWhiteSpace(requestDto.FullName))
+                    entity.FullName = requestDto.FullName;
 
-            if (!string.IsNullOrWhiteSpace(requestDto.IdCard))
-                entity.IdCard = requestDto.IdCard;
+                if (!string.IsNullOrWhiteSpace(requestDto.IdCard))
+                    entity.IdCard = requestDto.IdCard;
 
-            entity.Status = requestDto.Status;
+                if (!string.IsNullOrWhiteSpace(requestDto.CompanyName))
+                    entity.CompanyName = requestDto.CompanyName;
+
+              if(requestDto.IsProvidingData != null)
+                    entity.IsProvidingData = requestDto.IsProvidingData;
+
+                entity.Status = requestDto.Status;
             entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-            await _uow.SaveChangesAsync(cancellation);
+            await _uow.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {

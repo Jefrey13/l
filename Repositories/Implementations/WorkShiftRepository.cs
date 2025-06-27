@@ -63,11 +63,15 @@ namespace CustomerService.API.Repositories.Implementations
                         (
                             // Solo los Weekly validan rango de WorkShift
                             (ws.OpeningHour.Recurrence == RecurrenceType.Weekly
+                                && ws.OpeningHour.IsWorkShift == true
                                 && (ws.ValidFrom == null || ws.ValidFrom <= date)
                                 && (ws.ValidTo == null || ws.ValidTo >= date)
                             )
-                            || ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday
-                            || ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday
+                            || (ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday
+                                && (ws.ValidFrom == null || ws.ValidFrom <= date)
+                                && (ws.ValidTo == null || ws.ValidTo >= date)
+                            )
+                            //|| ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday
                         )
                     )
                     .ToListAsync(ct);
@@ -76,6 +80,7 @@ namespace CustomerService.API.Repositories.Implementations
                 var result = shifts.Where(ws =>
                     (ws.OpeningHour.Recurrence == RecurrenceType.Weekly &&
                         ws.OpeningHour.DaysOfWeek?.Contains(date.DayOfWeek) == true
+                        && ws.OpeningHour.IsWorkShift == true
                         && ws.OpeningHour.StartTime <= time
                         && time <= ws.OpeningHour.EndTime
                     )
@@ -89,7 +94,7 @@ namespace CustomerService.API.Repositories.Implementations
                         )
                     )
                     ||
-                    (ws.OpeningHour.Recurrence == RecurrenceType.AnnualHoliday &&
+                    (ws.OpeningHour.Recurrence == RecurrenceType.OneTimeHoliday &&
                         ws.OpeningHour.HolidayDate.Month == date.Month
                         && ws.OpeningHour.HolidayDate.Day == date.Day
                     )

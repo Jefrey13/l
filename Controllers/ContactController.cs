@@ -52,6 +52,24 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<ContactLogResponseDto>(dto, "Contact retrieved."));
         }
 
+        [HttpPut("verifyContact/{id}", Name ="Verify new contact.")]
+        [SwaggerOperation(Summary = "Verify contact detail by the admin.")]
+        [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> VerifyAsync([FromRoute] int id, CancellationToken ct = default)
+        {
+            if (id <= 0) return NotFound(new ApiResponse<ContactLogResponseDto>(null, "Id is required", false));
+
+            var jwtToken = HttpContext.Request
+                             .Headers["Authorization"]
+                             .ToString()
+
+                             .Split(' ')[1];
+             await _contactLogService.VerifyAsync(id, jwtToken, ct);
+
+            return Ok(new ApiResponse<ContactLogResponseDto>(null, "Success. Activation contact success", true, null));
+        }
+
         [HttpGet("contact/{phone}", Name = "GetContactLogByPhone")]
         [SwaggerOperation(Summary = "Retrieve a contact by phone number")]
         [ProducesResponseType(typeof(ApiResponse<ContactLogResponseDto>), StatusCodes.Status200OK)]

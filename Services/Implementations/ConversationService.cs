@@ -483,7 +483,6 @@ namespace CustomerService.API.Services.Implementations
                 if (clientContactId <= 0)
                     throw new ArgumentException("Invalid contact ID.", nameof(clientContactId));
 
-
                 var conv = await _uow.Conversations.GetAll()
                     .Where(c => c.ClientContactId == clientContactId
                              && c.Status != ConversationStatus.Closed

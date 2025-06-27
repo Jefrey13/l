@@ -24,5 +24,7 @@ namespace CustomerService.API.Services.Interfaces
             CancellationToken cancellation = default);
 
         Task UpdateContactDetailsAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default);
+
+        Task VerifyAsync(int id, string jwtToken, CancellationToken ct = default);
     }
 }

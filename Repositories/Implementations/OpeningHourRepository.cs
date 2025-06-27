@@ -33,21 +33,19 @@ namespace CustomerService.API.Repositories.Implementations
 
                 var annual = await _dbSet
                     .AsNoTracking()
-                    .AnyAsync(oh =>
+                    .Where(oh =>
                         oh.IsActive == true
-                        && oh.Recurrence == RecurrenceType.AnnualHoliday
-                        && oh.HolidayDate != null
-                        && oh.HolidayDate.Month == date.Month
-                        && oh.HolidayDate.Day == date.Day, ct);
+                        && oh.Recurrence == RecurrenceType.OneTimeHoliday).ToListAsync();
 
-                return annual;
+                var isHoliday = annual.Any(oh => oh.HolidayDate != null && oh.HolidayDate.Month == date.Month && oh.HolidayDate.Day == date.Day);
+
+                return isHoliday;
             }
             catch (Exception ex)
             {
                 return false;
             }
         }
-
         public async Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
         {
             try
@@ -72,8 +70,7 @@ namespace CustomerService.API.Repositories.Implementations
 
                             var inside = weeklySlots.Any(r => r.StartTime <= time && time <= r.EndTime);
 
-                            return inside;
-
+                            return !inside;
             }
             catch (Exception ex)
             {

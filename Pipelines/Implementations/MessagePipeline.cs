@@ -20,6 +20,7 @@ using Microsoft.Identity.Client;
 using Newtonsoft.Json;
 using PuppeteerSharp;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -159,157 +160,15 @@ namespace CustomerService.API.Pipelines.Implementations
             //   PEDIR “FullName” si Status == New o AwaitingFullName
 
             var systemParam = await _systemParamService.GetAllAsync();
-            try
+
+            if (contactDto.IsProvidingData == true)
             {
+                var nowNic = await _nicDatetime.GetNicDatetime();
 
-                if (contactDto.Status == ContactStatus.New
-                 || contactDto.Status == ContactStatus.AwaitingFullName)
-                {
-                    // Si es NEW, enviamos la pregunta de nombre completo y cambiamos a AwaitingFullName
-                    if (contactDto.Status == ContactStatus.New)
-                    {
-                        await _messageService.SendMessageAsync(
-                            new SendMessageRequest
-                            {
-                                ConversationId = convoDto.ConversationId,
-                                SenderId = BotUserId,
-                                //Content = _prompts.AskFullName,    // “¿Cuál es tu nombre completo?”
-                                Content = systemParam.FirstOrDefault(p => p.Name == "AskFullName")?.Value ?? "¿Cuál es tu nombre completo?",
-                                MessageType = MessageType.Text
-                            },
-                            isContact: false,
-                            ct);
+                await RequestContactDataAsync(contactDto, convoDto, payload,
+                    systemParam, convDto, convEntity, nowNic, ct);
 
-                        await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
-                        {
-                            Id = contactDto.Id,
-                            Status = ContactStatus.AwaitingFullName
-                        }, ct);
-
-                        var convEntity1 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
-
-                        var convDto1 = convEntity1.Adapt<ConversationResponseDto>();
-
-                        // 3) emítelo por SignalR
-                        await _hubContext.Clients
-                           .All
-                           .SendAsync("ConversationUpdated", convDto1, ct);
-
-                        return;
-                    }
-
-                    // Si ya estaba en AwaitingFullName → recibimos el nombre en payload.TextBody
-                    var nombre = payload.TextBody?.Trim() ?? "";
-
-                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
-                    {
-                        Id = contactDto.Id,
-                        FullName = nombre,
-                        Status = ContactStatus.AwaitingIdCard
-                    }, ct);
-
-                    //var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
-                    var textoParaCedula = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "AskIdCard")?.Value ?? "¿Cual es su numero de cedula?", nombre);
-                    
-                    await _messageService.SendMessageAsync(
-                    new SendMessageRequest
-                    {
-                        ConversationId = convoDto.ConversationId,
-                        SenderId = BotUserId,
-                        Content = textoParaCedula,   // “{Nombre}, por favor envía tu cédula (10 dígitos)”
-                        MessageType = MessageType.Text
-                    },
-                    isContact: false,
-                    ct);
-
-                    var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
-
-                    var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
-
-                    // 3) emítelo por SignalR
-                    await _hubContext.Clients
-                       .All
-                       .SendAsync("ConversationUpdated", convDto, ct);
-
-                    return;
-                }
-
-                //   BLOQUE B: VALIDAR “IdCard” si Status == AwaitingIdCard
-
-                if (contactDto.Status == ContactStatus.AwaitingIdCard)
-                {
-                    var cedula = payload.TextBody?.Trim() ?? "";
-
-                    // Regex para 10 dígitos consecutivos (Nicaragua)
-                    if (!Regex.IsMatch(cedula, @"^\d{3}-?\d{6}-?\d{4}[A-Za-z]$"))
-                    {
-                        await _messageService.SendMessageAsync(
-                            new SendMessageRequest
-                            {
-                                ConversationId = convoDto.ConversationId,
-                                SenderId = BotUserId,
-                                //Content = _prompts.InvalidIdFormat, // “Formato inválido. Debe ser 10 dígitos.”
-                                Content = systemParam.FirstOrDefault(p => p.Name == "InvalidIdFormat")?.Value ?? "Formato inválido. Debe ser formato valido.",
-                                MessageType = MessageType.Text
-                            },
-                            isContact: false,
-                            ct);
-
-                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
-
-                        var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
-
-                        // 3) emítelo por SignalR
-                        await _hubContext.Clients
-                           .All
-                           .SendAsync("ConversationUpdated", convDto, ct);
-
-                        return;
-                    }
-
-                    // Si cédula válida, guardamos IdCard y cambiamos a Completed
-                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
-                    {
-                        Id = contactDto.Id,
-                        IdCard = cedula,
-                        Status = ContactStatus.Completed
-                    }, ct);
-
-                    await _messageService.SendMessageAsync(
-                        new SendMessageRequest
-                        {
-                            ConversationId = convoDto.ConversationId,
-                            SenderId = BotUserId,
-                            //Content = _prompts.DataComplete,
-                            Content = systemParam.FirstOrDefault(p => p.Name == "DataComplete")?.Value ?? "Datos completos. ¿En qué puedo ayudarte?",
-                            MessageType = MessageType.Text
-                        },
-                        isContact: false,
-                        ct);
-
-                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
-
-                    var convDto5 = convEntity.Adapt<ConversationResponseDto>();
-
-
-
-                    // 3) emítelo por SignalR
-                    await _hubContext.Clients
-                       .All
-                       .SendAsync("ConversationUpdated", convDto5, ct);
-
-                    await _hubNotification
-                      .Clients
-                      .Group("Admins")
-                      .SendAsync("newContactValidation", contactDto, ct);
-
-                    // A partir de aquí, el pipeline continúa con el flujo normal
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Hola", ex);
+                return;
             }
 
             // Solo aplicamos esta detección si el mensaje es texto y no es un payload interactivo:
@@ -480,28 +339,28 @@ namespace CustomerService.API.Pipelines.Implementations
 
             if (!convoDto.Initialized)
             {
-                if (contactDto.Status == ContactStatus.Completed)
-                {
+                //if (contactDto.Status == ContactStatus.Completed)
+                //{
 
-                    var BotGreetings = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "BotGreetings")?.Value ?? "¿Cual es su numero de cedula?", contactDto.FullName);
+                //    var BotGreetings1 = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "BotGreetings")?.Value ?? "¿Cual es su numero de cedula?", contactDto.FullName);
 
-                    await _messageService.SendMessageAsync(
-                            new SendMessageRequest
-                            {
-                                ConversationId = convDto.ConversationId,
-                                SenderId = 1,
-                                //Content = _prompts.DataComplete,
-                                Content = BotGreetings,
-                                MessageType = MessageType.Text
-                            },
-                            isContact: false,
-                            ct);
+                //    await _messageService.SendMessageAsync(
+                //            new SendMessageRequest
+                //            {
+                //                ConversationId = convDto.ConversationId,
+                //                SenderId = 1,
+                //                //Content = _prompts.DataComplete,
+                //                Content = BotGreetings1,
+                //                MessageType = MessageType.Text
+                //            },
+                //            isContact: false,
+                //            ct);
 
-                    // 3) emítelo por SignalR
-                    await _hubContext.Clients
-                       .All
-                       .SendAsync("ConversationUpdated", ct, ct);
-                }
+                //    // 3) emítelo por SignalR
+                //    await _hubContext.Clients
+                //       .All
+                //       .SendAsync("ConversationUpdated", ct, ct);
+                //}
 
                 _uow.ClearChangeTracker();
 
@@ -521,6 +380,19 @@ namespace CustomerService.API.Pipelines.Implementations
                 //    Content = "Hola, soy *Milena*, tu asistente virtual de PC GROUP S.A. ¿En qué puedo ayudarte?",
                 //    MessageType = MessageType.Text
                 //}, false, ct);
+                var BotGreetings = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "BotGreetings")?.Value ?? "👋 Saludos  {0}, un gusto saludarlo, continuemos con tu consulta.", contactDto.FullName != null ? contactDto.FullName : contactDto.WaName);
+
+                await _messageService.SendMessageAsync(
+                        new SendMessageRequest
+                        {
+                            ConversationId = convDto.ConversationId,
+                            SenderId = 1,
+                            //Content = _prompts.DataComplete,
+                            Content = BotGreetings,
+                            MessageType = MessageType.Text
+                        },
+                        isContact: false,
+                        ct);
 
                 await _whatsAppService.SendInteractiveButtonsAsync(
                     convoDto.ConversationId,
@@ -612,74 +484,20 @@ namespace CustomerService.API.Pipelines.Implementations
                         if (convDto.Status == ConversationStatus.Bot.ToString())
                         {
                             var nowNic = await _nicDatetime.GetNicDatetime();
-                            _uow.ClearChangeTracker();
 
-                            var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
-                            var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(nowNic, ct);
-
-                            if (isHoliday || isOutOfOpeningHour)
+                            //Request user data, verify if contact are no give before request an agent.
+                            if (contactDto.Status != ContactStatus.Completed)
                             {
-                                var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
-
-                                if(workShift != null)
+                                if (contactDto.IsVerified == false && contactDto.Status != ContactStatus.Completed)
                                 {
-                                    var data = workShift.First().UserId;
+                                    await RequestContactDataAsync(contactDto, convoDto, payload,
+                                            systemParam, convDto, convEntity, nowNic, ct);
                                 }
-
-                                //El first  es temporal, en posterios actualizaciones se puede aumentar la cantidad.
-                                await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().UserId, ct);
-
                                 return;
                             }
 
-                            await _conversationService.UpdateAsync(new UpdateConversationRequest
-                            {
-                                ConversationId = convoDto.ConversationId,
-                                Status = ConversationStatus.Waiting,
-                                RequestedAgentAt = nowNic,
-
-                            }, ct);
-
-                            await _messageService.SendMessageAsync(new SendMessageRequest
-                            {
-                                ConversationId = convoDto.ConversationId,
-                                SenderId = BotUserId,
-                                //Content = _prompts.SupportRequestReceived,
-                                Content = systemParam.FirstOrDefault(p => p.Name == "SupportRequestReceived")?.Value ?? "Solicitud de soporte recibida. Un agente se pondrá en contacto contigo pronto.",
-                                MessageType = MessageType.Text
-                            }, false, ct);
-
-                            var updatedConv = await _conversationService.GetByIdAsync(convoDto.ConversationId, ct);
-
-                            var usersAdmin = await _userService.GetByRoleAsync("Admin", ct);
-
-                            var agents = usersAdmin
-                                .Where(u => u.IsActive)
-                                .Select(u => u.UserId)
-                                .ToArray();
-
-                            //await _notification.CreateAsync(
-                            //   NotificationType.SupportRequested,
-                            //   $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
-                            //   agents,
-                            //   ct);
-
-                            var payloadHub = new
-                            {
-                                ConversationId = convDto.ConversationId,
-                                ClientName = contactDto.FullName != null ? contactDto.FullName : contactDto.WaName,
-                                RequestedAt = nowNic
-                            };
-
-                            await _hubNotification
-                                 .Clients
-                                 .Group("Admins")             // coincide con tu OnConnectedAsync
-                                 .SendAsync("SupportRequested", payloadHub, ct);
-
-                            ///Validar que solo llegue a los admins
-                            await _hubContext.Clients
-                                .Group("Admin")
-                                .SendAsync("ConversationUpdated", updatedConv, ct);
+                            await RequestAgentAsync(convDto, convoDto,
+                                contactDto, systemParam, nowNic, ct);
                         }
                         else
                         {
@@ -791,5 +609,283 @@ namespace CustomerService.API.Pipelines.Implementations
             }
         }
 
+        private async Task RequestContactDataAsync(ContactLogResponseDto contactDto, ConversationResponseDto convoDto, IncomingPayload payload,
+            IEnumerable<SystemParamResponseDto> systemParam, ConversationResponseDto convDto, CustomerService.API.Models.Conversation convEntity,
+            DateTime nowNic, CancellationToken ct = default
+            )
+        {
+            try
+            {
+                if (contactDto.Status == ContactStatus.New
+                 || contactDto.Status == ContactStatus.AwaitingFullName)
+                {
+                    // Si es New, enviamos la pregunta de nombre completo y cambiamos a AwaitingFullName
+                    if (contactDto.Status == ContactStatus.New)
+                    {
+                        await _messageService.SendMessageAsync(
+                            new SendMessageRequest
+                            {
+                                ConversationId = convoDto.ConversationId,
+                                SenderId = BotUserId,
+                                //Content = _prompts.AskFullName,    // “¿Cuál es tu nombre completo?”
+                                Content = systemParam.FirstOrDefault(p => p.Name == "AskFullName")?.Value ?? "¿Cuál es tu nombre completo?",
+                                MessageType = MessageType.Text
+                            },
+                            isContact: false,
+                            ct);
+
+                        await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                        {
+                            Id = contactDto.Id,
+                            Status = ContactStatus.AwaitingFullName,
+                            IsProvidingData = true
+                        }, ct);
+
+                        var convEntity1 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                        var convDto1 = convEntity1.Adapt<ConversationResponseDto>();
+
+                        // 3) emítelo por SignalR
+                        await _hubContext.Clients
+                           .All
+                           .SendAsync("ConversationUpdated", convDto1, ct);
+
+                        return;
+                    }
+
+                    // Si ya estaba en AwaitingFullName → recibimos el nombre en payload.TextBody
+                    var nombre = payload.TextBody?.Trim() ?? "";
+
+                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                    {
+                        Id = contactDto.Id,
+                        FullName = nombre,
+                        Status = ContactStatus.AwaitingIdCard
+                    }, ct);
+
+                    //var textoParaCedula = string.Format(_prompts.AskIdCard, nombre);
+                    var textoParaCedula = string.Format(systemParam.FirstOrDefault(sp => sp.Name == "AskIdCard")?.Value ?? "¿Cual es su numero de cedula?", nombre);
+
+                    await _messageService.SendMessageAsync(
+                    new SendMessageRequest
+                    {
+                        ConversationId = convoDto.ConversationId,
+                        SenderId = BotUserId,
+                        Content = textoParaCedula,   // “{Nombre}, por favor envía tu cédula (10 dígitos)”
+                        MessageType = MessageType.Text
+                    },
+                    isContact: false,
+                    ct);
+
+                    var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                    var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
+
+                    // 3) emítelo por SignalR
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", convDto, ct);
+
+                    return;
+                }
+
+                //   BLOQUE B: VALIDAR “IdCard” si Status == AwaitingIdCard
+
+                if (contactDto.Status == ContactStatus.AwaitingIdCard)
+                {
+                    var cedula = payload.TextBody?.Trim() ?? "";
+
+                    // Regex para 10 dígitos consecutivos (Nicaragua)
+                    if (!Regex.IsMatch(cedula, @"^\d{3}-?\d{6}-?\d{4}[A-Za-z]$"))
+                    {
+                        await _messageService.SendMessageAsync(
+                            new SendMessageRequest
+                            {
+                                ConversationId = convoDto.ConversationId,
+                                SenderId = BotUserId,
+                                //Content = _prompts.InvalidIdFormat, // “Formato inválido. Debe ser 10 dígitos.”
+                                Content = systemParam.FirstOrDefault(p => p.Name == "InvalidIdFormat")?.Value ?? "Formato inválido. Debe ser formato valido.",
+                                MessageType = MessageType.Text
+                            },
+                            isContact: false,
+                            ct);
+
+                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                        var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
+
+                        // 3) emítelo por SignalR
+                        await _hubContext.Clients
+                           .All
+                           .SendAsync("ConversationUpdated", convDto, ct);
+
+                        return;
+                    }
+
+                    // Si cédula válida, guardamos IdCard y cambiamos a Completed
+                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                    {
+                        Id = contactDto.Id,
+                        IdCard = cedula,
+                        Status = ContactStatus.AwaitingCompanyName
+                    }, ct);
+
+                    await _messageService.SendMessageAsync(
+                        new SendMessageRequest
+                        {
+                            ConversationId = convoDto.ConversationId,
+                            SenderId = BotUserId,
+                            //Content = _prompts.DataComplete,
+                            Content = systemParam.FirstOrDefault(p => p.Name == "AskCompanyName")?.Value ?? "Indique el nombre de la empresa de la cual contacta o pertenece.",
+                            MessageType = MessageType.Text
+                        },
+                        isContact: false,
+                        ct);
+
+                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                    var convDto5 = convEntity.Adapt<ConversationResponseDto>();
+
+
+
+                    //// 3) emítelo por SignalR
+                    await _hubContext.Clients
+                       .All
+                       .SendAsync("ConversationUpdated", convDto5, ct);
+
+                    //await _hubNotification
+                    //  .Clients
+                    //  .Group("Admins")
+                    //  .SendAsync("newContactValidation", contactDto, ct);
+
+                    // A partir de aquí, el pipeline continúa con el flujo normal
+                }
+
+                //   BLOQUE B: VALIDAR “CompanyName” si Status == AwaitingCompanyName
+
+                if (contactDto.Status == ContactStatus.AwaitingCompanyName)
+                {
+                    var companyName = payload.TextBody?.Trim() ?? "";
+
+                    // Si cédula válida, guardamos IdCard y cambiamos a Completed
+                    await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
+                    {
+                        Id = contactDto.Id,
+                        CompanyName = companyName,
+                        Status = ContactStatus.Completed,
+                        IsProvidingData = false
+                    }, ct);
+
+                    await _messageService.SendMessageAsync(
+                        new SendMessageRequest
+                        {
+                            ConversationId = convoDto.ConversationId,
+                            SenderId = BotUserId,
+                            //Content = _prompts.DataComplete,
+                            Content = systemParam.FirstOrDefault(p => p.Name == "DataComplete")?.Value ?? "Datos completos. ¿En qué puedo ayudarte?",
+                            MessageType = MessageType.Text
+                        },
+                        isContact: false,
+                        ct);
+
+                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+
+                    var convDto5 = convEntity.Adapt<ConversationResponseDto>();
+
+                    // 3) emítelo por SignalR
+                    //await _hubContext.Clients
+                    //   .All
+                    //   .SendAsync("ConversationUpdated", convDto5, ct);
+
+                    await _hubNotification
+                      .Clients
+                      .Group("Admins")
+                      .SendAsync("newContactValidation", contactDto, ct);
+
+                    await RequestAgentAsync(convDto, convoDto,
+                               contactDto, systemParam, nowNic, ct);
+
+                    //Solicita al agente, dado que la solicitud del cliente que no estab registrado a este punto ya esta.
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Hola", ex);
+            }
+        }
+
+        private async Task RequestAgentAsync(ConversationResponseDto convDto, ConversationResponseDto convoDto,
+            ContactLogResponseDto contactDto, IEnumerable<SystemParamResponseDto> systemParam, DateTime nowNic, CancellationToken ct = default)
+        {
+            _uow.ClearChangeTracker();
+
+            var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
+            var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(DateTime.Now, ct);
+
+            if (isHoliday || isOutOfOpeningHour)
+            {
+                var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
+
+                if (workShift != null)
+                {
+                    var data = workShift.First().UserId;
+                }
+
+                //El first  es temporal, en posterios actualizaciones se puede aumentar la cantidad.
+                await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().UserId, ct);
+
+                return;
+            }
+
+            await _conversationService.UpdateAsync(new UpdateConversationRequest
+            {
+                ConversationId = convoDto.ConversationId,
+                Status = ConversationStatus.Waiting,
+                RequestedAgentAt = nowNic,
+
+            }, ct);
+
+            await _messageService.SendMessageAsync(new SendMessageRequest
+            {
+                ConversationId = convoDto.ConversationId,
+                SenderId = BotUserId,
+                //Content = _prompts.SupportRequestReceived,
+                Content = systemParam.FirstOrDefault(p => p.Name == "SupportRequestReceived")?.Value ?? "Solicitud de soporte recibida. Un agente se pondrá en contacto contigo pronto.",
+                MessageType = MessageType.Text
+            }, false, ct);
+
+            var updatedConv = await _conversationService.GetByIdAsync(convoDto.ConversationId, ct);
+
+            var usersAdmin = await _userService.GetByRoleAsync("Admin", ct);
+
+            var agents = usersAdmin
+                .Where(u => u.IsActive)
+                .Select(u => u.UserId)
+                .ToArray();
+
+            //await _notification.CreateAsync(
+            //   NotificationType.SupportRequested,
+            //   $"EL cliente {contactDto.WaName} ha solicitado atención por un agente de soporte.",
+            //   agents,
+            //   ct);
+
+            var payloadHub = new
+            {
+                ConversationId = convDto.ConversationId,
+                ClientName = contactDto.FullName != null ? contactDto.FullName : contactDto.WaName,
+                RequestedAt = nowNic
+            };
+
+            await _hubNotification
+                 .Clients
+                 .Group("Admins")             // coincide con tu OnConnectedAsync
+                 .SendAsync("SupportRequested", payloadHub, ct);
+
+            ///Validar que solo llegue a los admins
+            await _hubContext.Clients
+                .Group("Admin")
+                .SendAsync("ConversationUpdated", updatedConv, ct);
+
+        }
     }
 }

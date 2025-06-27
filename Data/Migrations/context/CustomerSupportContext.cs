@@ -145,16 +145,23 @@ public partial class CustomerSupportContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .IsRequired(false);
 
-            entity.Property(e => e.verifiedId)
+            entity.Property(e => e.IsVerified)
             .IsRequired(false);
 
-            entity.Property(e=> e.verifiedId) 
+            entity.Property(e => e.VerifiedId)
             .IsRequired(false);
 
-            //entity.HasOne(e => e.VerifiedBy)
-            //     .WithOne(c => c.ContactLog)
-            //     .OnDelete(DeleteBehavior.Restrict)
-            //     .HasConstraintName("FK_ContactLogs_verifyUser");
+            entity.Property(e => e.VerifiedAt)
+               .HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(cl => cl.VerifiedBy)
+              .WithMany(u => u.ContactLogs)
+              .HasForeignKey(cl => cl.VerifiedId)
+              .OnDelete(DeleteBehavior.Restrict)
+              .HasConstraintName("FK_ContactLogs_verifyUser");
+
+            entity.Property(e => e.IsProvidingData)
+            .IsRequired(false);
 
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()
