@@ -7,6 +7,7 @@ namespace CustomerService.API.Dtos.RequestDtos
     /// </summary>
     public class IncomingPayload
     {
+        public string? MessageId { get; set; }
         public string From { get; set; } = null!;
         public string? TextBody { get; set; }
         public string? InteractiveId { get; set; }

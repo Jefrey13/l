@@ -20,5 +20,7 @@ namespace CustomerService.API.Services.Interfaces
            string jwtToken,
            CancellationToken cancellation = default
        );
+
+        Task<MessageResponseDto?> GetByExternalIdAsync(string externalId, CancellationToken ct);
     }
 }

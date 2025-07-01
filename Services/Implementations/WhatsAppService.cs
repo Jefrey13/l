@@ -1,26 +1,27 @@
-﻿using System;
+﻿using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.Wh;
+using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Hubs;
+using CustomerService.API.Models;
+using CustomerService.API.Repositories.Interfaces;
+using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
+using CustomerService.API.Utils.Enums;
+using Mapster;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using System;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
-using CustomerService.API.Models;
-using CustomerService.API.Repositories.Interfaces;
-using CustomerService.API.Services.Interfaces;
-using CustomerService.API.Utils.Enums;
-using Mapster;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using CustomerService.API.Dtos.ResponseDtos;
 using WhatsappBusiness.CloudApi.Messages.Requests;
-using Microsoft.AspNetCore;
-using CustomerService.API.Hubs;
-using CustomerService.API.Utils;
-using System.Text.Json.Serialization;
 using WhatsappBusiness.CloudApi.Response;
 using Message = CustomerService.API.Models.Message;
 
@@ -61,7 +62,7 @@ namespace CustomerService.API.Services.Implementations
             _nicDatetime = nicDatetime;
         }
 
-        public async Task SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default)
+        public async Task<string> SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default)
         {
             try
             {
@@ -73,6 +74,7 @@ namespace CustomerService.API.Services.Implementations
                 ?? throw new KeyNotFoundException("Conversation not found");
 
             var url = $"https://graph.facebook.com/{_version}/{_phoneNumberId}/messages";
+
             var payload = new
             {
                 messaging_product = "whatsapp",
@@ -84,15 +86,27 @@ namespace CustomerService.API.Services.Implementations
             {
                 Content = JsonContent.Create(payload)
             };
+
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             var res = await _http.SendAsync(req);
 
             res.EnsureSuccessStatusCode();
 
+                // Leemos y deserializamos el JSON de respuesta
+                var waResponse = await res.Content
+                    .ReadFromJsonAsync<WhatsAppSendResponse>(cancellation);
+
+                // Extraemos el primer id (si existe)
+                var messageId = waResponse?.Messages.FirstOrDefault()?.Id;
+
+                // Aquí ya puedes guardar messageId en tu base de datos
+                // y devolverlo dentro de tu ChangeValue (adaptar ChangeValue para que acepte un string)
+                return messageId;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+                return string.Empty;
             }
         }
 
@@ -160,6 +174,13 @@ namespace CustomerService.API.Services.Implementations
 
             res.EnsureSuccessStatusCode();
 
+            // Leemos y deserializamos el JSON de respuesta
+            var waResponse = await res.Content
+                .ReadFromJsonAsync<WhatsAppSendResponse>(cancellation);
+
+            // Extraemos el primer id (si existe)
+            var messageId = waResponse?.Messages.FirstOrDefault()?.Id;
+
             var incoming = new Message
             {
                 ConversationId = conversationId,
@@ -174,6 +195,7 @@ namespace CustomerService.API.Services.Implementations
                         "\n",
                         buttons.Select(b => $"- {b.Title}")
                     ),
+                ExternalId = messageId,
                 SentAt = await _nicDatetime.GetNicDatetime(),
                 Status = MessageStatus.Delivered
             };
@@ -186,13 +208,6 @@ namespace CustomerService.API.Services.Implementations
                 .Clients
                 .Group(conversationId.ToString())
                 .SendAsync("ReceiveMessage", dto, CancellationToken.None);
-
-            //var dto = incoming.Adapt<MessageDto>();
-
-            //await _signalR.NotifyUserAsync(
-            //    conversationId,
-            //    "ReceiveMessage",
-            //    dto);
         }
 
 

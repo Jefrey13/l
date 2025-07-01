@@ -35,5 +35,8 @@ namespace CustomerService.API.Models
         [ForeignKey(nameof(SenderContactId))]
         public virtual ContactLog? SenderContact { get; set; }
         public virtual ICollection<Attachment>? Attachments { get; set; } = new List<Attachment>();
+
+        public virtual ICollection<MessageStatusHistory> StatusHistories { get; set; }
+            = new List<MessageStatusHistory>();
     }
 }

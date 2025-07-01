@@ -63,7 +63,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.Status, s => s.Status.ToString())
                 .Map(d => d.Initialized, s => s.Initialized)
                 .Map(d => d.CreatedAt, s => s.CreatedAt)
-                .Map(d=> d.Justification, s=> s.Justification)
+                .Map(d => d.Justification, s => s.Justification)
                 .Map(d => d.AssignedAt, s => s.AssignedAt)
                 .Map(d => d.FirstResponseAt, s => s.FirstResponseAt)
                 .Map(d => d.ClientFirstMessage, s => s.ClientFirstMessage)
@@ -98,7 +98,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.SenderUserId, s => s.SenderUserId)
                 .Map(d => d.SenderUserName, s => s.SenderUser != null ? s.SenderUser.FullName : null)
                 .Map(d => d.SenderContactId, s => s.SenderContactId)
-                .Map(d => d.SenderContactName, s => s.SenderContact  != null ? (s.SenderContact.FullName != null ? s.SenderContact.FullName : s.SenderContact.WaName) : null)
+                .Map(d => d.SenderContactName, s => s.SenderContact != null ? (s.SenderContact.FullName != null ? s.SenderContact.FullName : s.SenderContact.WaName) : null)
                 .Map(d => d.IsIncoming, s => s.SenderContactId != null)
                 .Map(d => d.Content, s => s.Content)
                 .Map(d => d.ExternalId, s => s.ExternalId)
@@ -107,7 +107,14 @@ namespace CustomerService.API.Utils
                 .Map(d => d.SentAt, s => s.SentAt)
                 .Map(d => d.DeliveredAt, s => s.DeliveredAt)
                 .Map(d => d.ReadAt, s => s.ReadAt)
-                .Map(d => d.Attachments, s => s.Attachments.Adapt<List<AttachmentDto>>());
+                .Map(d => d.Attachments, s => s.Attachments.Adapt<List<AttachmentDto>>())
+                .Map(d => d.StatusHistories,
+                    s => s.StatusHistories.Adapt<List<StatusHistoryResponseDto>>());
+
+            config.NewConfig<MessageStatusHistory, StatusHistoryResponseDto>()
+                .Map(d => d.Status, s => s.Status)
+                .Map(d => d.Timestamp, s => s.Timestamp)
+                .Map(d => d.Metadata, s => s.Metadata);
 
             // Contactos
             config.NewConfig<CreateContactLogRequestDto, ContactLog>();
@@ -125,10 +132,10 @@ namespace CustomerService.API.Utils
                 .Map(d => d.IdCard, s => s.IdCard)
                 .Map(d => d.ResidenceCard, s => s.ResidenceCard)
                 .Map(d => d.Password, s => s.Password)
-                .Map(d=> d.CompanyName, s=> s.CompanyName)
+                .Map(d => d.CompanyName, s => s.CompanyName)
                 .Map(d => d.CompanyId, s => s.CompanyId)
-                .Map(d=> d.IsVerified, s=> s.IsVerified)
-                .Map(d => d.Status, s => s.Status) 
+                .Map(d => d.IsVerified, s => s.IsVerified)
+                .Map(d => d.Status, s => s.Status)
                 .Map(d => d.CreatedAt, s => s.CreatedAt)
                 .Map(d => d.UpdatedAt, s => s.UpdatedAt)
                 .Map(d => d.Company, s => s.Company);
@@ -170,7 +177,7 @@ namespace CustomerService.API.Utils
                 .Map(dest => dest.Name, src => src.Name)
                 .Map(dest => dest.Value, src => src.Value)
                 .Map(dest => dest.Description, src => src.Description)
-                .Map(dest => dest.Type, src =>  src.Type)
+                .Map(dest => dest.Type, src => src.Type)
                 .IgnoreNullValues(true);
 
             config.NewConfig<SystemParam, SystemParamResponseDto>()

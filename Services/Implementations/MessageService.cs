@@ -57,44 +57,36 @@ namespace CustomerService.API.Services.Implementations
             {
                 if (request.ConversationId <= 0)
                     throw new ArgumentException("ConversationId must be greater than zero.", nameof(request.ConversationId));
+                
                 var localTime = await _nicDatetime.GetNicDatetime();
+                string mesageIdResponse = string.Empty;
 
+                var msg = new Message();
                 // Crear el objeto Message con la hora nicaragüense
-                var msg = new Message
-                {
-                    ConversationId = request.ConversationId,
-                    SenderUserId = isContact ? null : request.SenderId,
-                    SenderContactId = isContact ? request.SenderId : null,
-                    Content = request.Content,
-                    MessageType = request.MessageType,
-                    SentAt = localTime,  // hora nica
-                    Status = MessageStatus.Sent,
-                    ExternalId = Guid.NewGuid().ToString(),
-                    InteractiveId = request.InteractiveId,
-                    InteractiveTitle = request.InteractiveTitle
-                };
-
-                await _uow.Messages.AddAsync(msg, ct);
-                await _uow.SaveChangesAsync(ct);
-
+                msg.ConversationId = request.ConversationId;
+                msg.SenderUserId = isContact ? null : request.SenderId;
+                msg.SenderContactId = isContact ? request.SenderId : null;
+                msg.Content = request.Content;
+                msg.MessageType = request.MessageType;
+                msg.SentAt = localTime;  // hora nica
+                msg.Status = MessageStatus.Sent;
+                msg.InteractiveId = request.InteractiveId;
+                msg.InteractiveTitle = request.InteractiveTitle;
                 // Recuperar la conversación para actualizar sus marcas de tiempo
                 var conv = await _uow.Conversations.GetByIdAsync(request.ConversationId, ct)
                            ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found");
 
-                // msg.SentAt ya está en hora nica
-                var sentAtNic = msg.SentAt.DateTime;
-
                 // 3) Si el remitente es el cliente y aún no hay FirstResponseAt, se marca aquí
                 if (conv.FirstResponseAt == null && isContact)
                 {
-                    conv.FirstResponseAt = sentAtNic;
+                    conv.FirstResponseAt = localTime;
                 }
 
                 // Siempre actualizamos UpdatedAt con hora nica
-                conv.UpdatedAt = sentAtNic;
+                conv.UpdatedAt = localTime;
 
                 // Si el remitente es un agente (no es contacto) y no es el bot, actualizar sus marcas
-                if (!isContact )
+                if (!isContact)
                 {
                     //Garantizar que los mensajes sea del agente que tiene asignada la conversación.
                     //bool isAdmin = conv.AssignedAgent.UserRoles.First().Role.RoleName != "Admin";
@@ -103,14 +95,15 @@ namespace CustomerService.API.Services.Implementations
                     if ((conv.AgentFirstMessageAt == null && request.SenderId != 1 ) && !isAdmin){
                          conv.AgentFirstMessageAt = localTime;
 
-                    }else if(request.SenderId != 1 && !isAdmin)
+                    }
+                    else if(request.SenderId != 1 && !isAdmin)
                     {
                         conv.AgentLastMessageAt = localTime;
                     }
 
                     // Enviar el texto por WhatsApp
-                    await _whatsAppService.SendTextAsync(
-                        msg.ConversationId,
+                    mesageIdResponse = await _whatsAppService.SendTextAsync(
+                        request.ConversationId,
                         msg.SenderUserId!.Value,
                         msg.Content,
                         ct);
@@ -121,6 +114,12 @@ namespace CustomerService.API.Services.Implementations
                     conv.ClientLastMessageAt = localTime;
                 }
 
+                msg.ExternalId = request.MessageId != null ? request.MessageId : mesageIdResponse;
+
+                await _uow.Messages.AddAsync(msg, ct);
+                await _uow.SaveChangesAsync(ct);
+
+
                 _uow.Conversations.Update(conv);
                 await _uow.SaveChangesAsync(ct);
 
@@ -129,13 +128,21 @@ namespace CustomerService.API.Services.Implementations
                 var dto = reloaded.Adapt<MessageResponseDto>();
                 var convDto = conv.Adapt<ConversationResponseDto>();
 
-                await _hub.Clients
-                   .Group(reloaded.ConversationId.ToString())
-                   .SendAsync("ReceiveMessage", dto, ct);
+                //await _hub.Clients
+                //   .Group("Admin")
+                //   .SendAsync("ReceiveMessage", dto, ct);
 
                 await _hub.Clients
-                                .Group("Admin")
-                                .SendAsync("ConversationUpdated", convDto, ct);
+                    .User(convDto.AssignedAgentId.ToString())
+                    .SendAsync("ReceiveMessage", dto, ct);
+
+                await _hub.Clients
+                    .Group("Admin")
+                    .SendAsync("ReceiveMessage", dto, ct);
+
+                await _hub.Clients
+                .Group("Admin")
+                .SendAsync("ConversationUpdated", convDto, ct);
 
                 await _hub.Clients
                    .User(dto.SenderUserId.ToString())
@@ -177,17 +184,24 @@ namespace CustomerService.API.Services.Implementations
 
         public async Task MarkAsReadAsync(int messageId, DateTimeOffset readAt, CancellationToken cancellation = default)
         {
-            var msg = await _uow.Messages.GetByIdAsync(messageId, cancellation)
-                      ?? throw new KeyNotFoundException($"Message {messageId} not found.");
+            try
+            {
+                var msg = await _uow.Messages.GetByIdAsync(messageId, cancellation)
+                     ?? throw new KeyNotFoundException($"Message {messageId} not found.");
 
-            msg.ReadAt = readAt;
-            msg.Status = MessageStatus.Read;
-            _uow.Messages.Update(msg);
-            await _uow.SaveChangesAsync(cancellation);
+                msg.ReadAt = readAt;
+                msg.Status = MessageStatus.Read;
+                _uow.Messages.Update(msg);
+                await _uow.SaveChangesAsync(cancellation);
 
-            await _hub.Clients
-                .Group(msg.ConversationId.ToString())
-                .SendAsync("MessageRead", new { msg.MessageId, readAt }, cancellation);
+                await _hub.Clients
+                    .Group(msg.ConversationId.ToString())
+                    .SendAsync("MessageRead", new { msg.MessageId, readAt }, cancellation);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         public async Task<MessageResponseDto> SendMediaAsync(
@@ -295,6 +309,18 @@ namespace CustomerService.API.Services.Implementations
                 Console.WriteLine(ex);
                 return new MessageResponseDto();
             }
+        }
+
+        public async Task<MessageResponseDto?> GetByExternalIdAsync(string extId, CancellationToken ct)
+        {
+            var msg = await _uow.Messages
+                .GetAll()
+                .FirstOrDefaultAsync(m => m.ExternalId == extId, ct);
+
+            if (msg == null)
+                return new MessageResponseDto();
+
+            return msg.Adapt<MessageResponseDto>();
         }
     }
 }

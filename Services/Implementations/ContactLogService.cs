@@ -153,7 +153,7 @@ namespace CustomerService.API.Services.Implementations
         string waName,
         string userId,
         CancellationToken cancellation = default)
-            {
+        {
             try
             {
                 if (string.IsNullOrWhiteSpace(phone))
@@ -206,6 +206,7 @@ namespace CustomerService.API.Services.Implementations
                     WaName = waName,
                     WaUserId = userId,
                     Status = ContactStatus.New,
+                    IdType = null,
                     CreatedAt = await _nicDatetime.GetNicDatetime()
                 };
 
@@ -215,10 +216,11 @@ namespace CustomerService.API.Services.Implementations
 
                 var updatedContact = await _uow.ContactLogs.GetByPhone(phone);
 
-                var dto =updatedContact.Adapt<ContactLogResponseDto>();
+                var dto = updatedContact.Adapt<ContactLogResponseDto>();
 
                 return dto;
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 return new ContactLogResponseDto();
@@ -238,16 +240,22 @@ namespace CustomerService.API.Services.Implementations
                 if (!string.IsNullOrWhiteSpace(requestDto.IdCard))
                     entity.IdCard = requestDto.IdCard;
 
+                if (!string.IsNullOrWhiteSpace(requestDto.Passport))
+                    entity.Password = requestDto.Passport;
+
+                if (!string.IsNullOrWhiteSpace(requestDto.ResidenceCard))
+                    entity.ResidenceCard = requestDto.ResidenceCard;
+
                 if (!string.IsNullOrWhiteSpace(requestDto.CompanyName))
                     entity.CompanyName = requestDto.CompanyName;
 
-              if(requestDto.IsProvidingData != null)
+                if (requestDto.IsProvidingData != null)
                     entity.IsProvidingData = requestDto.IsProvidingData;
 
                 entity.Status = requestDto.Status;
-            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+                entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
-            await _uow.SaveChangesAsync(ct);
+                await _uow.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {

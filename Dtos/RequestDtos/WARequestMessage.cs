@@ -6,6 +6,8 @@ namespace CustomerService.API.Dtos.RequestDtos
 {
     public class WARequestMessage
     {
+        [JsonPropertyName("id")]
+        public string MessageId { get; set; } = null!;    // coincide con ExternalId
         public string From { get; set; } = null!;
         public TextDto? Text { get; set; }
         public ImageDto? Image { get; set; }
@@ -16,7 +18,7 @@ namespace CustomerService.API.Dtos.RequestDtos
         public StickerDto? Sticker { get; set; }
         public DocumentDto? Document { get; set; }
         public string? Caption { get; set; }
-        public string? MessageId { get; set; } = "";
+        //public string? MessageId { get; set; } = "";
 
         [JsonPropertyName("interactive")]
         public InteractiveDto? Interactive { get; set; }

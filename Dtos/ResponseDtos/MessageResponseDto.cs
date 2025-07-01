@@ -26,5 +26,6 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public DateTimeOffset? DeliveredAt { get; set; }
         public DateTimeOffset? ReadAt { get; set; }
         public List<AttachmentDto> Attachments { get; set; } = new();
+        public List<StatusHistoryResponseDto>? StatusHistories { get; set; } = new();
     }
 }

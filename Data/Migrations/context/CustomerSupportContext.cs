@@ -47,6 +47,8 @@ public partial class CustomerSupportContext : DbContext
     public virtual DbSet<ConversationHistoryLog> ConversationHistoryLogs { get; set; }
     public virtual DbSet<OpeningHour> OpeningHours { get; set; }
 
+    public DbSet<MessageStatusHistory> MessageStatusHistories { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
@@ -136,7 +138,7 @@ public partial class CustomerSupportContext : DbContext
 
             entity.Property(e => e.Status)
                 .HasConversion<string>()
-                .HasMaxLength(20)
+                .HasMaxLength(30)
                 .HasDefaultValue(ContactStatus.New);
 
             entity.Property(e => e.CreatedAt)
@@ -731,7 +733,33 @@ public partial class CustomerSupportContext : DbContext
                 .HasForeignKey(ws => ws.OpeningHourId)
                 .HasConstraintName("FK_OpeningHour_WorkShift_User");
         });
+        modelBuilder.Entity<MessageStatusHistory>(entity =>
+        {
+            entity.ToTable("MessageStatusHistory");
+            entity.HasKey(e => e.Id);
 
+            entity.Property(e => e.MessageId)
+                  .IsRequired();
+
+            entity.Property(e => e.Status)
+                  .IsRequired()
+                  .HasConversion<string>();
+
+            entity.Property(e => e.Timestamp)
+                  .IsRequired();
+
+            entity.Property(e => e.Metadata)
+                  .HasColumnType("nvarchar(max)");
+
+            // Índice compuesto para búsquedas por mensaje, estado y UpdatedAt
+            entity.HasIndex(e => new { e.MessageId, e.Status });
+
+            entity.HasOne(e => e.Message)
+                  .WithMany(m => m.StatusHistories)
+                  .HasForeignKey(e => e.MessageId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_MessageStatusHistory_Message");
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

@@ -8,7 +8,7 @@ namespace CustomerService.API.Services.Interfaces
     public interface IWhatsAppService
     {
         /// <summary>Envía texto por WhatsApp.</summary>
-        Task SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default);
+        Task<string> SendTextAsync(int conversationId, int senderId, string text, CancellationToken cancellation = default);
 
         /// <summary>Envía una lista de botones interactivos.</summary>
         Task SendInteractiveButtonsAsync(int conversationId, int senderId, string header, IEnumerable<WhatsAppInteractiveButton> buttons, CancellationToken cancellation = default);

@@ -65,7 +65,7 @@ namespace CustomerService.API.Services.Implementations
         {
             var convs = await _uow.Conversations.GetAll()
                 .Include(c => c.Messages)
-                    .ThenInclude(a=>a.Attachments)
+                    .ThenInclude(a => a.Attachments)
                 .Include(c => c.ClientContact)
                 .Include(c => c.AssignedAgent)
                 .Include(c => c.AssignedByUser)
@@ -135,7 +135,7 @@ namespace CustomerService.API.Services.Implementations
             {
 
                 if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
-            
+
                 var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                     ?? throw new KeyNotFoundException("Conversation not found.");
 
@@ -186,7 +186,7 @@ namespace CustomerService.API.Services.Implementations
                 //       .All
                 //       .SendAsync("ConversationUpdated", updatedConv, ct);
 
-                
+
 
                 dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
@@ -195,25 +195,25 @@ namespace CustomerService.API.Services.Implementations
                 // .SendAsync("ConversationUpdated", dto, ct);
 
                 // al usuario de Support al que se le asigno la conversación
-                    //await _hubContext.Clients
-                    //.User(agentUserId.ToString())
-                    //.SendAsync("ConversationUpdated", dto, ct);
+                //await _hubContext.Clients
+                //.User(agentUserId.ToString())
+                //.SendAsync("ConversationUpdated", dto, ct);
 
-                    //await _hubContext.Clients
-                    //.User(agentUserId.ToString())
-                    //.SendAsync("AssignmentRequested", dto, ct);
+                //await _hubContext.Clients
+                //.User(agentUserId.ToString())
+                //.SendAsync("AssignmentRequested", dto, ct);
 
-                    //await _hubContext.Clients
-                    //   .User("Admin")
-                    //   .SendAsync("AssignmentRequested", dto, ct);
+                //await _hubContext.Clients
+                //   .User("Admin")
+                //   .SendAsync("AssignmentRequested", dto, ct);
 
-                    await _messageService.SendMessageAsync(new SendMessageRequest
-                    {
-                        ConversationId = dto.ConversationId,
-                        SenderId = 1,
-                        Content = $"Su solicitud esta siendo procesada, por favor espere un momento.",
-                        MessageType = MessageType.Text
-                    }, false, ct);
+                await _messageService.SendMessageAsync(new SendMessageRequest
+                {
+                    ConversationId = dto.ConversationId,
+                    SenderId = 1,
+                    Content = $"Su solicitud esta siendo procesada, por favor espere un momento.",
+                    MessageType = MessageType.Text
+                }, false, ct);
 
                 //await _hubContext.Clients
                 //   .User(agentUserId.ToString())
@@ -266,7 +266,7 @@ namespace CustomerService.API.Services.Implementations
                     conv.AssignedAt = await _nicDatetime.GetNicDatetime();
                     conv.Status = ConversationStatus.Human;
                     conv.AssignmentState = AssignmentState.Accepted;
-                    
+
                     await _messageService.SendMessageAsync(new SendMessageRequest
                     {
                         ConversationId = conv.ConversationId,
@@ -276,8 +276,8 @@ namespace CustomerService.API.Services.Implementations
                     }, false, ct);
                 }
 
-                    _uow.Conversations.Update(conv, ct);
-                    await _uow.SaveChangesAsync(ct);
+                _uow.Conversations.Update(conv, ct);
+                await _uow.SaveChangesAsync(ct);
 
                 var updatedConv = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
                 var dto = updatedConv.Adapt<ConversationResponseDto>();
@@ -353,22 +353,22 @@ namespace CustomerService.API.Services.Implementations
                     }, false, ct);
                 }
                 else
-                    {
-                        // limpiar campos si rechazó
-                        conv.AssignedAgentId = null;
-                        conv.AssignedByUserId = null;
-                        conv.AssignmentState = AssignmentState.Rejected;
-                        conv.Status = ConversationStatus.Waiting;
+                {
+                    // limpiar campos si rechazó
+                    conv.AssignedAgentId = null;
+                    conv.AssignedByUserId = null;
+                    conv.AssignmentState = AssignmentState.Rejected;
+                    conv.Status = ConversationStatus.Waiting;
 
-                        _uow.Conversations.Update(conv, ct);
-                        await _uow.SaveChangesAsync(ct);
-                    }
+                    _uow.Conversations.Update(conv, ct);
+                    await _uow.SaveChangesAsync(ct);
+                }
 
                 var updatedConv2 = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
                 var dto2 = updatedConv2.Adapt<ConversationResponseDto>();
 
                 // Notificar tanto al agente forzado como a los admins
-                if(dto2.Status == ConversationStatus.Human.ToString())
+                if (dto2.Status == ConversationStatus.Human.ToString())
                 {
                     await _hubNotification.Clients
                         .User(conv.AssignedAgentId.ToString())
@@ -394,10 +394,10 @@ namespace CustomerService.API.Services.Implementations
                .User(dto2.AssignedAgentId.ToString())
                .SendAsync("ConversationUpdated", dto2, ct);
             }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
@@ -422,7 +422,7 @@ namespace CustomerService.API.Services.Implementations
             try
             {
                 if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
-            
+
                 var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
                     ?? throw new KeyNotFoundException("Conversation not found.");
 
@@ -442,10 +442,10 @@ namespace CustomerService.API.Services.Implementations
                 await _messageService.SendMessageAsync(new SendMessageRequest
                 {
                     ConversationId = dto.ConversationId,
-                    SenderId= 1,
+                    SenderId = 1,
                     Content = $"Su conversación {(isAgentAssign
                                     ? $"con el agente: {dto.AssignedAgentName} "
-                                    : string.Empty )}finalizó. Muchas gracias por su tiempo.",
+                                    : string.Empty)}finalizó. Muchas gracias por su tiempo.",
 
                     MessageType = MessageType.Text
                 }, false, ct);
@@ -459,7 +459,7 @@ namespace CustomerService.API.Services.Implementations
                                 .Group("Admin")
                                 .SendAsync("ConversationUpdated", dto, ct);
 
-                if(dto.AssignedAgentId != null)
+                if (dto.AssignedAgentId != null)
                 {
                     await _hubContext.Clients
                    .User(dto.AssignedAgentId.ToString())
@@ -467,7 +467,7 @@ namespace CustomerService.API.Services.Implementations
                 }
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
@@ -541,32 +541,32 @@ namespace CustomerService.API.Services.Implementations
             try
             {
                 if (request.ConversationId <= 0)
-                throw new ArgumentException("Invalid conversation ID.", nameof(request.ConversationId));
+                    throw new ArgumentException("Invalid conversation ID.", nameof(request.ConversationId));
 
-            var conv = await _uow.Conversations
-                .GetAll()
-                .SingleOrDefaultAsync(c => c.ConversationId == request.ConversationId, ct)
-                ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found.");
+                var conv = await _uow.Conversations
+                    .GetAll()
+                    .SingleOrDefaultAsync(c => c.ConversationId == request.ConversationId, ct)
+                    ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found.");
 
-            // Actualizar campos opcionales
-            if (request.Priority.HasValue)
-                     conv.Priority = request.Priority.Value;
-            if (request.Initialized.HasValue)
-                conv.Initialized = request.Initialized.Value;
-            if (request.Status.HasValue)
-                conv.Status = request.Status.Value;
-            if (request.AssignedAgentId.HasValue)
-                conv.AssignedAgentId = request.AssignedAgentId;
-            if (request.IsArchived.HasValue)
-                conv.IsArchived = request.IsArchived.Value;
+                // Actualizar campos opcionales
+                if (request.Priority.HasValue)
+                    conv.Priority = request.Priority.Value;
+                if (request.Initialized.HasValue)
+                    conv.Initialized = request.Initialized.Value;
+                if (request.Status.HasValue)
+                    conv.Status = request.Status.Value;
+                if (request.AssignedAgentId.HasValue)
+                    conv.AssignedAgentId = request.AssignedAgentId;
+                if (request.IsArchived.HasValue)
+                    conv.IsArchived = request.IsArchived.Value;
 
                 if (request.RequestedAgentAt.HasValue)
                     conv.RequestedAgentAt = request.RequestedAgentAt.Value;
 
                 if (request.Tags != null)
-                conv.Tags = request.Tags;
+                    conv.Tags = request.Tags;
 
-            var localTime = await _nicDatetime.GetNicDatetime();
+                var localTime = await _nicDatetime.GetNicDatetime();
 
                 conv.UpdatedAt = localTime;
 
@@ -581,7 +581,7 @@ namespace CustomerService.API.Services.Implementations
                 dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
 
 
-                if(dto.Status == ConversationStatus.Waiting.ToString())
+                if (dto.Status == ConversationStatus.Waiting.ToString())
                 {
                     await _hubContext
                      .Clients
@@ -617,7 +617,7 @@ namespace CustomerService.API.Services.Implementations
             conv.UpdatedAt = await _nicDatetime.GetNicDatetime();
 
             //Su el usuario rechaza la asignación, se limpia de asignació pendiente que habia.
-            if(updateConversationRequestDto.Status == AssignmentState.Rejected)
+            if (updateConversationRequestDto.Status == AssignmentState.Rejected)
             {
                 conv.AssignedAgent = null;
                 conv.AssignedAgentId = null;
@@ -717,7 +717,7 @@ namespace CustomerService.API.Services.Implementations
                                              SenderUserId = m.SenderUserId,
                                              SenderUserName = m.SenderUser?.FullName,
                                              SenderContactId = m.SenderContactId,
-                                             SenderContactName =m.SenderContact?.WaName,
+                                             SenderContactName = m.SenderContact?.WaName,
                                              Content = m.Content,
                                              SentAt = m.SentAt,
                                              MessageType = m.MessageType,
@@ -817,6 +817,16 @@ namespace CustomerService.API.Services.Implementations
             {
                 Console.WriteLine(ex);
             }
+        }
+
+        public async Task UpdateState(int convId, ConversationStatus conversationStatus, CancellationToken ct = default)
+        {
+            var entity = await _uow.Conversations.GetByIdAsync(convId, ct);
+
+            entity.Status = conversationStatus;
+
+            _uow.Conversations.Update(entity);
+            await _uow.SaveChangesAsync(ct);
         }
     }
 }

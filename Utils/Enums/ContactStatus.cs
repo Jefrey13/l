@@ -10,7 +10,10 @@
         Approved,           // aprobado completamente
         Rejected,           // rechazado manualmente
         AwaitingFullName,   // nombre completo
+        AwaitingIdType,   // nombre completo
         AwaitingIdCard,     // número de cédula
+        AwaitingPassword,   // número de numero de pasaporte
+        AwaitingResidenceCard, //Numero de cedula de recidencia
         AwaitingCompanyName, //nombre de la empresa del contacto
         Completed           // ya recibimos ambos datos
     }

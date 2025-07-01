@@ -1,14 +1,16 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
-using CustomerService.API.Dtos.RequestDtos;
-using CustomerService.API.Utils;
+﻿using CustomerService.API.Dtos.RequestDtos;
+using CustomerService.API.Dtos.RequestDtos.Wh;
+using CustomerService.API.Hubs;
 using CustomerService.API.Pipelines.Interfaces;
 using CustomerService.API.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
+using CustomerService.API.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore.Annotations;
-using CustomerService.API.Dtos.RequestDtos.Wh;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CustomerService.API.Controllers
 {
@@ -21,17 +23,20 @@ namespace CustomerService.API.Controllers
         private readonly IWhatsAppService _whatsAppService;
         private readonly string _verifyToken;
         private readonly IMessageService _messageService;
+        private readonly IHubContext<ChatHub> _hub;
 
         public WhatsappWebhookController(
             IMessagePipeline pipeline,
             IWhatsAppService whatsAppService,
             IConfiguration config,
-            IMessageService messageService)
+            IMessageService messageService,
+            IHubContext<ChatHub> hub)
         {
             _pipeline = pipeline;
             _whatsAppService = whatsAppService;
             _verifyToken = config["WhatsApp:VerifyToken"]!;
             _messageService = messageService;
+           _hub = hub;
         }
 
         [HttpGet("webhook", Name = "VerifyWhatsappWebhook")]
@@ -58,27 +63,93 @@ namespace CustomerService.API.Controllers
             return Forbid();
         }
 
+        //[HttpPost("webhook", Name = "ReceiveWhatsappWebhook")]
+        //[SwaggerOperation(
+        //    Summary = "Receive WhatsApp messages",
+        //    Description = "Procesa solo mensajes entrantes, ignora callbacks de estado.",
+        //    Tags = new[] { "WhatsApp Webhook" }
+        //)]
+        //[Consumes("application/json")]
+        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        //public async Task<IActionResult> ReceiveAsync([FromBody] WhatsAppUpdateRequest update, CancellationToken cancellation)
+        //{
+        //    if (update?.Entry == null || !update.Entry.Any() || update?.Entry.First().Changes.First().Value.Messages.Count() <= 0)
+        //        return BadRequest(ApiResponse<object>.Fail("Invalid payload structure."));
+
+        //    await _pipeline.ProcessIncomingAsync
+        //        (
+        //         update.Entry.First().Changes.First().Value,
+        //         cancellation
+        //        );
+
+        //    return Ok();
+        //}
+
         [HttpPost("webhook", Name = "ReceiveWhatsappWebhook")]
         [SwaggerOperation(
-            Summary = "Receive WhatsApp messages",
-            Description = "Procesa solo mensajes entrantes, ignora callbacks de estado.",
-            Tags = new[] { "WhatsApp Webhook" }
-        )]
+            Summary = "Receive WhatsApp messages and status callbacks",
+            Description = "Procesa mensajes entrantes y callbacks de estado (delivered/read) en un solo endpoint.",
+            Tags = new[] { "WhatsApp Webhook" })]
         [Consumes("application/json")]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ReceiveAsync([FromBody] WhatsAppUpdateRequest update, CancellationToken cancellation)
-        {
-            if (update?.Entry == null || !update.Entry.Any() || update?.Entry.First().Changes.First().Value.Messages.Count() <= 0)
-                return BadRequest(ApiResponse<object>.Fail("Invalid payload structure."));
+        public async Task<IActionResult> ReceiveAsync(
+        [FromBody] WhatsAppUpdateRequest update,
+        CancellationToken cancellation)
+            {
+            //Aplanar payload para obtener el ChangeValue
+            var change = update.Entry
+                .SelectMany(e => e.Changes)
+                .Select(c => c.Value)
+                .FirstOrDefault();
 
-            await _pipeline.ProcessIncomingAsync
-                (
-                 update.Entry.First().Changes.First().Value,
-                 cancellation
-                );
+            if (change == null)
+                return BadRequest(ApiResponse<object>.Fail("Payload inválido"));
 
-            return Ok();
+            // Procesar callbacks de estado si existen
+            if (change.Statuses?.Any() == true)
+            {
+                foreach (var st in change.Statuses)
+                {
+                    // Buscar mensaje por ExternalId (wamid)
+                    var msg = await _messageService.GetByExternalIdAsync(st.MessageId, cancellation);
+                    if (msg == null) continue;
+
+                    var when = DateTimeOffset.FromUnixTimeSeconds(st.Timestamp);
+
+                    // Actualizar estado en BD
+                    switch (st.Status.ToLower())
+                    {
+                        case "delivered":
+                            await _messageService.UpdateDeliveryStatusAsync(msg.MessageId, when, cancellation);
+                            break;
+                        case "read":
+                            await _messageService.MarkAsReadAsync(msg.MessageId, when, cancellation);
+                            break;
+                            // otros estados opcionales: "sent", "failed", etc.
+                    }
+
+                    // (Opcional) Emitir evento SignalR para notificaciones en tiempo real
+                    var evt = st.Status == "delivered" ? "MessageDelivered" : "MessageRead";
+
+                    await _hub.Clients
+                        .Group(msg.ConversationId.ToString())
+                        .SendAsync(evt, new { msg.MessageId, when }, cancellation);
+                }
+
+                return Ok();
+            }
+
+            // Procesar mensajes entrantes (tu pipeline existente)
+            if (change.Messages?.Any() == true)
+            {
+                await _pipeline.ProcessIncomingAsync(change, cancellation);
+                return Ok();
+            }
+
+            // Sin datos relevantes
+            return BadRequest(ApiResponse<object>.Fail("Sin contenido relevante"));
         }
 
         [HttpPost("{conversationId}/send")]
@@ -108,46 +179,46 @@ namespace CustomerService.API.Controllers
             return Ok(ApiResponse<object>.Ok(message: "Mensaje enviado y registrado correctamente."));
         }
 
-        [HttpPost("status/webhook")]
-        public async Task<IActionResult> ReceiveStatusAsync(
-            [FromBody] WhatsAppStatusRequestDto update,
-            CancellationToken ct = default)
-        {
-            if (update?.Entry == null || !update.Entry.Any())
-                return BadRequest("Invalid payload");
+        //[HttpPost("status/webhook")]
+        //public async Task<IActionResult> ReceiveStatusAsync(
+        //    [FromBody] WhatsAppStatusRequestDto update,
+        //    CancellationToken ct = default)
+        //{
+        //    if (update?.Entry == null || !update.Entry.Any())
+        //        return BadRequest("Invalid payload");
 
-            foreach (var entry in update.Entry)
-            {
-                foreach (var change in entry.Changes)
-                {
-                    foreach (var status in change.Value.Statuses)
-                    {
-                        var ts = DateTimeOffset.FromUnixTimeSeconds(status.Timestamp);
+        //    foreach (var entry in update.Entry)
+        //    {
+        //        foreach (var change in entry.Changes)
+        //        {
+        //            foreach (var status in change.Value.Statuses)
+        //            {
+        //                var ts = DateTimeOffset.FromUnixTimeSeconds(status.Timestamp);
 
-                        switch (status.Status.ToLowerInvariant())
-                        {
-                            case "delivered":
-                                // actualiza deliveredAt + dispara SignalR "MessageDelivered"
-                                await _messageService.UpdateDeliveryStatusAsync(
-                                    messageId: int.Parse(status.Id),
-                                    deliveredAt: ts,
-                                    cancellation: ct);
-                                break;
+        //                switch (status.Status.ToLowerInvariant())
+        //                {
+        //                    case "delivered":
+        //                        // actualiza deliveredAt + dispara SignalR "MessageDelivered"
+        //                        await _messageService.UpdateDeliveryStatusAsync(
+        //                            messageId: int.Parse(status.Id),
+        //                            deliveredAt: ts,
+        //                            cancellation: ct);
+        //                        break;
 
-                            case "read":
-                                // actualiza readAt + dispara SignalR "MessageRead"
-                                await _messageService.MarkAsReadAsync(
-                                    messageId: int.Parse(status.Id),
-                                    readAt: ts,
-                                    cancellation: ct);
-                                break;
-                        }
-                    }
-                }
-            }
+        //                    case "read":
+        //                        // actualiza readAt + dispara SignalR "MessageRead"
+        //                        await _messageService.MarkAsReadAsync(
+        //                            messageId: int.Parse(status.Id),
+        //                            readAt: ts,
+        //                            cancellation: ct);
+        //                        break;
+        //                }
+        //            }
+        //        }
+        //    }
 
-            return Ok();
-        }
+        //    return Ok();
+        //}
 
         [HttpPost("{conversationId}/send/media")]
         [Consumes("multipart/form-data")]
