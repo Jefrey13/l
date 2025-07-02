@@ -117,8 +117,8 @@ namespace CustomerService.API.Services.Implementations
         public Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default)
             => _uow.OpeningHours.IsHolidayAsync(date, ct);
 
-        public Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
-            => _uow.OpeningHours.IsOutOfOpeningHourAsync(instant, ct);
+        public Task<bool> IsThereWorkShiftAsync(DateTime instant, CancellationToken ct = default)
+            => _uow.OpeningHours.IsThereWorkShiftAsync(instant, ct);
 
         public async Task<IEnumerable<OpeningHourResponseDto>> GetEffectiveScheduleAsync(
             DateOnly date,

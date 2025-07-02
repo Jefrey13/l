@@ -64,17 +64,23 @@ namespace CustomerService.API.Services.Implementations
                 var localTime = await _nicDatetime.GetNicDatetime();
                 string mesageIdResponse = string.Empty;
 
-                var msg = new Message();
-                // Crear el objeto Message con la hora nicaragüense
-                msg.ConversationId = request.ConversationId;
-                msg.SenderUserId = isContact ? null : request.SenderId;
-                msg.SenderContactId = isContact ? request.SenderId : null;
-                msg.Content = request.Content;
-                msg.MessageType = request.MessageType;
-                msg.SentAt = localTime;  // hora nica
-                msg.Status = MessageStatus.Sent;
-                msg.InteractiveId = request.InteractiveId;
-                msg.InteractiveTitle = request.InteractiveTitle;
+                var msg = new Message
+                {
+                    ConversationId = request.ConversationId,
+                    SenderUserId = isContact ? null : request.SenderId,
+                    SenderContactId = isContact ? request.SenderId : null,
+                    Content = request.Content,
+                    MessageType = request.MessageType,
+                    SentAt = localTime,  // hora nica
+                    Status = MessageStatus.Sent,
+                    ExternalId = "",
+                    InteractiveId = request.InteractiveId,
+                    InteractiveTitle = request.InteractiveTitle
+                };
+
+                await _uow.Messages.AddAsync(msg, ct);
+                await _uow.SaveChangesAsync(ct);
+
                 // Recuperar la conversación para actualizar sus marcas de tiempo
                 var conv = await _uow.Conversations.GetByIdAsync(request.ConversationId, ct)
                            ?? throw new KeyNotFoundException($"Conversation {request.ConversationId} not found");
@@ -118,10 +124,9 @@ namespace CustomerService.API.Services.Implementations
                 }
 
                 msg.ExternalId = request.MessageId != null ? request.MessageId : mesageIdResponse;
-
-                await _uow.Messages.AddAsync(msg, ct);
+                
+                _uow.Messages.Update(msg, ct);
                 await _uow.SaveChangesAsync(ct);
-
 
                 _uow.Conversations.Update(conv);
                 await _uow.SaveChangesAsync(ct);
@@ -144,8 +149,8 @@ namespace CustomerService.API.Services.Implementations
                     .SendAsync("PlayNewMessageSound", dto.SenderUserId, ct);
 
                 await _hub.Clients
-                .Group("Admin")
-                .SendAsync("ConversationUpdated", convDto, ct);
+                   .Group("Admin")
+                    .SendAsync("ConversationUpdated", convDto, ct);
 
                 await _hub.Clients
                    .User(dto.SenderUserId.ToString())

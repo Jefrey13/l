@@ -108,6 +108,10 @@ public partial class CustomerSupportContext : DbContext
             entity.HasKey(e => e.Id)
                 .HasName("PK_ContactLogs");
 
+            entity.Property(e => e.IdType)
+                  .HasConversion<string>()
+                  .HasMaxLength(30);
+
             entity.HasIndex(e => e.Phone)
                 .IsUnique()
                 .HasDatabaseName("UQ_ContactLogs_Phone");

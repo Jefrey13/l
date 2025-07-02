@@ -479,7 +479,6 @@ namespace CustomerService.API.Services.Implementations
         {
             try
             {
-
                 if (clientContactId <= 0)
                     throw new ArgumentException("Invalid contact ID.", nameof(clientContactId));
 
@@ -504,6 +503,7 @@ namespace CustomerService.API.Services.Implementations
                     Status = ConversationStatus.Bot,
                     CreatedAt = localDate,
                     Initialized = false,
+                    AssignedByUserId = 2,
                     ClientFirstMessage = localDate,
                 };
 
@@ -786,31 +786,33 @@ namespace CustomerService.API.Services.Implementations
 
                 await _messageService.SendMessageAsync(new SendMessageRequest
                 {
-                    ConversationId = dto.ConversationId,
+                    ConversationId = conv.ConversationId,
                     SenderId = 1,
                     Content = $"Se le asigno el agente de turno {dto.AssignedAgentName}, ya puede conversar con el 💬.",
                     MessageType = MessageType.Text
                 }, false, ct);
 
+                var updated = await _uow.Conversations.GetByIdAsync(conv.ConversationId);
+
                 // Notificar tanto al agente forzado como a los admins
-                if (dto.Status == ConversationStatus.Human.ToString())
+                if (updated.Status.ToString() == ConversationStatus.Human.ToString())
                 {
                     await _hubNotification.Clients
-                        .User(dto.AssignedAgentId.ToString())
+                        .User(updated.AssignedAgentId.ToString())
                         .SendAsync("AssignmentForced", new
                         {
-                            conv.ConversationId,
-                            conv.AssignmentComment
+                            updated.ConversationId,
+                            updated.AssignmentComment
                         }, ct);
                 }
 
                 await _hubContext.Clients
                      .Group("Admin")
-                     .SendAsync("ConversationUpdated", dto, ct);
+                     .SendAsync("ConversationUpdated", updated, ct);
 
                 await _hubContext.Clients
-                   .User(dto.AssignedAgentId.ToString())
-                   .SendAsync("ConversationUpdated", dto, ct);
+                   .User(updated.AssignedAgentId.ToString())
+                   .SendAsync("ConversationUpdated", updated, ct);
 
             }
             catch (Exception ex)
@@ -834,9 +836,7 @@ namespace CustomerService.API.Services.Implementations
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
             var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            var lastClientMsgId = conv.Messages
-                .Where(m => m.SenderContactId != null)
-                .Max(m => (int?)m.MessageId) ?? 0;
+            var lastClientMsgId = conv.Messages.Max(m => (int?)m.MessageId) ?? 0;
 
 
             if (conv.AssignedAgentId == userId)
@@ -850,7 +850,12 @@ namespace CustomerService.API.Services.Implementations
 
             _uow.Conversations.Update(conv);
             await _uow.SaveChangesAsync(ct);
-        }
 
+            var updateDto = conv.Adapt<ConversationResponseDto>();
+
+            await _hubContext.Clients
+               .User(userId.ToString())
+               .SendAsync("ConversationUpdated", updateDto, ct);
+        }
     }
 }

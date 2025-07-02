@@ -13,7 +13,7 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public string Phone { get; set; } = "";
         public string? IdCard { get; set; }
         public string? ResidenceCard { get; set; }
-        public string? Password { get; set; }
+        public string? Passport { get; set; }
         public IdType IdType { get; set; } //Tipo de documento de idetificación.
         public string? FullName { get; set; }
 

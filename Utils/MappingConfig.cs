@@ -87,14 +87,17 @@ namespace CustomerService.API.Utils
                 .Map(d => d.AssignerLastReadMessageId, s => s.AssignerLastReadMessageId)
                 .Map(d => d.UnreadForAgent, s => s.AssignedAgentId.HasValue
                 ? s.Messages.Count(m =>
-                    m.SenderContactId != null &&
+                    m.SenderContactId != m.Conversation.AssignedAgentId &&
+                    //m.SenderContactId != null &&
                     m.MessageId > (s.AgentLastReadMessageId ?? 0))
                 : 0)
-            .Map(d => d.UnreadForAssigner, s => s.AssignedByUserId.HasValue
-                ? s.Messages.Count(m =>
-                    m.SenderContactId != null &&
-                    m.MessageId > (s.AssignerLastReadMessageId ?? 0))
-                : 0);
+
+                .Map(d => d.UnreadForAssigner, s => s.AssignedByUserId.HasValue
+                    ? s.Messages.Count(m =>
+                        m.SenderContactId != m.Conversation.AssignedByUserId &&
+                        //m.SenderContactId != null &&
+                        m.MessageId > (s.AssignerLastReadMessageId ?? 0))
+                    : 0);
 
             // Mensajes
             config.NewConfig<SendMessageRequest, Message>()
@@ -143,7 +146,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.IdType, s => s.IdType)
                 .Map(d => d.IdCard, s => s.IdCard)
                 .Map(d => d.ResidenceCard, s => s.ResidenceCard)
-                .Map(d => d.Password, s => s.Password)
+                .Map(d => d.Passport, s => s.Password)
                 .Map(d => d.CompanyName, s => s.CompanyName)
                 .Map(d => d.CompanyId, s => s.CompanyId)
                 .Map(d => d.IsVerified, s => s.IsVerified)

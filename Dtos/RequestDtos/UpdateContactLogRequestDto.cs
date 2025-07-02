@@ -7,7 +7,7 @@ namespace CustomerService.API.Dtos.RequestDtos
     {
         public int Id { get; set; }
         public string Phone { get; set; }
-        public IdType IdType { get; set; } //Tipo de documento de idetificación.
+        public IdType? IdType { get; set; } //Tipo de documento de idetificación.
         public string? IdCard { get; set; }
         public string? ResidenceCard { get; set; }
         public string? Passport { get; set; }

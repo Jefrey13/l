@@ -50,8 +50,8 @@ namespace CustomerService.API.Hosted
                         {
                             await using var page = await browser.NewPageAsync();
                             await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
-                            await page.WaitForSelectorAsync("body", new WaitForSelectorOptions { Timeout = 10000 });
-                            await Task.Delay(2000, stoppingToken);
+                            await page.WaitForSelectorAsync("body", new WaitForSelectorOptions { Timeout = 30000 });
+                            await Task.Delay(6000, stoppingToken);
 
                             var hrefs = await page.EvaluateFunctionAsync<string[]>(
                                 "() => Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.trim().length > 0)"

@@ -13,7 +13,7 @@ namespace CustomerService.API.Services.Interfaces
         Task<OpeningHourResponseDto?> UpdateAsync(int id, OpeningHourRequestDto request, string jwtToken, CancellationToken ct = default);
         Task<OpeningHourResponseDto?> ToggleAsync(int id, string jwtToken, CancellationToken ct = default);
         Task<bool> IsHolidayAsync(DateOnly date, CancellationToken ct = default);
-        Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default);
+        Task<bool> IsThereWorkShiftAsync(DateTime instant, CancellationToken ct = default);
         Task<IEnumerable<OpeningHourResponseDto>> GetEffectiveScheduleAsync(DateOnly date, CancellationToken ct = default);
     }
 }

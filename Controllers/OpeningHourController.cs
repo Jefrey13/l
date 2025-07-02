@@ -93,7 +93,7 @@ namespace CustomerService.API.Controllers
             if (instant == default)
                 return BadRequest(new ApiResponse<object>(null, "Invalid timestamp", false));
 
-            var result = await _service.IsOutOfOpeningHourAsync(instant, ct);
+            var result = await _service.IsThereWorkShiftAsync(instant, ct);
             return Ok(new ApiResponse<bool>(result, result ? "Outside opening hours" : "Within opening hours", true));
         }
 

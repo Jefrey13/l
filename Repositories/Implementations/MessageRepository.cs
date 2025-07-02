@@ -14,14 +14,16 @@ namespace CustomerService.API.Repositories.Implementations
             if (conversationId <= 0)
                 throw new ArgumentException("El conversationId debe ser mayor que cero.", nameof(conversationId));
 
-            return await _dbSet
+            var data = await _dbSet
                 .AsNoTracking()
                 .Where(m => m.ConversationId == conversationId)
                 .Include(m => m.SenderUser)
                 .Include(m => m.SenderContact)
                 .Include(m => m.Attachments)
-                .OrderBy(m => m.DeliveredAt)
+                .OrderBy(m => m.SentAt)
                 .ToListAsync(cancellation);
+
+            return data;
         }
 
         public async Task<Message?> GetByIdNoTrackingAsync(int id, CancellationToken ct = default)

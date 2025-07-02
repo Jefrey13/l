@@ -237,6 +237,9 @@ namespace CustomerService.API.Services.Implementations
                 if (!string.IsNullOrWhiteSpace(requestDto.FullName))
                     entity.FullName = requestDto.FullName;
 
+                if (!string.IsNullOrWhiteSpace(requestDto.IdType.ToString()))
+                    entity.IdType = requestDto.IdType;
+
                 if (!string.IsNullOrWhiteSpace(requestDto.IdCard))
                     entity.IdCard = requestDto.IdCard;
 

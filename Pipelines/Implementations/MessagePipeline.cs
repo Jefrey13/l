@@ -212,10 +212,10 @@ namespace CustomerService.API.Pipelines.Implementations
                             buttons2,
                             ct
                         );
-
+                        var updatedConv = _conversationService.GetByIdAsync(convDto.ConversationId, ct);
                         await _hubContext.Clients
                            .All
-                           .SendAsync("ConversationUpdated", convDto, ct);
+                           .SendAsync("ConversationUpdated", updatedConv, ct);
 
                         return;
                     }
@@ -467,9 +467,11 @@ namespace CustomerService.API.Pipelines.Implementations
                     ct
                 );
 
+                var updatedConv = await _conversationService.GetByIdAsync(convDto.ConversationId, ct);
+                
                 await _hubContext.Clients
                    .All
-                   .SendAsync("ConversationUpdated", convDto, ct);
+                   .SendAsync("ConversationUpdated", updatedConv, ct);
 
                 return;
             }
@@ -942,6 +944,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
                     {
                         Id = contactDto.Id,
+                        IdType = IdType.NationalCard,
                         IdCard = cedula,
                         Status = ContactStatus.AwaitingCompanyName
                     }, ct);
@@ -1009,6 +1012,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     {
                         Id = contactDto.Id,
                         Passport = password,
+                        IdType = IdType.Passport,
                         Status = ContactStatus.AwaitingCompanyName
                     }, ct);
 
@@ -1071,6 +1075,7 @@ namespace CustomerService.API.Pipelines.Implementations
                     await _contactService.UpdateContactDetailsAsync(new UpdateContactLogRequestDto
                     {
                         Id = contactDto.Id,
+                        IdType = IdType.ResidenceCard,
                         ResidenceCard = residenceCard,
                         Status = ContactStatus.AwaitingCompanyName
                     }, ct);
@@ -1158,23 +1163,24 @@ namespace CustomerService.API.Pipelines.Implementations
         {
             _uow.ClearChangeTracker();
 
-            //var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
+            var isHoliday = await _openingHourService.IsHolidayAsync(DateOnly.FromDateTime(DateTime.Now));
+            var isOutOfOpeningHour = await _openingHourService.IsThereWorkShiftAsync(DateTime.Now, ct);
             //var isOutOfOpeningHour = await _openingHourService.IsOutOfOpeningHourAsync(DateTime.Now, ct);
 
-            //if (isHoliday || isOutOfOpeningHour)
-            //{
-            //    var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
+            if (isHoliday || isOutOfOpeningHour)
+            {
+                var workShift = await _workShiftService.GetMembersOnShiftAsync(DateTime.Now, ct);
 
-            //    if (workShift != null)
-            //    {
-            //        var data = workShift.First().UserId;
-            //    }
+                if (workShift != null)
+                {
+                    var data = workShift.First().UserId;
+                }
 
-            //    //El first  es temporal, en posterios actualizaciones se puede aumentar la cantidad.
-            //    await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().UserId, ct);
+                //El first  es temporal, en posterios actualizaciones se puede aumentar la cantidad.
+                await _conversationService.AutoAssingAsync(convDto.ConversationId, workShift.First().UserId, ct);
 
-            //    return;
-            //}
+                return;
+            }
 
             await _conversationService.UpdateAsync(new UpdateConversationRequest
             {
@@ -1195,12 +1201,12 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var updatedConv = await _conversationService.GetByIdAsync(convoDto.ConversationId, ct);
 
-            var usersAdmin = await _userService.GetByRoleAsync("Admin", ct);
+            //var usersAdmin = await _userService.GetByRoleAsync("Admin", ct);
 
-            var agents = usersAdmin
-                .Where(u => u.IsActive)
-                .Select(u => u.UserId)
-                .ToArray();
+            //var agents = usersAdmin
+            //    .Where(u => u.IsActive)
+            //    .Select(u => u.UserId)
+            //    .ToArray();
 
             //await _notification.CreateAsync(
             //   NotificationType.SupportRequested,

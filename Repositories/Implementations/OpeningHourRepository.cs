@@ -46,7 +46,7 @@ namespace CustomerService.API.Repositories.Implementations
                 return false;
             }
         }
-        public async Task<bool> IsOutOfOpeningHourAsync(DateTime instant, CancellationToken ct = default)
+        public async Task<bool> IsThereWorkShiftAsync(DateTime instant, CancellationToken ct = default)
         {
             try
             {
@@ -55,14 +55,14 @@ namespace CustomerService.API.Repositories.Implementations
                 var time = TimeOnly.FromDateTime(local);
 
                 var weeklySlots = await _dbSet
-                .AsNoTracking()
-                .Where(oh =>
-                    oh.IsActive == true
-                    && oh.Recurrence == RecurrenceType.Weekly
-                    && oh.DaysOfWeek != null
-                    && oh.IsWorkShift == true
-                )
-                .ToListAsync(ct);
+                    .AsNoTracking()
+                    .Where(oh =>
+                        oh.IsActive == true
+                        && oh.Recurrence == RecurrenceType.Weekly
+                        && oh.DaysOfWeek != null
+                        && oh.IsWorkShift == true
+                    )
+                    .ToListAsync(ct);
 
                             weeklySlots = weeklySlots
                                 .Where(oh => oh.DaysOfWeek!.Contains(date.DayOfWeek))
@@ -70,7 +70,7 @@ namespace CustomerService.API.Repositories.Implementations
 
                             var inside = weeklySlots.Any(r => r.StartTime <= time && time <= r.EndTime);
 
-                            return !inside;
+                            return inside;
             }
             catch (Exception ex)
             {
