@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -174,5 +175,20 @@ namespace CustomerService.API.Controllers
                 await _conversations.ForceAssignAsync(id, req.Forced,req.AssignmentComment , ct);
                 return NoContent();
             }
+
+        [HttpPost("{id}/mark-read")]
+        public async Task<IActionResult> MarkRead(
+        [FromRoute] int id,
+        CancellationToken ct = default)
+        {
+            var jwtToken = HttpContext.Request
+                             .Headers["Authorization"]
+                             .ToString()
+                             .Split(' ')[1];
+
+            await _conversations.MarkConversationReadAsync(id, jwtToken, ct);
+            return NoContent();
+        }
+
     }
 }

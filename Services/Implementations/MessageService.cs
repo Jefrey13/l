@@ -29,6 +29,7 @@ namespace CustomerService.API.Services.Implementations
         private readonly INicDatetime _nicDatetime;
         private readonly ITokenService _tokenService;
         private readonly IHttpContextAccessor _ctx;
+        private readonly IHubContext<NotificationsHub> _notifHub;
 
         public MessageService(
             IUnitOfWork uow,
@@ -37,7 +38,8 @@ namespace CustomerService.API.Services.Implementations
             INicDatetime nicDatetime,
             IAttachmentService attachSvc,
             ITokenService tokenService,
-            IHttpContextAccessor ctx)
+            IHttpContextAccessor ctx,
+            IHubContext<NotificationsHub> notifHub)
         {
             _uow = uow ?? throw new ArgumentNullException(nameof(uow));
             _whatsAppService = whatsAppService ?? throw new ArgumentNullException(nameof(whatsAppService));
@@ -46,6 +48,7 @@ namespace CustomerService.API.Services.Implementations
             _attachSvc = attachSvc;
             _tokenService = tokenService;
             _ctx = ctx;
+            _notifHub = notifHub;
         }
 
         public async Task<MessageResponseDto> SendMessageAsync(
@@ -128,17 +131,17 @@ namespace CustomerService.API.Services.Implementations
                 var dto = reloaded.Adapt<MessageResponseDto>();
                 var convDto = conv.Adapt<ConversationResponseDto>();
 
-                //await _hub.Clients
-                //   .Group("Admin")
-                //   .SendAsync("ReceiveMessage", dto, ct);
-
                 await _hub.Clients
-                    .User(convDto.AssignedAgentId.ToString())
-                    .SendAsync("ReceiveMessage", dto, ct);
+                  .Group(reloaded.ConversationId.ToString())
+                  .SendAsync("ReceiveMessage", dto, ct);
 
-                await _hub.Clients
-                    .Group("Admin")
-                    .SendAsync("ReceiveMessage", dto, ct);
+                await _notifHub.Clients
+                .User(convDto.AssignedAgentId.ToString())
+                .SendAsync("PlayNewMessageSound", dto.SenderUserId, ct);
+
+                await _notifHub.Clients
+                    .Group("Admins")
+                    .SendAsync("PlayNewMessageSound", dto.SenderUserId, ct);
 
                 await _hub.Clients
                 .Group("Admin")

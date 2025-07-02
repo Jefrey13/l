@@ -38,5 +38,7 @@ namespace CustomerService.API.Services.Interfaces
         Task ForceAssignAsync(int conversationId, bool forced, string? assignmentComment, CancellationToken ct);
 
         Task AutoAssingAsync(int convId, int userId, CancellationToken tc = default);
+
+        Task MarkConversationReadAsync(int conversationId, string jwtToken, CancellationToken ct = default);
     }
 }

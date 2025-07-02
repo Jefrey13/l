@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using CustomerService.API.Dtos.RequestDtos;
@@ -20,12 +21,14 @@ namespace CustomerService.API.Services.Implementations
         private readonly ILogger<SystemParamService> _logger;
         private readonly IUnitOfWork _uow;
         private readonly INicDatetime _nicDatetime;
+        private readonly ITokenService _tokenService;
 
         public SystemParamService(
             ISystemParamRepository systemParamRepository,
             ILogger<SystemParamService> logger,
             IUnitOfWork uow,
-            INicDatetime nicDatetime)
+            INicDatetime nicDatetime,
+            ITokenService tokenService)
         {
             _systemParamRepository = systemParamRepository
                 ?? throw new ArgumentNullException(nameof(systemParamRepository));
@@ -35,6 +38,7 @@ namespace CustomerService.API.Services.Implementations
                 ?? throw new ArgumentNullException(nameof(uow));
             _nicDatetime = nicDatetime
                 ?? throw new ArgumentNullException(nameof(nicDatetime));
+            _tokenService = tokenService;
         }
 
         public async Task<SystemParamResponseDto> CreateAsync(SystemParamRequestDto systemParam)
@@ -125,7 +129,21 @@ namespace CustomerService.API.Services.Implementations
 
             return await Task.FromResult(dtoList);
         }
-
+        public async Task<PagedResponse<SystemParamResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken ct = default)
+        {
+            try
+            {
+                var query = _uow.SystemParamRepository.GetAll();
+                var paged = await PagedList<SystemParam>.CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+                var dtos = paged.Select(sp => sp.Adapt<SystemParamResponseDto>());
+                return new PagedResponse<SystemParamResponseDto>(dtos, paged.MetaData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al recuperar SystemParams paginados");
+                throw;
+            }
+        }
         public async Task<SystemParamResponseDto> GetByIdAsync(int id)
         {
             if (id <= 0)
@@ -199,6 +217,32 @@ namespace CustomerService.API.Services.Implementations
 
             _logger.LogInformation("Updated SystemParam with ID: {Id}", existingEntity.Id);
             return existingEntity.Adapt<SystemParamResponseDto>();
+        }
+
+        public async Task<SystemParamResponseDto> ToggleAsync(
+        int id,
+        string jwtToken,
+        CancellationToken ct = default
+    )
+        {
+            if (id <= 0)
+                throw new ArgumentOutOfRangeException(nameof(id), "El ID debe ser mayor que cero.");
+
+
+            var entity = await _uow.SystemParamRepository.GetByIdAsync(id)
+                         ?? throw new KeyNotFoundException($"SystemParam {id} not found");
+
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = await _nicDatetime.GetNicDatetime();
+            entity.UpdateBy = userId;
+
+            _uow.SystemParamRepository.Update(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            return entity.Adapt<SystemParamResponseDto>();
         }
     }
 }

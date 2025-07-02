@@ -47,5 +47,9 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public List<MessageResponseDto> Messages { get; set; } = new();
 
         public List<string> Tags { get; set; } = new();
+        public int? AgentLastReadMessageId { get; set; }
+        public int? AssignerLastReadMessageId { get; set; }
+        public int UnreadForAgent { get; set; }
+        public int UnreadForAssigner { get; set; }
     }
 }

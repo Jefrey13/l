@@ -106,5 +106,9 @@ namespace CustomerService.API.Models
 
         [NotMapped]
         public bool IsClosed => Status == ConversationStatus.Closed;
+
+        public int? AgentLastReadMessageId { get; set; }
+
+        public int? AssignerLastReadMessageId { get; set; }
     }
 }

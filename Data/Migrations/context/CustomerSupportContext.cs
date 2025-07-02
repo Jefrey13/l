@@ -322,6 +322,17 @@ public partial class CustomerSupportContext : DbContext
                   .HasForeignKey(e => e.AssignedByUserId)
                   .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("FK_Conversations_AssignedByUser");
+
+            entity.Property(e => e.AgentLastReadMessageId)
+              .HasColumnName("AgentLastReadMessageId")
+              .HasColumnType("int")
+              .IsRequired(false);
+
+
+            entity.Property(e => e.AssignerLastReadMessageId)
+             .HasColumnName("AssignerLastReadMessageId")
+             .HasColumnType("int")
+             .IsRequired(false);
         });
 
         modelBuilder.Entity<Message>(entity =>

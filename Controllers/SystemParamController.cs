@@ -65,20 +65,47 @@ namespace CustomerService.API.Controllers
                 null));
         }
 
-        [HttpDelete("{id:int}", Name = "DeleteSystemParam")]
+        private string GetJwt()
+        {
+            var header = HttpContext.Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(header) || !header.StartsWith("Bearer "))
+                throw new UnauthorizedAccessException("Token missing or invalid");
+            return header.Split(' ')[1];
+        }
+
+        [HttpPatch("{id:int}", Name = "ToggleSystemParamStatus")]
         [SwaggerOperation(Summary = "Alternar el estado IsActive de un SystemParam")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteAsync(int id)
+        [ProducesResponseType(typeof(ApiResponse<SystemParamResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ToggleStatusAsync(int id, CancellationToken ct = default)
         {
             if (id <= 0)
+                return BadRequest(new ApiResponse<object>(null, "El ID debe ser mayor que cero.", false));
+
+            string token;
+            try
             {
-                return BadRequest(new { Message = "El ID debe ser mayor que cero." });
+                token = GetJwt();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new ApiResponse<object>(null, ex.Message, false));
             }
 
-            await _systemParamService.DeleteAsync(id);
-            return NoContent();
+            try
+            {
+                var dto = await _systemParamService.ToggleAsync(id, token, ct);
+                return Ok(new ApiResponse<SystemParamResponseDto>(
+                    dto,
+                    "Estado del parámetro alternado con éxito.",
+                    true));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>(null, ex.Message, false));
+            }
         }
 
         [HttpPost(Name = "CreateSystemParam")]
@@ -128,23 +155,17 @@ namespace CustomerService.API.Controllers
                 null));
         }
 
-        [HttpGet(Name = "GetAllSystemParams")]
-        [SwaggerOperation(Summary = "Obtener todos los SystemParams")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<SystemParamResponseDto>>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetAllAsync()
+        [HttpGet]
+        [SwaggerOperation(Summary = "Obtener una lista paginada de SystemParams")]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<SystemParamResponseDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllAsync([FromQuery] PaginationParams @params, CancellationToken ct = default)
         {
-            var allParams = await _systemParamService.GetAllAsync();
-            if (allParams == null || !allParams.Any())
-            {
-                return NotFound(new { Message = "No se encontraron parámetros." });
-            }
-
-            return Ok(new ApiResponse<IEnumerable<SystemParamResponseDto>>(
-                allParams,
-                "Parámetros obtenidos con éxito.",
-                true,
-                null));
+            var paged = await _systemParamService.GetAllAsync(@params, ct);
+            return Ok(new ApiResponse<PagedResponse<SystemParamResponseDto>>(
+                paged,
+                "Parámetros del sistema obtenidos correctamente",
+                true
+            ));
         }
     }
 }

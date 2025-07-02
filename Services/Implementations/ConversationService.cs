@@ -828,5 +828,29 @@ namespace CustomerService.API.Services.Implementations
             _uow.Conversations.Update(entity);
             await _uow.SaveChangesAsync(ct);
         }
+        public async Task MarkConversationReadAsync(int conversationId, string jwtToken, CancellationToken ct = default)
+        {
+            var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct);
+            var principal = _tokenService.GetPrincipalFromToken(jwtToken);
+            var userId = int.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var lastClientMsgId = conv.Messages
+                .Where(m => m.SenderContactId != null)
+                .Max(m => (int?)m.MessageId) ?? 0;
+
+
+            if (conv.AssignedAgentId == userId)
+            {
+                conv.AgentLastReadMessageId = lastClientMsgId;
+            }
+            else if (conv.AssignedByUserId == userId)
+            {
+                conv.AssignerLastReadMessageId = lastClientMsgId;
+            }
+
+            _uow.Conversations.Update(conv);
+            await _uow.SaveChangesAsync(ct);
+        }
+
     }
 }

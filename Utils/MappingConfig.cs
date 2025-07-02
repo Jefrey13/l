@@ -82,7 +82,19 @@ namespace CustomerService.API.Utils
                 .Map(d => d.TimeToFirstResponse, s => s.FirstResponseAt.HasValue ? s.FirstResponseAt.Value - s.CreatedAt : (TimeSpan?)null)
                 .Map(d => d.IsClosed, s => s.Status == ConversationStatus.Closed)
                 .Map(d => d.Messages, s => s.Messages.Adapt<List<MessageResponseDto>>())
-                .Map(d => d.Tags, s => s.Tags);
+                .Map(d => d.Tags, s => s.Tags)
+                .Map(d => d.AgentLastReadMessageId, s => s.AgentLastReadMessageId)
+                .Map(d => d.AssignerLastReadMessageId, s => s.AssignerLastReadMessageId)
+                .Map(d => d.UnreadForAgent, s => s.AssignedAgentId.HasValue
+                ? s.Messages.Count(m =>
+                    m.SenderContactId != null &&
+                    m.MessageId > (s.AgentLastReadMessageId ?? 0))
+                : 0)
+            .Map(d => d.UnreadForAssigner, s => s.AssignedByUserId.HasValue
+                ? s.Messages.Count(m =>
+                    m.SenderContactId != null &&
+                    m.MessageId > (s.AssignerLastReadMessageId ?? 0))
+                : 0);
 
             // Mensajes
             config.NewConfig<SendMessageRequest, Message>()
