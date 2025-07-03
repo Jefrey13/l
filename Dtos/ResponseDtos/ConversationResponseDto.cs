@@ -51,5 +51,6 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public int? AssignerLastReadMessageId { get; set; }
         public int UnreadForAgent { get; set; }
         public int UnreadForAssigner { get; set; }
+        public string? Tone { get; set; } = "No disponible";
     }
 }

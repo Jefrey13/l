@@ -110,5 +110,7 @@ namespace CustomerService.API.Models
         public int? AgentLastReadMessageId { get; set; }
 
         public int? AssignerLastReadMessageId { get; set; }
+
+        public string? Tone { get; set; }
     }
 }

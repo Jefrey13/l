@@ -8,6 +8,7 @@ using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -42,11 +43,14 @@ namespace CustomerService.API.Services.Implementations
             _tokenService = tokenService;
         }
 
-        public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync(PaginationParams @params, CancellationToken cancellation = default)
+        public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync([FromQuery] PaginationParams @params, CancellationToken ct = default)
         {
-            var query = _uow.ContactLogs.GetAll().OrderBy(cl => cl.Phone);
-            var paged = await PagedList<ContactLog>.CreateAsync(query, @params.PageNumber, @params.PageSize, cancellation);
-            var dtos = paged.Select(cl => cl.Adapt<ContactLogResponseDto>()).ToList();
+            var query = _uow.ContactLogs.GetAll().OrderBy(c=> c.CreatedAt);   
+
+            var paged = await PagedList<ContactLog>.CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+
+            var dtos = paged.Select(sp => sp.Adapt<ContactLogResponseDto>());
+
             return new PagedResponse<ContactLogResponseDto>(dtos, paged.MetaData);
         }
 
@@ -110,8 +114,12 @@ namespace CustomerService.API.Services.Implementations
             return entity.Adapt<ContactLogResponseDto>();
         }
 
-        public async Task UpdateAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)
+        public async Task<ContactLogResponseDto> UpdateAsync(UpdateContactLogRequestDto requestDto, CancellationToken cancellation = default)
         {
+            if(requestDto.Id <= 0)
+                throw new ArgumentException("El id es obligatorio", nameof(requestDto.Id));
+
+
             var entity = await _uow.ContactLogs.GetByIdAsync(requestDto.Id, cancellation)
                 ?? throw new KeyNotFoundException($"ContactLog {requestDto.Id} not found");
 
@@ -121,6 +129,8 @@ namespace CustomerService.API.Services.Implementations
 
             _uow.ContactLogs.Update(entity);
             await _uow.SaveChangesAsync(cancellation);
+
+            return entity.Adapt<ContactLogResponseDto>();
         }
         public async Task VerifyAsync(int id, string jwtToken, CancellationToken ct = default)
         {
@@ -139,12 +149,17 @@ namespace CustomerService.API.Services.Implementations
             await _uow.SaveChangesAsync(ct);
         }
 
-        public async Task DeleteAsync(int id, CancellationToken cancellation = default)
+        public async Task<ContactLogResponseDto> ToggleAsync(int id, CancellationToken ct = default)
         {
-            var entity = await _uow.ContactLogs.GetByIdAsync(id, cancellation)
+            var entity = await _uow.ContactLogs.GetByIdAsync(id, ct)
                 ?? throw new KeyNotFoundException($"ContactLog {id} not found");
-            _uow.ContactLogs.Remove(entity);
-            await _uow.SaveChangesAsync(cancellation);
+
+            entity.IsActive = !entity.IsActive;
+
+            _uow.ContactLogs.Update(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            return entity.Adapt<ContactLogResponseDto>();   
         }
 
         public async Task<ContactLogResponseDto> GetOrCreateByPhoneAsync(

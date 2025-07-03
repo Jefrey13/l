@@ -85,7 +85,7 @@ namespace CustomerService.API.Controllers
                              .ToString()
                              .Split(' ')[1];
 
-            await _conversations.AssignAgentAsync(id, agentUserId, status , jwtToken, ct);
+            await _conversations.AssignAgentAsync(id, agentUserId, status, jwtToken, ct);
             return NoContent();
         }
 
@@ -167,14 +167,14 @@ namespace CustomerService.API.Controllers
         }
 
         [HttpPost("{id}/force", Name = "ForceAssignment")]
-            public async Task<IActionResult> Force(
+        public async Task<IActionResult> Force(
         [FromRoute] int id,
         [FromBody] ForceAssignmentRequest req,
         CancellationToken ct = default)
-            {
-                await _conversations.ForceAssignAsync(id, req.Forced,req.AssignmentComment , ct);
-                return NoContent();
-            }
+        {
+            await _conversations.ForceAssignAsync(id, req.Forced, req.AssignmentComment, ct);
+            return NoContent();
+        }
 
         [HttpPost("{id}/mark-read")]
         public async Task<IActionResult> MarkRead(
@@ -189,6 +189,19 @@ namespace CustomerService.API.Controllers
             await _conversations.MarkConversationReadAsync(id, jwtToken, ct);
             return NoContent();
         }
+        [HttpGet("{id}/tone")]
+        [SwaggerOperation("GetConversationTone")]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetTone([FromRoute] int id, CancellationToken ct)
+        {
+            if(id <= 0)
+            {
+                return BadRequest(new ApiResponse<string>("Invalid conversation ID."));
+            }
 
+            var tone = await _conversations.GetToneAsync(id, ct);
+            return Ok(new ApiResponse<int>(tone, "Tono de la conversación obtenido."));
+        }
     }
 }

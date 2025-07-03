@@ -106,19 +106,32 @@ namespace CustomerService.API.Controllers
         {
             if (id != requestDto.Id)
                 return BadRequest(new ApiResponse<object>(null, "Mismatched contact ID."));
+             
+            if(requestDto == null)
+                return BadRequest(new ApiResponse<object>(null, "Request body is required."));
 
-            await _contactLogService.UpdateAsync(requestDto, ct);
-            return NoContent();
+            var res = await _contactLogService.UpdateAsync(requestDto, ct);
+
+            if (res is null)
+                return NotFound(new ApiResponse<object>(null, "Contact not found."));
+
+            return Ok(new ApiResponse<ContactLogResponseDto>(res, "Contact updated successfully.", true, null));
         }
 
-        [HttpDelete("{id}", Name = "DeleteContactLog")]
-        [SwaggerOperation(Summary = "Delete (deactivate) a contact")]
+        [HttpPatch("{id}", Name = "ToggleContactLog")]
+        [SwaggerOperation(Summary = "Toggle (isActive)")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteAsync([FromRoute] int id, CancellationToken ct = default)
+        public async Task<IActionResult> ToggleAsync([FromRoute] int id, CancellationToken ct = default)
         {
-            await _contactLogService.DeleteAsync(id, ct);
-            return NoContent();
+            if(id <= 0)
+                return NotFound(new ApiResponse<object>(null, "Id is required."));  
+
+           var response =  await _contactLogService.ToggleAsync(id, ct);
+            if(response is null)
+                return NotFound(new ApiResponse<object>(null, "Contact not found."));
+
+            return Ok(new ApiResponse<ContactLogResponseDto>(response, "Mensaje actualizado con exito", true, null));
         }
     }
 }

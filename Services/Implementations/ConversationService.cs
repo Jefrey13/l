@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -61,6 +62,27 @@ namespace CustomerService.API.Services.Implementations
             _systemParamService = systemParamService ?? throw new ArgumentException(nameof(systemParamService));
         }
 
+        //public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
+        //{
+        //    var convs = await _uow.Conversations.GetAll()
+        //        .Include(c => c.Messages)
+        //            .ThenInclude(a => a.Attachments)
+        //        .Include(c => c.ClientContact)
+        //        .Include(c => c.AssignedAgent)
+        //        .Include(c => c.AssignedByUser)
+        //        .ToListAsync(cancellation);
+
+        //    var dto = convs.Select(c => c.Adapt<ConversationResponseDto>());
+
+        //    foreach (var item in dto)
+        //    {
+        //        var tone = await GetToneStringAsync(item.ConversationId);
+        //        item.Tone = tone;
+        //    }
+
+        //    return dto;
+        //}
+
         public async Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default)
         {
             var convs = await _uow.Conversations.GetAll()
@@ -71,12 +93,18 @@ namespace CustomerService.API.Services.Implementations
                 .Include(c => c.AssignedByUser)
                 .ToListAsync(cancellation);
 
-            var dto = convs.Adapt<ConversationResponseDto>();
+            var dtoList = convs
+                .Select(c => c.Adapt<ConversationResponseDto>())
+                .ToList();
 
-            dto.TotalMessages = dto.TotalMessages == 0 ? 3 : dto.TotalMessages + 2;
+            foreach (var item in dtoList)
+            {
+                item.Tone = await GetToneStringAsync(item.ConversationId);
+            }
 
-            return convs.Select(c => c.Adapt<ConversationResponseDto>());
+            return dtoList;
         }
+
 
         public async Task<IEnumerable<ConversationResponseDto>> GetPendingAsync(CancellationToken cancellation = default)
         {
@@ -400,6 +428,31 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
+        //public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
+        //{
+        //    try
+        //    {
+        //        if (id <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(id));
+
+        //        var conv = await _uow.Conversations.GetByIdAsync(id, CancellationToken.None);
+
+        //        var tone = await GetToneStringAsync(conv.ConversationId);
+        //        conv.Tone = tone;
+
+        //        _uow.Conversations.Update(conv, cancellation);
+        //        await _uow.SaveChangesAsync(cancellation);
+
+        //        var convUpdated = await _uow.Conversations.GetByIdAsync(id, CancellationToken.None);
+
+        //        return conv == null ? null : convUpdated.Adapt<ConversationResponseDto>();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine(ex);
+        //        return new ConversationResponseDto();
+        //    }
+        //}
+
         public async Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default)
         {
             try
@@ -647,6 +700,12 @@ namespace CustomerService.API.Services.Implementations
 
         }
 
+        /// <summary>
+        /// GEt conversation by role and add tone of conversatiio. This could be a little costly
+        /// </summary>
+        /// <param name="jwtToken"></param>
+        /// <param name="cancellation"></param>
+        /// <returns></returns>
         public async Task<IEnumerable<ConversationResponseDto>> GetConversationByRole(string jwtToken, CancellationToken cancellation = default)
         {
             var principal = _tokenService.GetPrincipalFromToken(jwtToken);
@@ -659,7 +718,15 @@ namespace CustomerService.API.Services.Implementations
 
             var convs = await _uow.Conversations.GetByAgentAsync(userId, cancellation);
 
-            return convs.Select(c => c.Adapt<ConversationResponseDto>());
+           var dto = convs.Select(c => c.Adapt<ConversationResponseDto>());
+
+            foreach (var item in dto)
+            {
+                var tone = await GetToneStringAsync(item.ConversationId);
+                item.Tone = tone;
+            }
+
+            return dto;
         }
 
         public async Task UpdateTags(int id, List<string> request, CancellationToken ct = default)
@@ -820,7 +887,6 @@ namespace CustomerService.API.Services.Implementations
                 Console.WriteLine(ex);
             }
         }
-
         public async Task UpdateState(int convId, ConversationStatus conversationStatus, CancellationToken ct = default)
         {
             var entity = await _uow.Conversations.GetByIdAsync(convId, ct);
@@ -857,5 +923,138 @@ namespace CustomerService.API.Services.Implementations
                .User(userId.ToString())
                .SendAsync("ConversationUpdated", updateDto, ct);
         }
+
+        public async Task<string> GetToneStringAsync(int ConversationId, CancellationToken ct = default)
+        {
+            try
+            {
+                if (ConversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(ConversationId));
+
+                var allMessages = (await _messageService
+                    .GetByConversationAsync(ConversationId, ct))
+                    .Select(m => m.Content)
+                    .Where(t => !string.IsNullOrWhiteSpace(t));
+
+                var fullPrompt = $@"
+                        Historial de mensajes:
+                        {string.Join('\n', allMessages)}";
+
+                var botReply = (await _geminiClient
+                    .GenerateContentAsync(fullPrompt, "Aliza el tono de los mensajes de la conversación en base a la siguiente escala " +
+                    "Los valores de 1 al 5 representan a: " +
+                    "5 = Muy deficiente: Mensajes confusos, faltos de coherencia o cortesía.\r\n\r\n " +
+                    "4 = Deficiente: Algunas mensajes se entienden, pero hay problemas de claridad o tono.\r\n\r\n " +
+                    "3 = Aceptable: Los mensajes no presentan faltas de respeto ni ideas confusas.\r\n\r\n " +
+                    "2 = Bueno: Mensajes claros, coherentes y respetuosos; cumple su objetivo de atención al cliente responsable..\r\n\r\n" +
+                    "1 = Excelente: Muy bien estructurada, empatía en el tono, enfoque preciso y sin errores." +
+                    "Retorna como respues un valor entre 1 a 5 en base a tu analisis sobre que valor se le deve de asignar a la conversación de atención al cliente. No retornes otra respuesta que sea siempre un numero entre 1 a 5."
+                    , ct))
+                    .Trim();
+
+                var conversationTone = "No disponible";
+
+                if (botReply == null)
+                {
+                    throw new InvalidOperationException("Invalid tone value returned by Gemini.");
+                }
+
+                switch (botReply)
+                {
+                    case var _ when botReply.Contains("1", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = "Excelente"; // Positivo
+                        break;
+                    case var _ when botReply.Contains("2", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = "Deficiente"; // Neutral
+                        break;
+                    case var _ when botReply.Contains("3", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = "Aceptable"; // Negativo
+                        break;
+                    case var _ when botReply.Contains("4", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = "Deficiente"; // Muy positivo
+                        break;
+                    case var _ when botReply.Contains("5", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = "Muy deficiente"; // Muy negativo
+                        break;
+                }
+
+                return conversationTone;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return "No disponible";
+            }
+        }
+        public async Task<int> GetToneAsync(int ConversationId, CancellationToken ct = default)
+        {
+            try
+            {
+                if (ConversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(ConversationId));
+
+                var allMessages = (await _messageService
+                    .GetByConversationAsync(ConversationId, ct))
+                    .Select(m => m.Content)
+                    .Where(t => !string.IsNullOrWhiteSpace(t));
+
+                var fullPrompt = $@"
+                        Historial de mensajes:
+                        {string.Join('\n', allMessages)}";
+
+                var botReply = (await _geminiClient
+                    .GenerateContentAsync(fullPrompt, "Aliza el tono de los mensajes de la conversación en base a la siguiente escala " +
+                    "Los valores de 1 al 5 representan a: " +
+                    "5 = Muy deficiente: Mensajes confusos, faltos de coherencia o cortesía.\r\n\r\n " +
+                    "4 = Deficiente: Algunas mensajes se entienden, pero hay problemas de claridad o tono.\r\n\r\n " +
+                    "3 = Aceptable: Los mensajes no presentan faltas de respeto ni ideas confusas.\r\n\r\n " +
+                    "2 = Bueno: Mensajes claros, coherentes y respetuosos; cumple su objetivo de atención al cliente responsable..\r\n\r\n" +
+                    "1 = Excelente: Muy bien estructurada, empatía en el tono, enfoque preciso y sin errores." +
+                    "Retorna como respues un valor entre 1 a 5 en base a tu analisis sobre que valor se le deve de asignar a la conversación de atención al cliente. No retornes otra respuesta que sea siempre un numero entre 1 a 5."
+                    , ct))
+                    .Trim();
+
+                var conversationTone = 1;
+
+                if (conversationTone < 1 || conversationTone > 5 && !(conversationTone is int))
+                {
+                    //throw new InvalidOperationException("Invalid tone value returned by Gemini.");
+                }
+
+                switch (botReply)
+                {
+                    case var _ when botReply.Contains("1", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = 1; // Positivo
+                        break;
+                    case var _ when botReply.Contains("2", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = 2; // Neutral
+                        break;
+                    case var _ when botReply.Contains("3", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = 3; // Negativo
+                        break;
+                    case var _ when botReply.Contains("4", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = 4; // Muy positivo
+                        break;
+                    case var _ when botReply.Contains("5", StringComparison.OrdinalIgnoreCase):
+                        conversationTone = 5; // Muy negativo
+                        break;
+                }
+
+                return conversationTone;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return 1;
+            }
+        }
     }
 }
+
+//Muy deficiente: Mensajes confusos, faltos de coherencia o cortesía.
+
+//Deficiente: Algunas ideas se entienden, pero hay problemas de claridad o tono.
+
+//Aceptable: Se transmite el mensaje principal, con pequeños fallos de estilo o detalle.
+
+//Bueno: Clara, coherente y respetuosa; cumple su objetivo con soltura.
+
+//Excelente: Muy bien estructurada, empatía en el tono, enfoque preciso y sin errores.

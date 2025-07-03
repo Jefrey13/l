@@ -22,6 +22,7 @@ namespace CustomerService.API.Dtos.ResponseDtos
         public int? CompanyId { get; set; }
         public bool? IsProvidingData { get; set; }
         public bool IsVerified { get; set; }
+        public bool IsActive { get; set; }
         public ContactStatus Status { get; set; }
 
         public DateTime CreatedAt { get; set; }

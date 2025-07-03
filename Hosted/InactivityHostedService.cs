@@ -93,7 +93,6 @@ namespace CustomerService.API.Hosted
                         .Include(c => c.Messages)  // si necesitas historial; si no, puedes omitirlo
                         .ToListAsync(stoppingToken);
 
-                    var data = 1;
                     var senderId = 1;
                     // 7) Iterar sobre cada conversación pendiente
                     foreach (var conv in pendientes)
@@ -158,8 +157,12 @@ namespace CustomerService.API.Hosted
 
                             var closedMinutes = int.Parse(_closeThreshold.Value);
                             // === 2) Cerrar la conversación a los 4 minutos (si ya se envió la advertencia) ===
-                           if (diff >= closedMinutes && conv.WarningSentAt != null)
-                            {
+                            //if (diff >= closedMinutes && conv.WarningSentAt != null)
+                            //Quitamos la validación de WarningSentAt, para que la envie mas de 1 ves cada 2 minutos.
+                            //A Como estaba solo se envia 1 ves la advertencia y luego no la enviaba mas.
+
+                            if (diff >= closedMinutes)
+                                {
                                 try
                                 {
                                     // Cambiar estado a Closed y registrar fecha de cierre

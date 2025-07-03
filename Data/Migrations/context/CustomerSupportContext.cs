@@ -258,6 +258,10 @@ public partial class CustomerSupportContext : DbContext
             .HasMaxLength(500)
             .IsRequired(false);
 
+            entity.Property(e => e.AssignmentComment)
+            .HasMaxLength(30)
+            .IsRequired(false);
+
             entity.Property(e => e.Initialized)
                   .HasDefaultValue(false);
 

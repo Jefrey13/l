@@ -145,7 +145,7 @@ namespace CustomerService.API.Pipelines.Implementations
 
             var convEntity = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
-            var convDto = convEntity.Adapt<ConversationResponseDto>();
+            var convDto = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
             // 3) emítelo por SignalR
             if (convDto.Status == ConversationStatus.Human.ToString())
@@ -613,7 +613,7 @@ namespace CustomerService.API.Pipelines.Implementations
                                     isContact: false,
                                     ct);
 
-                                var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                                var convEntity3 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                                 var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
 
@@ -671,7 +671,7 @@ namespace CustomerService.API.Pipelines.Implementations
                                     isContact: false,
                                     ct);
 
-                                var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                                var convEntity3 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                                 var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
 
@@ -728,7 +728,7 @@ namespace CustomerService.API.Pipelines.Implementations
                                     isContact: false,
                                     ct);
 
-                                var convEntity3 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                                var convEntity3 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                                 var convDto3 = convEntity3.Adapt<ConversationResponseDto>();
 
@@ -883,7 +883,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             IsProvidingData = true
                         }, ct);
 
-                        var convEntity1 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                        var convEntity1 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                         var convDto1 = convEntity1.Adapt<ConversationResponseDto>();
 
@@ -928,7 +928,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             isContact: false,
                             ct);
 
-                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                        var convEntity4 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                         var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
 
@@ -961,7 +961,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         isContact: false,
                         ct);
 
-                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                    var convEntity5 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                     var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
@@ -995,7 +995,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             isContact: false,
                             ct);
 
-                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                        var convEntity4 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                         var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
 
@@ -1027,7 +1027,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         isContact: false,
                         ct);
 
-                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                    var convEntity5 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                     var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
@@ -1059,7 +1059,7 @@ namespace CustomerService.API.Pipelines.Implementations
                             isContact: false,
                             ct);
 
-                        var convEntity4 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                        var convEntity4 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                         var convDto4 = convEntity4.Adapt<ConversationResponseDto>();
 
@@ -1091,7 +1091,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         isContact: false,
                         ct);
 
-                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                    var convEntity5 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                     var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
@@ -1132,7 +1132,7 @@ namespace CustomerService.API.Pipelines.Implementations
                         isContact: false,
                         ct);
 
-                    var convEntity5 = await _uow.Conversations.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
+                    var convEntity5 = await _conversationService.GetByIdAsync(convoDto.ConversationId, CancellationToken.None);
 
                     var convDto5 = convEntity.Adapt<ConversationResponseDto>();
 
