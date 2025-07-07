@@ -53,15 +53,15 @@ namespace CustomerService.API.Hosted
                             await page.WaitForSelectorAsync("body", new WaitForSelectorOptions { Timeout = 30000 });
                             await Task.Delay(6000, stoppingToken);
 
-                            var hrefs = await page.EvaluateFunctionAsync<string[]>(
-                                "() => Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.trim().length > 0)"
-                            );
+                            //var hrefs = await page.EvaluateFunctionAsync<string[]>(
+                            //    "() => Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.trim().length > 0)"
+                            //);
 
                             var textContent = await page.EvaluateFunctionAsync<string>(
                                 "() => document.body.textContent.trim()"
                             );
 
-                            allText.Add("URLS:\n" + string.Join("\n", hrefs));
+                            //allText.Add("URLS:\n" + string.Join("\n", hrefs));
                             allText.Add("TEXT:\n" + textContent);
                         }
                         catch (Exception exUrl)

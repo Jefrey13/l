@@ -32,7 +32,7 @@ namespace CustomerService.API.Repositories.Implementations
             return await _dbSet
                 .AsNoTracking()
                 .Include(n => n.Recipients)
-                .FirstOrDefaultAsync(n => n.NotificationId == notificationId, cancellation);
+                .FirstOrDefaultAsync(n => n.Id == notificationId, cancellation);
         }
 
         //public async Task<Notification> AddNotificationAsync(Notification entity, CancellationToken cancellation = default)

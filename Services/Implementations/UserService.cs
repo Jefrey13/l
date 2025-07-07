@@ -250,8 +250,8 @@ namespace CustomerService.API.Services.Implementations
             user.Identifier = request.Identifier;
             user.UpdatedAt = localTime;
 
-            if (!string.IsNullOrWhiteSpace(request.ImageUrl))
-                user.ImageUrl = request.ImageUrl;
+            //if (!string.IsNullOrWhiteSpace(request.ImageUrl))
+            //    user.ImageUrl = request.ImageUrl;
 
             var existingRoleIds = (await _uow.UserRoles.GetRolesByUserIdAsync(user.UserId, cancellation))
                 .Select(ur => ur.RoleId).ToList();

@@ -25,8 +25,10 @@ namespace CustomerService.API.Dtos.RequestDtos
 
         public string? Identifier { get; set; }
 
-        [FromForm(Name = "imageFile")]
-        public IFormFile? ImageFile { get; set; }
+        //[FromForm(Name = "imageFile")]
+        //public IFormFile? ImageFile { get; set; }
+
+        public string? ImageFile { get; set; }
 
         public string? ImageUrl { get; set; }
 

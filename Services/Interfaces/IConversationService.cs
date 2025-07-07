@@ -42,5 +42,9 @@ namespace CustomerService.API.Services.Interfaces
         Task MarkConversationReadAsync(int conversationId, string jwtToken, CancellationToken ct = default);
 
         Task<int> GetToneAsync(int ConversationId, CancellationToken ct = default);
+
+        Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default);
+
+        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(CancellationToken ct = default);
     }
 }

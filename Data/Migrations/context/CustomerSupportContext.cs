@@ -512,12 +512,17 @@ public partial class CustomerSupportContext : DbContext
         });
 
         modelBuilder.Entity<Notification>(entity => {
-            entity.HasKey(n => n.NotificationId);
+            entity.HasKey(n => n.Id);
 
             entity.ToTable("Notifications", "chat");
 
-            entity.Property(n => n.NotificationId)
+            entity.Property(n => n.Id)
                   .ValueGeneratedOnAdd();
+
+            entity.Property(n => n.Type)
+                    .HasConversion<string>()
+                    .HasMaxLength(50)
+                    .IsRequired();
 
             entity.Property(n => n.Payload).IsRequired();
 

@@ -18,7 +18,6 @@ namespace CustomerService.API.Services.Implementations
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiClient> _logger;
         private readonly string _url;
-        private readonly string _systemPrompt;
         private readonly JsonSerializerSettings _serializerSettings = new()
         {
             ContractResolver = new DefaultContractResolver
@@ -35,7 +34,6 @@ namespace CustomerService.API.Services.Implementations
             _httpClient = httpClient;
             _logger = logger;
             _url = options.Value.Url;          // ruta relativa: "/v1beta/models/…"
-            _systemPrompt = options.Value.SystemPrompt; // prompt desde configuración
         }
 
         public async Task<string> GenerateContentAsync(
@@ -47,60 +45,59 @@ namespace CustomerService.API.Services.Implementations
             try
             {
 
-            if (string.IsNullOrWhiteSpace(systemContext))
-                throw new ArgumentException("System context cannot be empty.", nameof(systemContext));
-            if (string.IsNullOrWhiteSpace(userPrompt))
-                throw new ArgumentException("User prompt cannot be empty.", nameof(userPrompt));
+                if (string.IsNullOrWhiteSpace(systemContext))
+                    throw new ArgumentException("System context cannot be empty.", nameof(systemContext));
+                if (string.IsNullOrWhiteSpace(userPrompt))
+                    throw new ArgumentException("User prompt cannot be empty.", nameof(userPrompt));
 
-            _logger.LogInformation("Llamando a Gemini API…");
+                _logger.LogInformation("Llamando a Gemini API…");
 
-            var payload = new
-            {
-                model = "models/gemini-2.0-flash",
-                contents = new[] {
-                    new {
-                      parts = new[] {
-                        new { text = systemContext },
-                        new { text = userPrompt    }
-                      }
-                    }
-                  },
-                generationConfig = new
+                var payload = new
                 {
-                    temperature = 0,
-                    top_p = 1,
-                    top_k = 1,
-                    candidate_count = 1
+                    model = "models/gemini-2.0-flash",
+                    contents = new[] {
+                        new {
+                          parts = new[] {
+                            new { text = systemContext },
+                            new { text = userPrompt    }
+                          }
+                        }
+                      },
+                    generationConfig = new
+                    {
+                        temperature = 0,
+                        top_p = 1,
+                        top_k = 1,
+                        candidate_count = 1
+                    }
+                };
+
+                var json = JsonConvert.SerializeObject(payload, Formatting.None, _serializerSettings);
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Como BaseAddress ya es el host, aquí uso la ruta relativa
+                var response = await _httpClient.PostAsync(_url, content, cancellationToken);
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Gemini API devolvió {StatusCode}: {Body}", response.StatusCode, body);
+                    throw new InvalidOperationException($"Gemini API error {response.StatusCode}");
                 }
-            };
 
-            var json = JsonConvert.SerializeObject(payload, Formatting.None, _serializerSettings);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var geminiResponse = JsonConvert.DeserializeObject<GeminiResponse>(body)
+                                     ?? throw new InvalidOperationException("Empty response from Gemini.");
 
-            // Como BaseAddress ya es el host, aquí uso la ruta relativa
-            var response = await _httpClient.PostAsync(_url, content, cancellationToken);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = geminiResponse.Candidates?
+                              .FirstOrDefault()?
+                              .Content?
+                              .Parts?
+                              .FirstOrDefault()?
+                              .Text
+                              ?? string.Empty;
 
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Gemini API devolvió {StatusCode}: {Body}", response.StatusCode, body);
-                throw new InvalidOperationException($"Gemini API error {response.StatusCode}");
-            }
-
-            var geminiResponse = JsonConvert.DeserializeObject<GeminiResponse>(body)
-                                 ?? throw new InvalidOperationException("Empty response from Gemini.");
-
-            var result = geminiResponse.Candidates?
-                          .FirstOrDefault()?
-                          .Content?
-                          .Parts?
-                          .FirstOrDefault()?
-                          .Text
-                          ?? string.Empty;
-
-            _logger.LogInformation("Respuesta de Gemini recibida.");
-            return result;
-
+                _logger.LogInformation("Respuesta de Gemini recibida.");
+                return result;
             }
             catch (Exception ex)
             {

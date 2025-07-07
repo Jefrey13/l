@@ -1,13 +1,15 @@
-﻿using System;
+﻿using CustomerService.API.Data.Context;
+using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Models;
+using CustomerService.API.Repositories.Interfaces;
+using CustomerService.API.Utils.Enums;
+using Humanizer;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CustomerService.API.Data.Context;
-using CustomerService.API.Models;
-using CustomerService.API.Repositories.Interfaces;
-using CustomerService.API.Utils.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace CustomerService.API.Repositories.Implementations
 {
@@ -40,6 +42,62 @@ namespace CustomerService.API.Repositories.Implementations
                     .ThenInclude(a=> a.Attachments)
                 .ToListAsync(cancellation);
         }
+
+        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default)
+        {
+            // Valida fechas (opcional)
+            if (from > to)
+                throw new ArgumentException("La fecha 'from' debe ser anterior o igual a 'to'.");
+
+            var query = _dbSet
+              .AsNoTracking()
+              .Where(c => c.CreatedAt >= from && c.CreatedAt <= to)
+              .GroupBy(c => c.Status)
+              .Select(g => new ConversationStatusCountResponseDto
+              {
+                  Status = g.Key.HasValue
+                             ? g.Key.Value.ToString()
+                             : "Unknown",    // o el texto que prefieras para nulos
+                  Count = g.Count()
+              });
+
+            return await query.ToListAsync(ct);
+
+        }
+
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>>
+     AverageAssignmentTimeAsync(CancellationToken ct = default)
+        {
+            // 1) Proyección inicial: saco Id, Nombre y segundos de cada asignación
+            var intermediate = _dbSet
+                .AsNoTracking()
+                .Where(c => c.AssignedAgentId != null
+                         && c.AgentRequestAt != null
+                         && c.AssignedAt != null)
+                .Select(c => new
+                {
+                    AgentId = c.AssignedAgentId.Value,
+                    AgentName = c.AssignedAgent.FullName,   // navega a la propiedad
+                    Seconds = EF.Functions.DateDiffSecond(
+                                    c.AgentRequestAt.Value,
+                                    c.AssignedAt.Value
+                                )
+                });
+
+            // 2) Agrupo por AgentId + AgentName y calculo promedio de Seconds
+            var query = intermediate
+                .GroupBy(x => new { x.AgentId, x.AgentName })
+                .Select(g => new AverageAssignmentTimeResponseDto
+                {
+                    AgentId = g.Key.AgentId,
+                    AgentName = g.Key.AgentName,
+                    AverageSeconds = g.Average(x => x.Seconds)
+                });
+
+            return await query.ToListAsync(ct);
+        }
+
+
 
         public async Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default)
         {

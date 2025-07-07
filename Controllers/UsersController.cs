@@ -93,13 +93,12 @@ namespace CustomerService.API.Controllers
 
         [HttpPut("{id}", Name = "UpdateUser")]
         [SwaggerOperation(Summary = "Update an existing user (y sus roles y foto)")]
-        [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(
             [FromRoute] int id,
-            [FromForm] UpdateUserRequest req,
+            [FromBody] UpdateUserRequest req,
             CancellationToken ct = default)
         {
             if (id <= 0)
@@ -107,19 +106,19 @@ namespace CustomerService.API.Controllers
 
             req.UserId = id;
 
-            if (req.ImageFile != null && req.ImageFile.Length > 0)
-            {
-                var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(req.ImageFile.FileName)}";
-                var mediaPath = Path.Combine(_env.WebRootPath, "media");
-                Directory.CreateDirectory(mediaPath);
-                var filePath = Path.Combine(mediaPath, fileName);
+            //if (req.ImageFile != null && req.ImageFile.Length > 0)
+            //{
+            //    var fileName = $"{DateTime.UtcNow.Ticks}{Path.GetExtension(req.ImageFile.FileName)}";
+            //    var mediaPath = Path.Combine(_env.WebRootPath, "media");
+            //    Directory.CreateDirectory(mediaPath);
+            //    var filePath = Path.Combine(mediaPath, fileName);
 
-                await using var stream = new FileStream(filePath, FileMode.Create);
-                await req.ImageFile.CopyToAsync(stream, ct);
+            //    await using var stream = new FileStream(filePath, FileMode.Create);
+            //    await req.ImageFile.CopyToAsync(stream, ct);
 
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                req.ImageUrl = $"{baseUrl}/media/{fileName}";
-            }
+            //    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            //    req.ImageUrl = $"{baseUrl}/media/{fileName}";
+            //}
 
             await _users.UpdateAsync(req, ct);
             return NoContent();

@@ -97,10 +97,10 @@ namespace CustomerService.API.Services.Implementations
                 .Select(c => c.Adapt<ConversationResponseDto>())
                 .ToList();
 
-            foreach (var item in dtoList)
-            {
-                item.Tone = await GetToneStringAsync(item.ConversationId);
-            }
+            //foreach (var item in dtoList)
+            //{
+            //    item.Tone = await GetToneStringAsync(item.ConversationId);
+            //}
 
             return dtoList;
         }
@@ -161,7 +161,6 @@ namespace CustomerService.API.Services.Implementations
         {
             try
             {
-
                 if (conversationId <= 0) throw new ArgumentException("Invalid conversation ID.", nameof(conversationId));
 
                 var conv = await _uow.Conversations.GetByIdAsync(conversationId, ct)
@@ -470,6 +469,26 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
+        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default)
+        {
+            if (from == null && to == null) throw new  ArgumentException("Date range parameters are reguired");
+
+            var convs = await _uow.Conversations.GetConversationsCountByDateRange(from, to);
+
+            if (convs == null) throw new ArgumentException("Date range parameters are reguired");
+
+            return convs;
+        }
+
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(CancellationToken ct = default)
+        {
+            var agent = await _uow.Conversations.AverageAssignmentTimeAsync(ct);
+
+            if (agent == null) throw new ArgumentException("Date range parameters are reguired");
+
+            return agent;
+        }
+
         public async Task CloseAsync(int conversationId, CancellationToken ct = default)
         {
             try
@@ -720,11 +739,11 @@ namespace CustomerService.API.Services.Implementations
 
            var dto = convs.Select(c => c.Adapt<ConversationResponseDto>());
 
-            foreach (var item in dto)
-            {
-                var tone = await GetToneStringAsync(item.ConversationId);
-                item.Tone = tone;
-            }
+            //foreach (var item in dto)
+            //{
+            //    var tone = await GetToneStringAsync(item.ConversationId);
+            //    item.Tone = tone;
+            //}
 
             return dto;
         }

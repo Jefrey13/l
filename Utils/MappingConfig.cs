@@ -100,6 +100,8 @@ namespace CustomerService.API.Utils
                         m.MessageId > (s.AssignerLastReadMessageId ?? 0))
                     : 0);
 
+            config.NewConfig<IEnumerable<Conversation>, IEnumerable<ConversationResponseDto>>();
+
             // Mensajes
             config.NewConfig<SendMessageRequest, Message>()
                 .Map(d => d.ConversationId, s => s.ConversationId)
@@ -161,7 +163,7 @@ namespace CustomerService.API.Utils
             config.NewConfig<Company, CompanyResponseDto>();
 
             // Notificaciones
-            config.NewConfig<NotificationRecipient, NotificationResponseDto>()
+            config.NewConfig<NotificationRecipient, NotificationRecipientResponseDto>()
                .Map(d => d.NotificationRecipientId, s => s.NotificationRecipientId)
                .Map(d => d.NotificationId, s => s.NotificationId)
                .Map(d => d.Type, s => s.Notification.Type)
@@ -179,12 +181,11 @@ namespace CustomerService.API.Utils
                 .Map(d => d.Tags, s => s.Tags);
 
             config.NewConfig<Notification, NotificationResponseDto>()
-                .Map(d => d.NotificationId, s => s.NotificationId)
+                .Map(d => d.Id, s => s.Id)
                 .Map(d => d.Type, s => s.Type)
                 .Map(d => d.Payload, s => s.Payload)
                 .Map(d => d.CreatedAt, s => s.CreatedAt);
 
-            // Eventos de dominio
             config.NewConfig<NewContactCreatedDto, NewContactCreatedDto>();
             config.NewConfig<SupportRequestedDto, SupportRequestedDto>();
             config.NewConfig<ConversationAssignedDto, ConversationAssignedDto>();

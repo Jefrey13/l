@@ -33,6 +33,50 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list, "All conversations retrieved."));
         }
 
+
+        [HttpGet("dateRange")]
+        [SwaggerOperation(Summary = "List all conversation with a creation date between")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetByDateRange(
+                       [FromQuery] DateTime from,
+                       [FromQuery] DateTime to,
+                       CancellationToken ct = default)
+        {
+            if (from == default || to == default)
+                return BadRequest();
+
+            var list = await _conversations.GetConversationsCountByDateRange(from, to, ct);
+
+            if (list == null || !list.Any())
+                return NotFound(new ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>(null, "Resource not found", false));
+
+            return Ok(new ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>(list, "Successfully retrieved", true, null));
+        }
+
+        [HttpGet("agentAverage")]
+        [SwaggerOperation(Summary = "Get agent average")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetAverageAssignmentTimeAsync(
+          [FromQuery] DateTime from,
+          [FromQuery] DateTime to,
+          CancellationToken ct = default)
+        {
+            if (from == default || to == default)
+                return BadRequest();
+
+            var list = await _conversations.AverageAssignmentTimeAsync(ct);
+
+            if (list == null || !list.Any())
+                return NotFound(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(null, "Resource not found", false));
+
+            return Ok(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(list, "Successfully retrieved", true, null));
+        }
+
+
         [HttpGet("pending", Name = "GetPendingConversations")]
         [SwaggerOperation(Summary = "List all conversations waiting for human agent")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status200OK)]

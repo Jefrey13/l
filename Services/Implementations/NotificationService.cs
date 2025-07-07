@@ -6,6 +6,7 @@ using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Models;
 using CustomerService.API.Repositories.Interfaces;
 using CustomerService.API.Services.Interfaces;
+using CustomerService.API.Utils;
 using CustomerService.API.Utils.Enums;
 using Mapster;
 
@@ -16,29 +17,34 @@ namespace CustomerService.API.Services.Implementations
         private readonly INotificationRepository _notifications;
         private readonly INotificationRecipientRepository _recipients;
         private readonly IUnitOfWork _uow;
+        private readonly INicDatetime _nicDatetime;
         private readonly ISignalRNotifyService _signalR;
 
         public NotificationService(
             INotificationRepository notifications,
             INotificationRecipientRepository recipients,
             IUnitOfWork uow,
-            ISignalRNotifyService signalR)
+            ISignalRNotifyService signalR,
+            INicDatetime nicDatetime)
         {
             _notifications = notifications;
             _recipients = recipients;
             _uow = uow;
             _signalR = signalR;
+            _nicDatetime = nicDatetime;
         }
 
         public async Task CreateAsync(NotificationType type, string payload, IEnumerable<int> recipientUserIds, CancellationToken ct = default)
         {
             try
             {
+                var localDate = await _nicDatetime.GetNicDatetime();
+
                 var notification = new Notification
                 {
                     Type = type,
                     Payload = payload,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = localDate,
                 };
 
                 //var newNotification = await _notifications.AddNotificationAsync(notification, ct);
@@ -49,7 +55,7 @@ namespace CustomerService.API.Services.Implementations
                 {
                     var rec = new NotificationRecipient
                     {
-                        NotificationId = notification.NotificationId,
+                        NotificationId = notification.Id,
                         UserId = userId
                     };
 
@@ -58,7 +64,7 @@ namespace CustomerService.API.Services.Implementations
 
                 await _uow.SaveChangesAsync(ct);
 
-                await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationResponseDto>());
+                //await _signalR.SendNotificationToUsersAsync(recipientUserIds, notification.Adapt<NotificationResponseDto>());
             }
             catch (Exception ex)
             {
