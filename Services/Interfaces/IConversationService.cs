@@ -1,14 +1,15 @@
 ﻿using CustomerService.API.Dtos.RequestDtos;
 using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
 using CustomerService.API.Dtos.ResponseDtos;
+using CustomerService.API.Utils;
 
 namespace CustomerService.API.Services.Interfaces
 {
     public interface IConversationService
     {
         Task<IEnumerable<ConversationResponseDto>> GetAllAsync(CancellationToken cancellation = default);
-
-       Task<ConversationResponseDto> StartAsync(StartConversationRequest request, CancellationToken cancellation = default);
+        Task<PagedResponse<ConversationResponseDto>> GetByState(PaginationParams @params, string state, CancellationToken cancellation = default);
+        Task<ConversationResponseDto> StartAsync(StartConversationRequest request, CancellationToken cancellation = default);
 
         Task<IEnumerable<ConversationResponseDto>> GetPendingAsync(CancellationToken cancellation = default);
 
@@ -44,7 +45,8 @@ namespace CustomerService.API.Services.Interfaces
         Task<int> GetToneAsync(int ConversationId, CancellationToken ct = default);
 
         Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default);
+        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from, DateTime to,CancellationToken ct = default);
 
-        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(CancellationToken ct = default);
+        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
     }
 }

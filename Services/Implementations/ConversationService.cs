@@ -479,12 +479,38 @@ namespace CustomerService.API.Services.Implementations
 
             return convs;
         }
-
-        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(CancellationToken ct = default)
+        public async Task<PagedResponse<ConversationResponseDto>> GetByState(PaginationParams @params, string state, CancellationToken ct = default)
         {
-            var agent = await _uow.Conversations.AverageAssignmentTimeAsync(ct);
+            try
+            {
+                var query = _uow.Conversations.GetAll().Where(c=> c.Status!.Value.ToString() == state);
 
-            if (agent == null) throw new ArgumentException("Date range parameters are reguired");
+                var paged = await PagedList<Conversation>
+                    .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+
+                var dtos = paged.Select(oh => oh.Adapt<ConversationResponseDto>());
+
+                return new PagedResponse<ConversationResponseDto>(dtos, paged.MetaData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
+            }
+        }
+        public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default)
+        {
+            var data = await _uow.Conversations.AssigmentResponseTimeAsync(from, to, ct);
+
+            if (data == null) throw new Exception("Date not found");
+
+            return data;
+        }
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from,DateTime to, CancellationToken ct = default)
+        {
+            var agent = await _uow.Conversations.AverageAssignmentTimeAsync(from, to, ct);
+
+            if (agent == null) throw new ArgumentException("Date not found");
 
             return agent;
         }

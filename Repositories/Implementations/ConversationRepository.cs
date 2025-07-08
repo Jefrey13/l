@@ -43,21 +43,21 @@ namespace CustomerService.API.Repositories.Implementations
                 .ToListAsync(cancellation);
         }
 
-        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default)
+        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange
+            (DateTime from, DateTime to, CancellationToken ct = default)
         {
-            // Valida fechas (opcional)
             if (from > to)
                 throw new ArgumentException("La fecha 'from' debe ser anterior o igual a 'to'.");
 
             var query = _dbSet
               .AsNoTracking()
-              .Where(c => c.CreatedAt >= from && c.CreatedAt <= to)
+              .Where(c => c.CreatedAt.Date >= from.Date && c.CreatedAt.Date <= to.Date.AddDays(1))
               .GroupBy(c => c.Status)
               .Select(g => new ConversationStatusCountResponseDto
               {
                   Status = g.Key.HasValue
                              ? g.Key.Value.ToString()
-                             : "Unknown",    // o el texto que prefieras para nulos
+                             : "Unknown",
                   Count = g.Count()
               });
 
@@ -65,39 +65,66 @@ namespace CustomerService.API.Repositories.Implementations
 
         }
 
-        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>>
-     AverageAssignmentTimeAsync(CancellationToken ct = default)
+        public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync
+            (DateTime from, DateTime to, CancellationToken ct = default)
         {
-            // 1) Proyección inicial: saco Id, Nombre y segundos de cada asignación
+
+            //Tiempo promedio de asignación de agente por parte del administradores.
             var intermediate = _dbSet
                 .AsNoTracking()
-                .Where(c => c.AssignedAgentId != null
-                         && c.AgentRequestAt != null
-                         && c.AssignedAt != null)
+                .Where(c => c.AgentRequestAt != null
+                && c.AssignedAt != null)
                 .Select(c => new
                 {
-                    AgentId = c.AssignedAgentId.Value,
-                    AgentName = c.AssignedAgent.FullName,   // navega a la propiedad
+                    Id = c.AssignedByUserId,
+                    Name = c.AssignedByUser.FullName,
                     Seconds = EF.Functions.DateDiffSecond(
+                        c.AgentRequestAt.Value,
+                        c.AssignedAt
+                        )
+                });
+
+            var query = intermediate.
+                GroupBy(x => new { x.Id, x.Name })
+                .Select(g => new AdminAsigmentResponseTimeResponseDto
+                {
+                   Id = g.Key.Id,
+                   Name = g.Key.Name!,
+                   averageTime = g.Average(x => x.Seconds)
+                });
+
+            return await query.ToListAsync(ct);
+        }
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>>AverageAssignmentTimeAsync(DateTime from, DateTime to, CancellationToken ct = default)
+        {
+            var intermediate = _dbSet
+                .AsNoTracking()
+                .Where(c => (c.AssignedAgentId != null
+                         && c.AgentRequestAt != null
+                         && c.AssignedAt != null)
+                         && (c.CreatedAt.Date >= from.Date && c.CreatedAt.Date <= to.Date)
+                         )
+                .Select(c => new
+                {
+                    Id = c.AssignedAgentId.Value,
+                    Name = c.AssignedAgent.FullName,
+                    averageTime = EF.Functions.DateDiffSecond(
                                     c.AgentRequestAt.Value,
                                     c.AssignedAt.Value
                                 )
                 });
 
-            // 2) Agrupo por AgentId + AgentName y calculo promedio de Seconds
             var query = intermediate
-                .GroupBy(x => new { x.AgentId, x.AgentName })
+                .GroupBy(x => new { x.Id, x.Name })
                 .Select(g => new AverageAssignmentTimeResponseDto
                 {
-                    AgentId = g.Key.AgentId,
-                    AgentName = g.Key.AgentName,
-                    AverageSeconds = g.Average(x => x.Seconds)
+                    Id = g.Key.Id,
+                    Name = g.Key.Name,
+                    averageTime = g.Average(x => x.averageTime)
                 });
 
             return await query.ToListAsync(ct);
         }
-
-
 
         public async Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default)
         {

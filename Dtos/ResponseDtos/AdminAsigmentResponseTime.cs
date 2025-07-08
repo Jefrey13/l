@@ -1,6 +1,6 @@
 ﻿namespace CustomerService.API.Dtos.ResponseDtos
 {
-    public class AverageAssignmentTimeResponseDto
+    public class AdminAsigmentResponseTimeResponseDto
     {
         public int? Id { get; set; }
         public string? Name { get; set; }

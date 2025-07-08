@@ -33,6 +33,17 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list, "All conversations retrieved."));
         }
 
+        [HttpGet(Name = "GetByState")]
+        [SwaggerOperation(Summary = "Retrieve paged list of conversartion")]
+        [ProducesResponseType(typeof(ApiResponse<PagedResponse<UserResponseDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByState(
+            [FromQuery] PaginationParams @params,
+            [FromBody] string state,
+            CancellationToken ct = default)
+        {
+            var paged = await _conversations.GetByState(@params, state, ct);
+            return Ok(new ApiResponse<PagedResponse<ConversationResponseDto>>(paged, "Conversations retrieved."));
+        }
 
         [HttpGet("dateRange")]
         [SwaggerOperation(Summary = "List all conversation with a creation date between")]
@@ -54,6 +65,26 @@ namespace CustomerService.API.Controllers
 
             return Ok(new ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>(list, "Successfully retrieved", true, null));
         }
+        [HttpGet("adminAverage")]
+        [SwaggerOperation(Summary = "Get admin average")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> AssigmentResponseTimeAsync(
+         [FromQuery] DateTime from,
+         [FromQuery] DateTime to,
+         CancellationToken ct = default)
+        {
+            if (from == default || to == default)
+                return BadRequest();
+
+            var list = await _conversations.AssigmentResponseTimeAsync(from, to, ct);
+
+            if (list == null || !list.Any())
+                return NotFound(new ApiResponse<IEnumerable<AdminAsigmentResponseTimeResponseDto>>(null, "Resource not found", false));
+
+            return Ok(new ApiResponse<IEnumerable<AdminAsigmentResponseTimeResponseDto>>(list, "Successfully retrieved", true, null));
+        }
 
         [HttpGet("agentAverage")]
         [SwaggerOperation(Summary = "Get agent average")]
@@ -68,10 +99,10 @@ namespace CustomerService.API.Controllers
             if (from == default || to == default)
                 return BadRequest();
 
-            var list = await _conversations.AverageAssignmentTimeAsync(ct);
+            var list = await _conversations.AverageAssignmentTimeAsync(from, to, ct);
 
-            if (list == null || !list.Any())
-                return NotFound(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(null, "Resource not found", false));
+            //if (list == null || !list.Any())
+            //    return NotFound(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(null, "Resource not found", false));
 
             return Ok(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(list, "Successfully retrieved", true, null));
         }

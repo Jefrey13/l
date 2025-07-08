@@ -37,60 +37,60 @@ namespace CustomerService.API.Hosted
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await new BrowserFetcher().DownloadAsync();
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    var allText = new List<string>();
-                    await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true });
-                    foreach (var url in Urls)
-                    {
-                        try
-                        {
-                            await using var page = await browser.NewPageAsync();
-                            await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
-                            await page.WaitForSelectorAsync("body", new WaitForSelectorOptions { Timeout = 30000 });
-                            await Task.Delay(6000, stoppingToken);
+            //await new BrowserFetcher().DownloadAsync();
+            //while (!stoppingToken.IsCancellationRequested)
+            //{
+            //    try
+            //    {
+            //        var allText = new List<string>();
+            //        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = true });
+            //        foreach (var url in Urls)
+            //        {
+            //            try
+            //            {
+            //                await using var page = await browser.NewPageAsync();
+            //                await page.GoToAsync(url, WaitUntilNavigation.Networkidle0);
+            //                await page.WaitForSelectorAsync("body", new WaitForSelectorOptions { Timeout = 30000 });
+            //                await Task.Delay(6000, stoppingToken);
 
-                            //var hrefs = await page.EvaluateFunctionAsync<string[]>(
-                            //    "() => Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.trim().length > 0)"
-                            //);
+            //                //var hrefs = await page.EvaluateFunctionAsync<string[]>(
+            //                //    "() => Array.from(document.querySelectorAll('a')).map(a => a.href).filter(h => h.trim().length > 0)"
+            //                //);
 
-                            var textContent = await page.EvaluateFunctionAsync<string>(
-                                "() => document.body.textContent.trim()"
-                            );
+            //                var textContent = await page.EvaluateFunctionAsync<string>(
+            //                    "() => document.body.textContent.trim()"
+            //                );
 
-                            //allText.Add("URLS:\n" + string.Join("\n", hrefs));
-                            allText.Add("TEXT:\n" + textContent);
-                        }
-                        catch (Exception exUrl)
-                        {
-                            _logger.LogWarning(exUrl, "Error scraping {Url}", url);
-                        }
-                    }
+            //                //allText.Add("URLS:\n" + string.Join("\n", hrefs));
+            //                allText.Add("TEXT:\n" + textContent);
+            //            }
+            //            catch (Exception exUrl)
+            //            {
+            //                _logger.LogWarning(exUrl, "Error scraping {Url}", url);
+            //            }
+            //        }
 
-                    var contextObj = new WebsiteContextDto
-                    {
-                        Content = string.Join("\n\n", allText),
-                        UpdatedAtUtc = DateTime.UtcNow
-                    };
+            //        var contextObj = new WebsiteContextDto
+            //        {
+            //            Content = string.Join("\n\n", allText),
+            //            UpdatedAtUtc = DateTime.UtcNow
+            //        };
 
-                    var json = JsonSerializer.Serialize(contextObj, new JsonSerializerOptions { WriteIndented = true });
-                    var folder = Path.Combine(_env.ContentRootPath, "WhContext");
-                    Directory.CreateDirectory(folder);
-                    var fullPath = Path.Combine(folder, "websiteContext.json");
-                    await File.WriteAllTextAsync(fullPath, json, stoppingToken);
+            //        var json = JsonSerializer.Serialize(contextObj, new JsonSerializerOptions { WriteIndented = true });
+            //        var folder = Path.Combine(_env.ContentRootPath, "WhContext");
+            //        Directory.CreateDirectory(folder);
+            //        var fullPath = Path.Combine(folder, "websiteContext.json");
+            //        await File.WriteAllTextAsync(fullPath, json, stoppingToken);
 
-                    _logger.LogInformation("🌐 websiteContext.json updated at {Time}", DateTime.UtcNow);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in WebsiteContextHostedService");
-                }
+            //        _logger.LogInformation("🌐 websiteContext.json updated at {Time}", DateTime.UtcNow);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        _logger.LogError(ex, "Error in WebsiteContextHostedService");
+            //    }
 
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
-            }
+            //    await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+            //}
         }
     }
 

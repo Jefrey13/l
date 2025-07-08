@@ -15,7 +15,9 @@ namespace CustomerService.API.Repositories.Interfaces
 
         Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default);
 
-        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(CancellationToken ct = default);
+        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+
+        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
 
         //Task<Conversation> GetByStatusAsync(List<ConversationStatus> statuses, CancellationToken cancellation = default);
     }
