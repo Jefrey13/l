@@ -43,7 +43,8 @@ namespace CustomerService.API.Services.Implementations
             _tokenService = tokenService;
         }
 
-        public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync([FromQuery] PaginationParams @params, CancellationToken ct = default)
+        public async Task<PagedResponse<ContactLogResponseDto>> GetAllAsync([FromQuery] PaginationParams @params, 
+            CancellationToken ct = default)
         {
             var query = _uow.ContactLogs.GetAll().OrderBy(c=> c.CreatedAt);   
 

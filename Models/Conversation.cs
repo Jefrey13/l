@@ -65,6 +65,8 @@ namespace CustomerService.API.Models
         [ForeignKey(nameof(AssignedByUserId))]
         public virtual User? AssignedByUser { get; set; }
 
+        public double? AverageAgentResponseTime { get; set; }
+
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
         public virtual ICollection<ConversationHistoryLog> ConversationHistoryLogs { get; set; } = new List<ConversationHistoryLog>();

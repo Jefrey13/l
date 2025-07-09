@@ -18,6 +18,7 @@ namespace CustomerService.API.Services.Interfaces
         Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default);
         Task CloseAsync(int conversationId, CancellationToken cancellation = default);
 
+        Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default);
         Task<ConversationResponseDto> GetOrCreateAsync(int clientContactId, CancellationToken cancellation = default);
 
         Task UpdateAsync(UpdateConversationRequest request, CancellationToken cancellation = default);
@@ -48,5 +49,7 @@ namespace CustomerService.API.Services.Interfaces
         Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from, DateTime to,CancellationToken ct = default);
 
         Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+
+        Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters, CancellationToken ct = default);
     }
 }

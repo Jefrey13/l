@@ -33,15 +33,18 @@ namespace CustomerService.API.Controllers
             return Ok(new ApiResponse<IEnumerable<ConversationResponseDto>>(list, "All conversations retrieved."));
         }
 
-        [HttpGet(Name = "GetByState")]
+        [HttpGet("{state}/getBystate", Name = "GetByState")]
         [SwaggerOperation(Summary = "Retrieve paged list of conversartion")]
         [ProducesResponseType(typeof(ApiResponse<PagedResponse<UserResponseDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetByState(
+            [FromRoute] string state,
             [FromQuery] PaginationParams @params,
-            [FromBody] string state,
             CancellationToken ct = default)
         {
+            if (state == null) return BadRequest("Bad request check the state");
+
             var paged = await _conversations.GetByState(@params, state, ct);
+            
             return Ok(new ApiResponse<PagedResponse<ConversationResponseDto>>(paged, "Conversations retrieved."));
         }
 
@@ -65,6 +68,37 @@ namespace CustomerService.API.Controllers
 
             return Ok(new ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>(list, "Successfully retrieved", true, null));
         }
+
+        [HttpGet("getClientWaiting")]
+        public async Task<IActionResult> GetWaitingClient(
+          [FromQuery] FilterDashboard filters,
+          CancellationToken ct = default)
+        {
+            if (filters == null) return BadRequest();
+            
+            var list = await _conversations.GetWaitingClient(filters, ct);
+            
+            if (list == null || !list.Any())
+                return NotFound(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(null, "Resource not found", false));
+            
+            return Ok(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(list, "Successfully retrieved", true, null));
+        }
+
+        [HttpGet("responseAgentAverageAsync")]
+        public async Task<IActionResult> ResponseAgentAverageAsync(
+          [FromQuery] FilterDashboard filters,
+          CancellationToken ct = default)
+        {
+            if (filters.AgentId <= 0) return BadRequest();
+
+            var list = await _conversations.ResponseAgentAverageAsync(filters, ct);
+
+            if (list == null)
+                return NotFound(new ApiResponse<ResponseAgentAverageResponseDto>(null, "Resource not found", false));
+
+            return Ok(new ApiResponse<ResponseAgentAverageResponseDto>(list, "Successfully retrieved", true, null));
+        }
+
         [HttpGet("adminAverage")]
         [SwaggerOperation(Summary = "Get admin average")]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>), StatusCodes.Status200OK)]

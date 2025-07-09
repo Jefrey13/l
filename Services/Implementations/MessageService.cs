@@ -75,7 +75,8 @@ namespace CustomerService.API.Services.Implementations
                     Status = MessageStatus.Sent,
                     ExternalId = "",
                     InteractiveId = request.InteractiveId,
-                    InteractiveTitle = request.InteractiveTitle
+                    InteractiveTitle = request.InteractiveTitle,
+
                 };
 
                 await _uow.Messages.AddAsync(msg, ct);
@@ -104,18 +105,38 @@ namespace CustomerService.API.Services.Implementations
                     if ((conv.AgentFirstMessageAt == null && request.SenderId != 1 ) && !isAdmin){
                          conv.AgentFirstMessageAt = localTime;
 
+                        
+
+
                     }
                     else if(request.SenderId != 1 && !isAdmin)
                     {
                         conv.AgentLastMessageAt = localTime;
                     }
 
-                    // Enviar el texto por WhatsApp
-                    mesageIdResponse = await _whatsAppService.SendTextAsync(
-                        request.ConversationId,
-                        msg.SenderUserId!.Value,
-                        msg.Content,
-                        ct);
+                    //Si no es un contacto de cliente y no es el usuario con id.
+                    if (!isContact && request.SenderId != 1)
+                    {
+                        // Tras cargar la conversación con sus mensajes:
+                        var lastClientMsg = conv.Messages
+                            .Where(m => m.SenderContactId != null)
+                            .OrderByDescending(m => m.DeliveredAt)
+                            .FirstOrDefault();
+
+                        if (lastClientMsg != null)
+                        {
+                            // Diferencia en segundos entre ahora y la entrega del último mensaje cliente
+                            conv.AverageAgentResponseTime =
+                                (int)(DateTime.UtcNow - lastClientMsg.DeliveredAt).Value.TotalSeconds;
+                        }
+                    }
+
+                        // Enviar el texto por WhatsApp
+                        mesageIdResponse = await _whatsAppService.SendTextAsync(
+                            request.ConversationId,
+                            msg.SenderUserId!.Value,
+                            msg.Content,
+                            ct);
                 }
                 else
                 {

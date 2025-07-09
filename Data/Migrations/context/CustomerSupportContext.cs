@@ -262,6 +262,8 @@ public partial class CustomerSupportContext : DbContext
             .HasMaxLength(30)
             .IsRequired(false);
 
+            entity.Property(e=> e.AverageAgentResponseTime).IsRequired(false);
+
             entity.Property(e => e.Initialized)
                   .HasDefaultValue(false);
 

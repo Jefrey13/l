@@ -479,16 +479,19 @@ namespace CustomerService.API.Services.Implementations
 
             return convs;
         }
-        public async Task<PagedResponse<ConversationResponseDto>> GetByState(PaginationParams @params, string state, CancellationToken ct = default)
+        public async Task<PagedResponse<ConversationResponseDto>> GetByState(
+            PaginationParams @params, string state, CancellationToken ct = default)
         {
             try
             {
-                var query = _uow.Conversations.GetAll().Where(c=> c.Status!.Value.ToString() == state);
+                var query = _uow.Conversations
+                    .QueryByState(state)
+                    .OrderBy(c => c.CreatedAt);
 
                 var paged = await PagedList<Conversation>
                     .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
 
-                var dtos = paged.Select(oh => oh.Adapt<ConversationResponseDto>());
+                var dtos = paged.Select(sp => sp.Adapt<ConversationResponseDto>());
 
                 return new PagedResponse<ConversationResponseDto>(dtos, paged.MetaData);
             }
@@ -498,6 +501,26 @@ namespace CustomerService.API.Services.Implementations
                 return null;
             }
         }
+
+        public async Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default)
+        {
+            var data = await _uow.Conversations.GetWaitingClient(filters, ct);
+
+            if (data == null) throw new NullReferenceException("Data not found");
+
+            return data;
+        }
+
+        public async Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters, CancellationToken ct = default)
+        {
+            var data = await _uow.Conversations.ResponseAgentAverageAsync(filters, ct);
+
+            if (data == null) throw new NullReferenceException("Data not found");
+
+            return data;
+        }
+
+
         public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default)
         {
             var data = await _uow.Conversations.AssigmentResponseTimeAsync(from, to, ct);
