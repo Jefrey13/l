@@ -51,5 +51,8 @@ namespace CustomerService.API.Services.Interfaces
         Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
 
         Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters, CancellationToken ct = default);
+
+        Task<PagedResponse<ConversationResponseDto>> GetConversationByClient(PaginationParams @params, FilterDashboard filters,
+            CancellationToken ct = default);
     }
 }

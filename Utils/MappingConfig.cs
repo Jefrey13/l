@@ -71,6 +71,7 @@ namespace CustomerService.API.Utils
                 .Map(d => d.AgentLastMessageAt, s => s.AgentLastMessageAt)
                 .Map(d=> d.Tone, s => s.Tone)
                 .Map(d => d.ClosedAt, s => s.ClosedAt)
+                .Map(d => d.IncompletedAt, s => s.IncompletedAt)
                 .Map(d => d.UpdatedAt, s => s.UpdatedAt)
                 .Map(d => d.AssignmentResponseAt, s => s.AssignmentResponseAt)
                 .Map(d => d.AssignmentComment, s => s.AssignmentComment)

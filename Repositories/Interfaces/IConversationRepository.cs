@@ -25,6 +25,8 @@ namespace CustomerService.API.Repositories.Interfaces
 
         Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters,CancellationToken ct = default);
 
+        IQueryable<Conversation> GetConversationByClient(FilterDashboard filters,
+            CancellationToken ct = default);
         //Task<Conversation> GetByStatusAsync(List<ConversationStatus> statuses, CancellationToken cancellation = default);
     }
 }

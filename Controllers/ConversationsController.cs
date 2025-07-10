@@ -78,10 +78,29 @@ namespace CustomerService.API.Controllers
             
             var list = await _conversations.GetWaitingClient(filters, ct);
             
-            if (list == null || !list.Any())
-                return NotFound(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(null, "Resource not found", false));
+            //if (list == null || !list.Any())
+            //    return NotFound(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(null, "Resource not found", false));
             
             return Ok(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(list, "Successfully retrieved", true, null));
+        }
+
+        [HttpGet("getConversationByClient")]
+        [SwaggerOperation(Summary = "Get conversation by company client")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<ConversationResponseDto>>), StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetConversationByClient(
+        [FromQuery] FilterDashboard filter,
+        [FromQuery] PaginationParams @params,
+        CancellationToken ct = default)
+        {
+            // Ahora 'filter' vendrá poblado desde la query string
+            var result = await _conversations.GetConversationByClient(@params, filter, ct);
+
+            if (result == null)
+                return BadRequest(new ApiResponse<string>(null, "No se encontraron conversaciones", false));
+
+            return Ok(new ApiResponse<PagedResponse<ConversationResponseDto>>(result, "Retrieve success", true, null));
         }
 
         [HttpGet("responseAgentAverageAsync")]
@@ -98,6 +117,8 @@ namespace CustomerService.API.Controllers
 
             return Ok(new ApiResponse<ResponseAgentAverageResponseDto>(list, "Successfully retrieved", true, null));
         }
+
+        
 
         [HttpGet("adminAverage")]
         [SwaggerOperation(Summary = "Get admin average")]
@@ -298,6 +319,7 @@ namespace CustomerService.API.Controllers
             await _conversations.MarkConversationReadAsync(id, jwtToken, ct);
             return NoContent();
         }
+
         [HttpGet("{id}/tone")]
         [SwaggerOperation("GetConversationTone")]
         [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]

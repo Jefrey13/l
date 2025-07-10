@@ -19,6 +19,22 @@ namespace CustomerService.API.Repositories.Implementations
         public ConversationRepository(CustomerSupportContext context)
             : base(context) { }
 
+        //Obtener las conversaciones por compañia(Todos los contactos que con de un cliente).
+        public  IQueryable<Conversation> GetConversationByClient(FilterDashboard filters,
+            CancellationToken ct = default)
+        {
+            var convs = _dbSet.AsNoTracking()
+                .Where(c => c.CreatedAt.Date >= filters.From!.Value.Date && c.CreatedAt.Date <= filters.To!.Value.Date)
+                .Include(c => c.ClientContact)
+                .Include(c => c.AssignedByUser)
+                .Include(u => u.AssignedAgent)
+                .Include(u => u.Messages)
+                    .ThenInclude(a => a.Attachments)
+                .OrderByDescending(c => c.CreatedAt);
+
+            return convs;
+        }
+
         public async Task<IEnumerable<Conversation>> GetPendingAsync(CancellationToken cancellation = default)
         {
             return await _dbSet
@@ -73,12 +89,16 @@ namespace CustomerService.API.Repositories.Implementations
 
             var now = DateTime.Now;
 
+            var timeParam = _context.SystemParams
+            .FirstOrDefault(e => e.Name == "ClientCriticalStateTime");
+
+
             var intermediate = _dbSet
                 .AsNoTracking()
                 .Where(c =>
-                    c.ClientContactId == filters.CustomerId
-                    && (c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
-                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now) > 1
+                    //c.ClientContactId == filters.CustomerId
+                     (c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
+                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now) > int.Parse(timeParam!.Value)
                 )
                 .Select(c => new
                 {
@@ -185,21 +205,30 @@ namespace CustomerService.API.Repositories.Implementations
         }
 
         public async Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(
-    FilterDashboard filters,
-    CancellationToken ct = default)
+        FilterDashboard filters,
+        CancellationToken ct = default)
         {
             try
             {
-                var agentId = filters.AgentId;
+                // Validaciones básicas
+                if (!filters.AgentId.HasValue)
+                    throw new ArgumentException("El campo 'AgentId' no puede ser null.");
 
-                //  Obtener el nombre del agente
-                var agentName = await _dbSet.AsNoTracking()
-                    .Where(u => u.AssignedAgentId == agentId)
-                    .Select(u => u.AssignedAgent.FullName)
+                if (!filters.From.HasValue || !filters.To.HasValue)
+                    throw new ArgumentException("Debe proporcionar fechas válidas en 'From' y 'To'.");
+
+                var agentId = filters.AgentId.Value;
+
+                // Obtener nombre del agente (puede ser null si no hay datos)
+                var agentName = await _dbSet
+                    .AsNoTracking()
+                    .Where(c => c.AssignedAgentId == agentId && c.AssignedAgent != null)
+                    .Select(c => c.AssignedAgent!.FullName)
                     .FirstOrDefaultAsync(ct);
 
-                // Explode de mensajes de cliente y buscar la respuesta del agente
-                var clientAgentPairs = _dbSet
+                //  Obtener todos los mensajes de clientes en conversaciones asignadas al agente
+                //Ojo si es senderuserid es 1 es por que lo envio el bot y no el agente. Y si es null, en que envio el nensaje fue el cliente
+                var rawMessages = await _dbSet
                     .AsNoTracking()
                     .Where(conv =>
                         conv.AssignedAgentId == agentId &&
@@ -207,65 +236,90 @@ namespace CustomerService.API.Repositories.Implementations
                         conv.CreatedAt.Date <= filters.To.Value.Date)
                     .SelectMany(conv => conv.Messages
                         .Where(m => m.SenderContactId != null)
-                        .Select(m => new {
+                        .Select(m => new
+                        {
                             ConvId = conv.ConversationId,
-                            ClientId = m.SenderContactId.Value,
+                            ClientId = m.SenderContactId!.Value,
                             ClientName = conv.ClientContact.FullName,
-                            ClientAt = m.DeliveredAt
-                        })
-                    )
-                    .Select(x => new {
-                        x.ClientId,
-                        x.ClientName,
-                        // Primer mensaje del agente posterior a ClientAt
-                        AgentAt = _context.Messages
-                            .Where(m2 =>
-                                m2.ConversationId == x.ConvId &&
-                                m2.Conversation.AssignedAgentId == agentId &&
-                                m2.DeliveredAt > x.ClientAt)
-                            .OrderBy(m2 => m2.DeliveredAt)
-                            .Select(m2 => (DateTimeOffset?)m2.DeliveredAt)
-                            .FirstOrDefault(),
-                        x.ConvId,
-                        x.ClientAt
-                    })
-                    .Where(x => x.AgentAt.HasValue)
-                    .Select(x => new {
-                        x.ClientId,
-                        x.ClientName,
-                        ResponseSeconds = EF.Functions.DateDiffSecond(x.ClientAt, x.AgentAt.Value),
-                        x.ConvId
-                    });
+                            ClientAt = m.SentAt
+                        }))
+                    .ToListAsync(ct);
 
-                // Agrupar por cliente, calcular promedio y cuenta de conversaciones
-                var topClients = await clientAgentPairs
+                // Otener todos los mensajes del agente para esas conversaciones
+                var agentMessages = await _context.Messages
+                    .AsNoTracking()
+                    .Where(m =>
+                        m.Conversation.AssignedAgentId == agentId &&
+                        m.SentAt != null &&
+                        m.SenderUserId != null && m.SenderUserId == filters.AgentId
+                        )
+                    .OrderBy(m => m.SentAt)
+                    .Select(m => new
+                    {
+                        m.ConversationId,
+                        m.SentAt
+                    })
+                    .ToListAsync(ct);
+
+                // Calcular tiempo de respuesta por cada mensaje de cliente
+                var responseData = rawMessages
+                    .Select(m =>
+                    {
+                        var firstResponse = agentMessages
+                            .Where(am => am.ConversationId == m.ConvId && am.SentAt > m.ClientAt)
+                            .FirstOrDefault();
+
+                        return firstResponse != null
+                            ? new
+                            {
+                                m.ClientId,
+                                m.ClientName,
+                                ConvId = m.ConvId,
+                                ResponseSeconds = (int)(firstResponse.SentAt - m.ClientAt).TotalSeconds
+                            }
+                            : null;
+                    })
+                    .Where(x => x != null)
+                    .ToList()!;
+
+                //  Agrupar por cliente y calcular promedio y número de conversaciones
+                var topClients = responseData
                     .GroupBy(x => new { x.ClientId, x.ClientName })
                     .Select(g => new ResponseAgentAverageClienteDataResponseDto
                     {
                         ClienteId = g.Key.ClientId,
                         ClientName = g.Key.ClientName,
-                        AverageSeconds = g.Average(x => x.ResponseSeconds),
-                        ConversationCount = g.Select(x => x.ConvId).Distinct().Count()
+                        AverageSeconds = g.Average(x => x!.ResponseSeconds),
+                        ConversationCount = g.Select(x => x!.ConvId).Distinct().Count()
                     })
                     .OrderByDescending(dto => dto.ConversationCount)
                     .Take(10)
-                    .ToListAsync(ct);
+                    .ToList();
 
+                // Armar el DTO final
                 var result = new ResponseAgentAverageResponseDto
                 {
-                    Id = (int)agentId,
-                    AgentName = agentName,
+                    Id = agentId,
+                    AgentName = agentName ?? "No disponible",
                     ClienteData = topClients
                 };
 
                 return result;
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
-                return new ResponseAgentAverageResponseDto();
+                // Aquí puedes registrar el error usando ILogger si tienes inyectado el logger
+                Console.WriteLine($"[ERROR] {ex.Message}");
+
+                // Devuelve un objeto vacío pero válido
+                return new ResponseAgentAverageResponseDto
+                {
+                    Id = filters.AgentId ?? 0,
+                    AgentName = "Error",
+                    ClienteData = new List<ResponseAgentAverageClienteDataResponseDto>()
+                };
             }
         }
-
 
         public async Task<int> CountAssignedAsync(int agentId, CancellationToken cancellation = default)
         {

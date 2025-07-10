@@ -12,6 +12,7 @@ using Mapster;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Mono.TextTemplating;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -1112,6 +1113,31 @@ namespace CustomerService.API.Services.Implementations
             {
                 Console.WriteLine(ex.Message);
                 return 1;
+            }
+        }
+
+        public async Task<PagedResponse<ConversationResponseDto>> GetConversationByClient(PaginationParams @params, FilterDashboard filters,
+            CancellationToken ct = default)
+        {
+            if (filters.Equals(null)) 
+                return new PagedResponse<ConversationResponseDto>(null, null);
+
+            try
+            {
+                var query = _uow.Conversations
+                    .GetConversationByClient(filters, ct);
+
+                var paged = await PagedList<Conversation>
+                    .CreateAsync(query, @params.PageNumber, @params.PageSize, ct);
+
+                var dtos = paged.Select(sp => sp.Adapt<ConversationResponseDto>());
+
+                return new PagedResponse<ConversationResponseDto>(dtos, paged.MetaData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
             }
         }
     }

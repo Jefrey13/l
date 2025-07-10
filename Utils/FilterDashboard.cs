@@ -8,6 +8,7 @@
         public DateTime? EndTime { get; set; }
         public int? AgentId { get; set; }
         public List<int>? AgentsId { get; set; }
+        public int? CompaniesId { get; set; }
         public int? AdminUserId { get; set; }
         public int? CustomerId { get; set; }
         public bool? Today { get; set; }
