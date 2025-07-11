@@ -54,14 +54,13 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetByDateRange(
-                       [FromQuery] DateTime from,
-                       [FromQuery] DateTime to,
+                       [FromQuery] FilterDashboard filters,
                        CancellationToken ct = default)
         {
-            if (from == default || to == default)
-                return BadRequest();
+            //if (from == default || to == default)
+            //    return BadRequest();
 
-            var list = await _conversations.GetConversationsCountByDateRange(from, to, ct);
+            var list = await _conversations.GetConversationsCountByDateRange(filters, ct);
 
             if (list == null || !list.Any())
                 return NotFound(new ApiResponse<IEnumerable<ConversationStatusCountResponseDto>>(null, "Resource not found", false));
@@ -71,16 +70,12 @@ namespace CustomerService.API.Controllers
 
         [HttpGet("getClientWaiting")]
         public async Task<IActionResult> GetWaitingClient(
-          [FromQuery] FilterDashboard filters,
-          CancellationToken ct = default)
+         [FromQuery] FilterDashboard filters,
+         [FromQuery] int? criticalMinutes,
+         CancellationToken ct = default)
         {
             if (filters == null) return BadRequest();
-            
-            var list = await _conversations.GetWaitingClient(filters, ct);
-            
-            //if (list == null || !list.Any())
-            //    return NotFound(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(null, "Resource not found", false));
-            
+            var list = await _conversations.GetWaitingClient(filters, criticalMinutes, ct);
             return Ok(new ApiResponse<IEnumerable<WaitingClientResponseDto>>(list, "Successfully retrieved", true, null));
         }
 
@@ -126,14 +121,13 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> AssigmentResponseTimeAsync(
-         [FromQuery] DateTime from,
-         [FromQuery] DateTime to,
+        [FromQuery] FilterDashboard filters,
          CancellationToken ct = default)
         {
-            if (from == default || to == default)
-                return BadRequest();
+            //if (from == default || to == default)
+            //    return BadRequest();
 
-            var list = await _conversations.AssigmentResponseTimeAsync(from, to, ct);
+            var list = await _conversations.AssigmentResponseTimeAsync(filters, ct);
 
             if (list == null || !list.Any())
                 return NotFound(new ApiResponse<IEnumerable<AdminAsigmentResponseTimeResponseDto>>(null, "Resource not found", false));
@@ -147,14 +141,13 @@ namespace CustomerService.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAverageAssignmentTimeAsync(
-          [FromQuery] DateTime from,
-          [FromQuery] DateTime to,
-          CancellationToken ct = default)
+          [FromQuery] FilterDashboard filters,
+        CancellationToken ct = default)
         {
-            if (from == default || to == default)
-                return BadRequest();
+            //if (from == default || to == default)
+            //    return BadRequest();
 
-            var list = await _conversations.AverageAssignmentTimeAsync(from, to, ct);
+            var list = await _conversations.AverageAssignmentTimeAsync(filters, ct);
 
             //if (list == null || !list.Any())
             //    return NotFound(new ApiResponse<IEnumerable<AverageAssignmentTimeResponseDto>>(null, "Resource not found", false));

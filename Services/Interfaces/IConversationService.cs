@@ -2,6 +2,7 @@
 using CustomerService.API.Dtos.RequestDtos.ConversationDtos;
 using CustomerService.API.Dtos.ResponseDtos;
 using CustomerService.API.Utils;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CustomerService.API.Services.Interfaces
 {
@@ -18,7 +19,7 @@ namespace CustomerService.API.Services.Interfaces
         Task<ConversationResponseDto?> GetByIdAsync(int id, CancellationToken cancellation = default);
         Task CloseAsync(int conversationId, CancellationToken cancellation = default);
 
-        Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default);
+        Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, int? criticalMinutes, CancellationToken ct = default);
         Task<ConversationResponseDto> GetOrCreateAsync(int clientContactId, CancellationToken cancellation = default);
 
         Task UpdateAsync(UpdateConversationRequest request, CancellationToken cancellation = default);
@@ -45,10 +46,10 @@ namespace CustomerService.API.Services.Interfaces
 
         Task<int> GetToneAsync(int ConversationId, CancellationToken ct = default);
 
-        Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default);
-        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from, DateTime to,CancellationToken ct = default);
+        Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(FilterDashboard filters, CancellationToken ct = default);
+        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(FilterDashboard filters, CancellationToken ct = default);
 
-        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(FilterDashboard filters, CancellationToken ct = default);
 
         Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters, CancellationToken ct = default);
 

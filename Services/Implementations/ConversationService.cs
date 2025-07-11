@@ -470,11 +470,11 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
-        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default)
+        public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(FilterDashboard filters, CancellationToken ct = default)
         {
-            if (from == null && to == null) throw new  ArgumentException("Date range parameters are reguired");
+            //if (from == null && to == null) throw new  ArgumentException("Date range parameters are reguired");
 
-            var convs = await _uow.Conversations.GetConversationsCountByDateRange(from, to);
+            var convs = await _uow.Conversations.GetConversationsCountByDateRange(filters, ct);
 
             if (convs == null) throw new ArgumentException("Date range parameters are reguired");
 
@@ -503,9 +503,9 @@ namespace CustomerService.API.Services.Implementations
             }
         }
 
-        public async Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default)
+        public async Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, int? criticalMinutes, CancellationToken ct = default)
         {
-            var data = await _uow.Conversations.GetWaitingClient(filters, ct);
+            var data = await _uow.Conversations.GetWaitingClient(filters, criticalMinutes, ct);
 
             if (data == null) throw new NullReferenceException("Data not found");
 
@@ -522,17 +522,17 @@ namespace CustomerService.API.Services.Implementations
         }
 
 
-        public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default)
+        public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(FilterDashboard filters, CancellationToken ct = default)
         {
-            var data = await _uow.Conversations.AssigmentResponseTimeAsync(from, to, ct);
+            var data = await _uow.Conversations.AssigmentResponseTimeAsync(filters, ct);
 
             if (data == null) throw new Exception("Date not found");
 
             return data;
         }
-        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from,DateTime to, CancellationToken ct = default)
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(FilterDashboard filters, CancellationToken ct = default)
         {
-            var agent = await _uow.Conversations.AverageAssignmentTimeAsync(from, to, ct);
+            var agent = await _uow.Conversations.AverageAssignmentTimeAsync(filters, ct);
 
             if (agent == null) throw new ArgumentException("Date not found");
 

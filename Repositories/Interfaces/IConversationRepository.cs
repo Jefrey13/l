@@ -15,13 +15,13 @@ namespace CustomerService.API.Repositories.Interfaces
 
         IQueryable<Conversation> QueryByState(string status);
 
-        Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(DateTime from, DateTime to, CancellationToken ct = default);
+        Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange(FilterDashboard filters, CancellationToken ct = default);
 
-        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+        Task<IEnumerable<AverageAssignmentTimeResponseDto>> AverageAssignmentTimeAsync(FilterDashboard filters, CancellationToken ct = default);
 
-        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+        Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync(FilterDashboard filters, CancellationToken ct = default);
 
-        Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default);
+        Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, int? criticalMinutes, CancellationToken ct = default);
 
         Task<ResponseAgentAverageResponseDto> ResponseAgentAverageAsync(FilterDashboard filters,CancellationToken ct = default);
 

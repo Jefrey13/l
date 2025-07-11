@@ -173,8 +173,20 @@ namespace CustomerService.API.Services.Implementations
 
             _logger.LogInformation("Fetching SystemParam with name: {Name}", name);
             var entity = await _uow.SystemParamRepository.GetByNameAsync(name);
+            
             if (entity == null)
             {
+                if (name == "ClientCriticalStateTime")
+                {
+                    // Devolvemos un DTO con valor por defecto
+                    _logger.LogWarning("SystemParam '{Name}' not found. Returning default 60.", name);
+                    return new SystemParamResponseDto
+                    {
+                        Name = name,
+                        Value = "60"   // <- valor por defecto solo para ClientCriticalStateTime
+                    };
+                }
+
                 _logger.LogWarning("SystemParam with name {Name} not found.", name);
                 throw new KeyNotFoundException($"System parameter with name {name} not found.");
             }

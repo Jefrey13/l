@@ -61,14 +61,14 @@ namespace CustomerService.API.Repositories.Implementations
         }
 
         public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange
-            (DateTime from, DateTime to, CancellationToken ct = default)
+            (FilterDashboard filters, CancellationToken ct = default)
         {
-            if (from > to)
-                throw new ArgumentException("La fecha 'from' debe ser anterior o igual a 'to'.");
+            //if (from > to)
+            //    throw new ArgumentException("La fecha 'from' debe ser anterior o igual a 'to'.");
 
             var query = _dbSet
               .AsNoTracking()
-              .Where(c => c.CreatedAt.Date >= from.Date && c.CreatedAt.Date <= to.Date.AddDays(1))
+              .Where(c => c.CreatedAt.Date >= filters.From.Value.Date && c.CreatedAt.Date <= filters.To.Value.Date.AddDays(1))
               .GroupBy(c => c.Status)
               .Select(g => new ConversationStatusCountResponseDto
               {
@@ -83,45 +83,41 @@ namespace CustomerService.API.Repositories.Implementations
         }
 
         //Obtener cliente con una conversación en estado waiting o human y con mas de 1 minutos desde su ultimo mensaje.
-       // Importante para listar a los usuarios con este periodo de tiempo
-        public async Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(FilterDashboard filters, CancellationToken ct = default)
+        // Importante para listar a los usuarios con este periodo de tiempo
+        public async Task<IEnumerable<WaitingClientResponseDto>> GetWaitingClient(
+         FilterDashboard filters,
+         int? criticalMinutes,
+         CancellationToken ct = default)
         {
-
             var now = DateTime.Now;
+            int threshold = criticalMinutes
+                ?? int.Parse(
+                    _context.SystemParams
+                        .FirstOrDefault(e => e.Name == "ClientCriticalStateTime")
+                        ?.Value
+                    ?? "1"
+                );
 
-            var timeParam = _context.SystemParams
-            .FirstOrDefault(e => e.Name == "ClientCriticalStateTime");
-
-
-            var intermediate = _dbSet
+            var query = _dbSet
                 .AsNoTracking()
                 .Where(c =>
-                    //c.ClientContactId == filters.CustomerId
-                     (c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
-                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now) > int.Parse(timeParam!.Value)
+                    (c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
+                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now) > threshold
                 )
-                .Select(c => new
-                {
-                    Id = c.ClientContactId,
-                    Name = c.ClientContact.FullName,
-                    AverageTime = EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now)
-                });
-
-
-            var query = intermediate
-                .GroupBy(x => new { x.Id, x.Name })
+                .GroupBy(c => new { c.ClientContactId, c.ClientContact.FullName })
                 .Select(g => new WaitingClientResponseDto
                 {
-                    Id = g.Key.Id,
-                    Name = g.Key.Name,
-                    AverageTime = g.Average(x => x.AverageTime)
+                    Id = g.Key.ClientContactId,
+                    Name = g.Key.FullName,
+                    AverageTime = g.Average(c =>
+                        EF.Functions.DateDiffSecond(c.ClientLastMessageAt, now))
                 });
 
             return await query.ToListAsync(ct);
         }
 
         public async Task<IEnumerable<AdminAsigmentResponseTimeResponseDto>> AssigmentResponseTimeAsync
-            (DateTime from, DateTime to, CancellationToken ct = default)
+            (FilterDashboard filters, CancellationToken ct = default)
         {
 
             //Tiempo promedio de asignación de agente por parte del administradores.
@@ -173,14 +169,14 @@ namespace CustomerService.API.Repositories.Implementations
                 .OrderBy(c => c.CreatedAt);
         }
 
-        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>>AverageAssignmentTimeAsync(DateTime from, DateTime to, CancellationToken ct = default)
+        public async Task<IEnumerable<AverageAssignmentTimeResponseDto>>AverageAssignmentTimeAsync(FilterDashboard filters, CancellationToken ct = default)
         {
             var intermediate = _dbSet
                 .AsNoTracking()
                 .Where(c => (c.AssignedAgentId != null
                          && c.AgentRequestAt != null
                          && c.AssignedAt != null)
-                         && (c.CreatedAt.Date >= from.Date && c.CreatedAt.Date <= to.Date)
+                         && (c.CreatedAt.Date >= filters.From.Value.Date && c.CreatedAt.Date <= filters.To.Value.Date)
                          )
                 .Select(c => new
                 {
