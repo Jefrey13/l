@@ -60,15 +60,81 @@ namespace CustomerService.API.Repositories.Implementations
                 .ToListAsync(cancellation);
         }
 
+        private IQueryable<Conversation> ApplyFilters(
+    IQueryable<Conversation> query,
+    FilterDashboard filters,
+    DateTime now
+    )
+        {
+            // 0) Includes si vas a necesitar datos de ClientContact en el WHERE
+            query = query.Include(c => c.ClientContact);
+
+            // 1) Fecha completa
+            if (filters.From.HasValue && filters.To.HasValue)
+            {
+                var fromDate = filters.From.Value.Date;
+                var toDate = filters.To.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(c =>
+                    c.CreatedAt >= fromDate &&
+                    c.CreatedAt <= toDate
+                );
+            }
+
+            // 2) Rango de hora (solo TimeOfDay)
+            if (filters.StartTime.HasValue && filters.EndTime.HasValue)
+            {
+                var start = filters.StartTime.Value.TimeOfDay;
+                var end = filters.EndTime.Value.TimeOfDay;
+                query = query.Where(c =>
+                    c.CreatedAt.TimeOfDay >= start &&
+                    c.CreatedAt.TimeOfDay <= end
+                );
+            }
+
+            // 3) AgentId → AssignedAgentId
+            if (filters.AgentId.HasValue)
+                query = query.Where(c =>
+                    c.AssignedAgentId == filters.AgentId.Value
+                );
+
+            // 4) AdminId → AssignedByUserId
+            if (filters.AdminUserId.HasValue)
+                query = query.Where(c =>
+                    c.AssignedByUserId == filters.AdminUserId.Value
+                );
+
+            // 5) CustomerId → ClientContactId
+            if (filters.CustomerId.HasValue)
+                query = query.Where(c =>
+                    c.ClientContactId == filters.CustomerId.Value
+                );
+
+            // 6) CompanyId via navegación
+            if (filters.CompaniesId.HasValue)
+                query = query.Where(c =>
+                    c.ClientContact.CompanyId == filters.CompaniesId.Value
+                );
+
+            //if (filters.Today == true)
+            //    query = query.Where(c => c.CreatedAt.Date == now);
+            //else if (filters.Yesterday == true)
+            //    query = query.Where(c => c.CreatedAt.Date == now.AddDays(-1));
+            //else if (filters.Tomorrow == true)
+            //    query = query.Where(c => c.CreatedAt.Date == now.AddDays(1));
+
+            return query;
+        }
+
         public async Task<IEnumerable<ConversationStatusCountResponseDto>> GetConversationsCountByDateRange
             (FilterDashboard filters, CancellationToken ct = default)
         {
-            //if (from > to)
-            //    throw new ArgumentException("La fecha 'from' debe ser anterior o igual a 'to'.");
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Managua");
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
 
-            var query = _dbSet
-              .AsNoTracking()
-              .Where(c => c.CreatedAt.Date >= filters.From.Value.Date && c.CreatedAt.Date <= filters.To.Value.Date.AddDays(1))
+            // Partimos de _dbSet con includes si hacen falta
+            var baseQuery = ApplyFilters(_dbSet.AsNoTracking(), filters, now);
+
+            var query = baseQuery
               .GroupBy(c => c.Status)
               .Select(g => new ConversationStatusCountResponseDto
               {
@@ -89,7 +155,11 @@ namespace CustomerService.API.Repositories.Implementations
          int? criticalMinutes,
          CancellationToken ct = default)
         {
-            var now = DateTime.Now;
+           var tz      = TimeZoneInfo.FindSystemTimeZoneById("America/Managua");
+        var today   = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+        var nowFull = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+
+
             int threshold = criticalMinutes
                 ?? int.Parse(
                     _context.SystemParams
@@ -98,11 +168,13 @@ namespace CustomerService.API.Repositories.Implementations
                     ?? "1"
                 );
 
-            var query = _dbSet
-                .AsNoTracking()
+            // Partimos de _dbSet con includes si hacen falta
+            var baseQuery = ApplyFilters(_dbSet.AsNoTracking(), filters, today);
+
+            var query = baseQuery
                 .Where(c =>
                     (c.Status == ConversationStatus.Waiting || c.Status == ConversationStatus.Human)
-                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, now) > threshold
+                    && EF.Functions.DateDiffMinute(c.ClientLastMessageAt, nowFull) > threshold
                 )
                 .GroupBy(c => new { c.ClientContactId, c.ClientContact.FullName })
                 .Select(g => new WaitingClientResponseDto
@@ -110,7 +182,7 @@ namespace CustomerService.API.Repositories.Implementations
                     Id = g.Key.ClientContactId,
                     Name = g.Key.FullName,
                     AverageTime = g.Average(c =>
-                        EF.Functions.DateDiffSecond(c.ClientLastMessageAt, now))
+                        EF.Functions.DateDiffSecond(c.ClientLastMessageAt, nowFull))
                 });
 
             return await query.ToListAsync(ct);
